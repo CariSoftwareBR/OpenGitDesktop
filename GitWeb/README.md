@@ -2,7 +2,7 @@
 
 **Português** · [English](README.en.md) · [Español](README.es.md)
 
-Cliente Git multiplataforma (Windows, macOS, Linux), inspirado no [GitDesktop](../GitDesktop) — a versão WinUI 3 (só Windows) deste mesmo projeto. Este é um app novo e independente; o `GitDesktop/` continua existindo e sendo mantido em paralelo.
+Cliente Git multiplataforma (Windows, macOS, Linux), inspirado no GitDesktop — a versão WinUI 3 (só Windows) deste mesmo projeto. Este é um app novo e independente; o GitDesktop continua sendo mantido em paralelo, fora deste repositório.
 
 ## Stack
 

@@ -2,7 +2,7 @@
 
 [Português](README.md) · **English** · [Español](README.es.md)
 
-Cross-platform Git client (Windows, macOS, Linux), inspired by [GitDesktop](../GitDesktop) — the WinUI 3 (Windows-only) version of this same project. This is a new, independent app; `GitDesktop/` still exists and is maintained in parallel.
+Cross-platform Git client (Windows, macOS, Linux), inspired by GitDesktop — the WinUI 3 (Windows-only) version of this same project. This is a new, independent app; GitDesktop is still maintained in parallel, outside this repository.
 
 ## Stack
 
