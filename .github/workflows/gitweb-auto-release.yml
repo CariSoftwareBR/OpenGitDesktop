@@ -126,15 +126,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # macOS está fora porque o runner custa 10x minutos (contra 2x do
-        # Windows e 1x do Linux) e sozinho respondia por ~75% da fatura, que
-        # estourou o orçamento do Actions. Os steps de Package (macOS) seguem
-        # abaixo intactos: para voltar a publicar .dmg, basta descomentar a
-        # linha do macos-latest aqui.
+        # Repositório público: os runners padrão do GitHub (macOS incluso) não
+        # cobram minutos, então os três sistemas entram em toda execução.
+        # Se o repositório voltar a ser privado, o macOS custa 10x minutos e
+        # foi ~75% da fatura da última vez: tire o macos-latest daqui.
         os:
           - windows-latest
           - ubuntu-latest
-          # - macos-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
     defaults:
       run:

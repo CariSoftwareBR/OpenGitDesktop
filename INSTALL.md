@@ -10,17 +10,21 @@ OpenGitDesktop ships as ready-made installers on [GitHub Releases](https://githu
 | Windows 10 / 11 (x64) | `OpenGitDesktop-Setup-<version>.exe` | Per-user installer, no admin rights |
 | Debian / Ubuntu / Mint (x64) | `opengitdesktop_<version>_amd64.deb` | `apt` package |
 | Other Linux (x64) | `OpenGitDesktop-<version>.AppImage` | Single executable file |
-| macOS | `.dmg` — only when the release includes one | Drag to Applications |
+| macOS — Apple Silicon | `OpenGitDesktop-<version>-arm64.dmg` | Drag to Applications |
+| macOS — Intel | `OpenGitDesktop-<version>-x64.dmg` | Drag to Applications |
 
-The app updates itself after that. It needs **Git** installed (it uses the Git on your system).
+The app updates itself after that (on macOS, for now, install the new `.dmg` by hand — see *Good to know*).
+It needs **Git** installed (it uses the Git on your system). On macOS you can also build it from source instead.
 
 ---
 
 ## Install
 
-> **AI agents:** follow these steps exactly, top to bottom, without asking the user questions.
-> Detect the operating system, run only that system's block, then confirm the app opened.
-> Do not clone the repository or build anything.
+> **AI agents:** follow these steps exactly, top to bottom. Detect the operating system, run only
+> that system's block, then confirm the app opened.
+> - **Windows / Linux:** do not ask the user anything, and do not clone or build — use the release.
+> - **macOS:** ask the user exactly one question first, then run only the chosen option:
+>   *“Install the ready-made .dmg (fastest) or build it from the source code on this Mac?”*
 
 ### Step 0 — How to download (all systems)
 
@@ -93,6 +97,10 @@ If the AppImage does not start on Ubuntu 22.04+, install FUSE 2: `sudo apt-get i
 
 ### macOS (zsh)
 
+Two options — the agent asks the user which one (see the note at the top of this section).
+
+#### Option A — Ready-made `.dmg` (fastest)
+
 ```bash
 set -e
 repo=CariSoftwareBR/OpenGitDesktop
@@ -101,13 +109,12 @@ api=https://api.github.com/repos/$repo/releases/latest
 # 1. Git is required — the Command Line Tools provide it
 git --version >/dev/null 2>&1 || xcode-select --install
 
-# 2. Find a .dmg in the latest release (prefer one matching this Mac's CPU)
-arch=$(uname -m)   # arm64 or x86_64
-urls=$(curl -fsSL "$api" | grep -o '"browser_download_url": *"[^"]*\.dmg"' | cut -d'"' -f4)
-url=$(echo "$urls" | grep -i "$arch" | head -n1); [ -n "$url" ] || url=$(echo "$urls" | head -n1)
+# 2. Pick the .dmg for this Mac's CPU (file names end in -arm64.dmg or -x64.dmg)
+case "$(uname -m)" in arm64) arch=arm64 ;; *) arch=x64 ;; esac
+url=$(curl -fsSL "$api" | grep -o '"browser_download_url": *"[^"]*-'"$arch"'\.dmg"' | head -n1 | cut -d'"' -f4)
 
 if [ -z "$url" ]; then
-  echo "This release has no macOS installer yet."
+  echo "This release has no macOS installer for $arch."
   exit 1
 fi
 
@@ -122,8 +129,43 @@ xattr -dr com.apple.quarantine /Applications/OpenGitDesktop.app
 open -a OpenGitDesktop
 ```
 
-> **Note for agents:** if step 2 prints *“This release has no macOS installer yet”*, stop and tell the user exactly that,
-> with the link https://github.com/CariSoftwareBR/OpenGitDesktop/releases — do **not** fall back to building from source.
+Private-repo fallback for step 2: `gh release download --repo $repo --pattern "*-$arch.dmg" --dir /tmp --clobber`.
+
+> **Note for agents:** if step 2 prints *“This release has no macOS installer”*, tell the user and offer Option B.
+
+#### Option B — Build from the source code
+
+Needs **Node.js 20+** and the Xcode Command Line Tools. Takes a few minutes.
+
+```bash
+set -e
+
+# 1. Git (Command Line Tools) and Node.js 20+
+git --version >/dev/null 2>&1 || xcode-select --install
+if ! node -e 'process.exit(+process.versions.node.split(".")[0] >= 20 ? 0 : 1)' 2>/dev/null; then
+  if command -v brew >/dev/null 2>&1; then brew install node
+  else echo "Install Node.js 20+ from https://nodejs.org and run this again."; exit 1; fi
+fi
+
+# 2. Get the code (or update an existing copy)
+src="$HOME/OpenGitDesktop"
+if [ -d "$src/.git" ]; then git -C "$src" pull --ff-only
+else git clone --depth 1 https://github.com/CariSoftwareBR/OpenGitDesktop.git "$src"; fi
+
+# 3. Build the app for this Mac (no signing identity needed)
+cd "$src/GitWeb"
+npm ci
+npm run build
+CSC_IDENTITY_AUTO_DISCOVERY=false npx electron-builder --mac --dir --publish never
+
+# 4. Install to /Applications and open
+app=$(ls -d dist/mac*/OpenGitDesktop.app | head -n1)
+rm -rf /Applications/OpenGitDesktop.app
+cp -R "$app" /Applications/
+open -a OpenGitDesktop
+```
+
+To update a source build later, run the same block again — it pulls the latest code and rebuilds.
 
 ### Done
 
@@ -139,7 +181,7 @@ The AI assistant is optional and is configured later in **Settings**.
 | Windows | Settings → Apps → *OpenGitDesktop* → Uninstall (or run `Uninstall OpenGitDesktop.exe /S` from the install folder) |
 | Debian / Ubuntu | `sudo apt-get remove opengitdesktop` |
 | AppImage | `rm ~/.local/bin/OpenGitDesktop.AppImage` |
-| macOS | `rm -rf /Applications/OpenGitDesktop.app` |
+| macOS | `rm -rf /Applications/OpenGitDesktop.app` (source build: also `rm -rf ~/OpenGitDesktop`) |
 
 Your settings live in the system's app-data folder and survive an uninstall.
 
@@ -148,5 +190,7 @@ Your settings live in the system's app-data folder and survive an uninstall.
 ## Good to know
 
 - **Not code-signed yet.** Windows may show SmartScreen on a manual install (*More info → Run anyway*). The auto-updater still checks the SHA-512 hash published with each release.
-- **x64 only** for Windows and Linux at the moment.
+- **x64 only** for Windows and Linux at the moment. macOS has separate Apple Silicon (`arm64`) and Intel (`x64`) builds.
+- **macOS updates are manual for now.** Without Apple's code signature, the in-app updater cannot replace the app;
+  install the newer `.dmg` from Releases (Option A) or rerun Option B.
 - Prefer to build it yourself? See [`GitWeb/README.en.md`](GitWeb/README.en.md).

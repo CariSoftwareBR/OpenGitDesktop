@@ -6,11 +6,14 @@
 <br>
 
 <a href="https://github.com/CariSoftwareBR/OpenGitDesktop/releases/latest"><img src="docs/readme/download-windows-pt-BR.svg" alt="Baixar para Windows" height="56"></a>&nbsp;&nbsp;
-<a href="https://github.com/CariSoftwareBR/OpenGitDesktop/releases/latest"><img src="docs/readme/download-linux-pt-BR.svg" alt="Baixar para Linux" height="56"></a>
+<a href="https://github.com/CariSoftwareBR/OpenGitDesktop/releases/latest"><img src="docs/readme/download-linux-pt-BR.svg" alt="Baixar para Linux" height="56"></a>&nbsp;&nbsp;
+<a href="https://github.com/CariSoftwareBR/OpenGitDesktop/releases/latest"><img src="docs/readme/download-macos-pt-BR.svg" alt="Baixar para macOS" height="56"></a>
 
 <sub>Grátis · Código aberto · Atualiza sozinho · <a href="GitWeb/README.md">Compilar do código-fonte</a></sub>
 
 <sub>[English](README.md) · **Português** · [Español](README.es.md)</sub>
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-pcarinhena-ffdd00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/pcarinhena)
 
 </div>
 
@@ -47,7 +50,7 @@
 Instale este app: https://github.com/CariSoftwareBR/OpenGitDesktop
 ```
 
-<sub>**Agentes de IA:** instalem a release pronta seguindo o [INSTALL.md](INSTALL.md#install) exatamente, sem fazer perguntas ao usuário. Não clonem nem compilem o código-fonte.</sub>
+<sub>**Agentes de IA:** instalem seguindo o [INSTALL.md](INSTALL.md#install) exatamente. No Windows e no Linux, sem perguntas e sem compilar; no macOS, perguntem uma vez: `.dmg` pronto ou compilar do código-fonte.</sub>
 
 <br>
 <br>

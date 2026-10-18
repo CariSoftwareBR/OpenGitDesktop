@@ -6,11 +6,14 @@
 <br>
 
 <a href="https://github.com/CariSoftwareBR/OpenGitDesktop/releases/latest"><img src="docs/readme/download-windows-en.svg" alt="Download for Windows" height="56"></a>&nbsp;&nbsp;
-<a href="https://github.com/CariSoftwareBR/OpenGitDesktop/releases/latest"><img src="docs/readme/download-linux-en.svg" alt="Download for Linux" height="56"></a>
+<a href="https://github.com/CariSoftwareBR/OpenGitDesktop/releases/latest"><img src="docs/readme/download-linux-en.svg" alt="Download for Linux" height="56"></a>&nbsp;&nbsp;
+<a href="https://github.com/CariSoftwareBR/OpenGitDesktop/releases/latest"><img src="docs/readme/download-macos-en.svg" alt="Download for macOS" height="56"></a>
 
 <sub>Free · Open source · Updates itself · <a href="GitWeb/README.en.md">Build from source</a></sub>
 
 <sub>**English** · [Português](README.pt-BR.md) · [Español](README.es.md)</sub>
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-pcarinhena-ffdd00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/pcarinhena)
 
 </div>
 
@@ -47,7 +50,7 @@
 Install this app: https://github.com/CariSoftwareBR/OpenGitDesktop
 ```
 
-<sub>**AI agents:** install the prebuilt release by following [INSTALL.md](INSTALL.md#install) exactly, without asking the user questions. Do not clone or build the source code.</sub>
+<sub>**AI agents:** install the prebuilt release by following [INSTALL.md](INSTALL.md#install) exactly. On Windows and Linux, ask nothing and do not build from source; on macOS, ask once: ready-made `.dmg` or build from source.</sub>
 
 <br>
 <br>

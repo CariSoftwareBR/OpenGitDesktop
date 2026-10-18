@@ -10,13 +10,13 @@ node_modules/
 # Impeccable engine binaries — the launcher downloads and caches them on demand.
 **/impeccable/scripts/bin/
 
-# Ferramentas internas de agentes de IA (Claude, Codex, Cursor, OpenCode,
-# Impeccable). Ficam só na máquina local, fora do repositório público.
+# Ferramentas internas de agentes de IA (Claude, Codex, Cursor, OpenCode).
+# Ficam só na máquina local, fora do repositório público. (.impeccable/ é
+# versionado: guarda o contexto de design usado pelo Impeccable.)
 .agents/
 .claude/
 .codex/
 .cursor/
-.impeccable/
 .opencode/
 .github/agents/
 .github/hooks/

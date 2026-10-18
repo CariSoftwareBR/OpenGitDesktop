@@ -22,11 +22,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Ver a nota em gitweb-auto-release.yml: macOS custa 10x minutos.
+        # Repositório público: os runners padrão do GitHub (macOS incluso) não
+        # cobram minutos, então os três sistemas entram em toda execução.
         os:
           - windows-latest
           - ubuntu-latest
-          # - macos-latest
+          - macos-latest
     runs-on: ${{ matrix.os }}
     defaults:
       run:

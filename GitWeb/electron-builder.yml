@@ -32,9 +32,15 @@ win:
     - nsis
   icon: build/icon.ico
 mac:
+  # arm64 (Apple Silicon) e x64 (Intel) separados: o macos-latest é arm64 e,
+  # sem arch explícito, o electron-builder só gera para a CPU do runner.
+  # O arch fica no nome para o INSTALL.md escolher o arquivo certo.
   target:
-    - dmg
-    - zip
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  artifactName: ${productName}-${version}-${arch}.${ext}
   category: public.app-category.developer-tools
   icon: build/icon.png
 linux:
