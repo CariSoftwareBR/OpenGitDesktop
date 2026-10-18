@@ -1,4 +1,4 @@
-# GitWeb
+# OpenGitDesktop
 
 [Português](README.md) · **English** · [Español](README.es.md)
 
@@ -84,7 +84,7 @@ src/
 
 ## GitHub authentication
 
-GitWeb offers two ways to sign in to GitHub, side by side — neither replaces the other:
+OpenGitDesktop offers two ways to sign in to GitHub, side by side — neither replaces the other:
 
 - **OAuth Device Flow** (default, `github.com` only): click "Continue with GitHub", confirm a one-time code at `github.com/login/device` and the app receives the token. It needs a registered OAuth App with Device Flow enabled, whose `client_id` lives in `GitWeb/src/main/githubDeviceFlow.ts` (or in the `GITWEB_GITHUB_OAUTH_CLIENT_ID` environment variable, for anyone building from source who wants their own OAuth App).
 - **Personal Access Token**: required for GitHub Enterprise Server (Device Flow would need a separate OAuth App per instance), also available on `github.com`.
@@ -104,8 +104,8 @@ The token **never** reaches the renderer process. Every GitHub API call runs in 
 The `client_id` is public by the nature of Device Flow — anyone can start a sign-in with the same
 `client_id` (GitHub CLI has exactly the same property). The attack this enables is *device code
 phishing*: someone starts the flow, sends you the eight-character code and asks you to confirm it at
-`github.com/login/device`. GitHub's page will show "GitWeb" as usual, but the attacker is the one who gets
-the token. A public client has no way to prevent this. The rule is simple: **only enter a code that GitWeb
+`github.com/login/device`. GitHub's page will show "OpenGitDesktop" as usual, but the attacker is the one who gets
+the token. A public client has no way to prevent this. The rule is simple: **only enter a code that OpenGitDesktop
 itself has just shown on your screen.**
 
 ### Signing out does not revoke the authorization

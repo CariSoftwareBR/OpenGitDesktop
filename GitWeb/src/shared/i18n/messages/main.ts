@@ -103,9 +103,9 @@ const ptBR = {
   },
   updater: {
     privateReleasesUnavailable: (repo: string) =>
-      `Não foi possível acessar as releases do repositório privado. Confirme que você está logado no GitHub no GitWeb com uma conta que tenha acesso a ${repo}, e tente de novo.`,
+      `Não foi possível acessar as releases do repositório privado. Confirme que você está logado no GitHub no OpenGitDesktop com uma conta que tenha acesso a ${repo}, e tente de novo.`,
     privateFeedLoginRequired:
-      'O repositório de releases é privado. Entre no GitHub pelo GitWeb (botão na barra superior ou na tela inicial) e tente de novo.',
+      'O repositório de releases é privado. Entre no GitHub pelo OpenGitDesktop (botão na barra superior ou na tela inicial) e tente de novo.',
     onlyInstalled: 'Atualizações automáticas só funcionam na versão instalada.',
     checkFailed: 'Não foi possível consultar atualizações.'
   }
@@ -214,9 +214,9 @@ const en: MainMessages = {
   },
   updater: {
     privateReleasesUnavailable: (repo) =>
-      `Could not access the private repository's releases. Make sure you are signed in to GitHub in GitWeb with an account that has access to ${repo}, and try again.`,
+      `Could not access the private repository's releases. Make sure you are signed in to GitHub in OpenGitDesktop with an account that has access to ${repo}, and try again.`,
     privateFeedLoginRequired:
-      'The releases repository is private. Sign in to GitHub in GitWeb (button in the top bar or on the start screen) and try again.',
+      'The releases repository is private. Sign in to GitHub in OpenGitDesktop (button in the top bar or on the start screen) and try again.',
     onlyInstalled: 'Automatic updates only work in the installed version.',
     checkFailed: 'Could not check for updates.'
   }
@@ -324,9 +324,9 @@ const es: MainMessages = {
   },
   updater: {
     privateReleasesUnavailable: (repo) =>
-      `No se pudo acceder a las releases del repositorio privado. Confirma que iniciaste sesión en GitHub en GitWeb con una cuenta que tenga acceso a ${repo}, e inténtalo de nuevo.`,
+      `No se pudo acceder a las releases del repositorio privado. Confirma que iniciaste sesión en GitHub en OpenGitDesktop con una cuenta que tenga acceso a ${repo}, e inténtalo de nuevo.`,
     privateFeedLoginRequired:
-      'El repositorio de releases es privado. Inicia sesión en GitHub desde GitWeb (botón en la barra superior o en la pantalla inicial) e inténtalo de nuevo.',
+      'El repositorio de releases es privado. Inicia sesión en GitHub desde OpenGitDesktop (botón en la barra superior o en la pantalla inicial) e inténtalo de nuevo.',
     onlyInstalled: 'Las actualizaciones automáticas solo funcionan en la versión instalada.',
     checkFailed: 'No se pudieron consultar las actualizaciones.'
   }

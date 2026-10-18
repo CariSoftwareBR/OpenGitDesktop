@@ -1,6 +1,6 @@
 ---
-name: GitWeb
-description: Design system for GitWeb — a cross-platform desktop Git client with supervised AI assistance.
+name: OpenGitDesktop
+description: Design system for OpenGitDesktop — a cross-platform desktop Git client with supervised AI assistance.
 colors:
   midnight-base: "#0a0a0b"
   obsidian-panel: "#131315"
@@ -232,13 +232,13 @@ components:
     padding: "2px 10px"
 ---
 
-# Design System: GitWeb
+# Design System: OpenGitDesktop
 
 ## 1. Overview
 
 **Creative North Star: "The Local Workbench"**
 
-GitWeb is a dense, calm desktop Git workbench. Near-black surfaces keep attention on the repository state — changes, diffs, branches, conflicts, and the next commit — while chrome stays quiet. The visual system is controlled intensity: clear when something needs action (conflicts, errors, destructive confirms), restrained everywhere else.
+OpenGitDesktop is a dense, calm desktop Git workbench. Near-black surfaces keep attention on the repository state — changes, diffs, branches, conflicts, and the next commit — while chrome stays quiet. The visual system is controlled intensity: clear when something needs action (conflicts, errors, destructive confirms), restrained everywhere else.
 
 The interface is a product workspace, not a spectacle. Compact controls, exact labels, restrained interaction color, and explicit semantic states support fast daily Git workflows. Navigation and chrome recede; success, danger, warnings, and primary actions remain unmistakable. The system rejects glossy generic SaaS marketing, neon decoration, and undifferentiated admin CRUD chrome.
 
@@ -321,7 +321,7 @@ Full token values live in `themeVariants` in this file's frontmatter, and are mi
 
 ## 4. Elevation
 
-GitWeb uses structural layering. Midnight Base, Obsidian Panel, and Coal Raised establish most depth; subtle borders separate adjacent surfaces. Shadows belong to floating menus, dialogs, toasts, and genuine overlays. Ambient card shadow must not be the default treatment for every panel.
+OpenGitDesktop uses structural layering. Midnight Base, Obsidian Panel, and Coal Raised establish most depth; subtle borders separate adjacent surfaces. Shadows belong to floating menus, dialogs, toasts, and genuine overlays. Ambient card shadow must not be the default treatment for every panel.
 
 ### Shadow Vocabulary
 - **Floating Surface** (`rgba(0, 0, 0, 0.8) 0 12px 44px -12px`): menus, dialogs, toasts, and overlays that must separate from the application shell.
@@ -406,7 +406,7 @@ Switches use a `42px` by `24px` track with an `18px` thumb and explicit text lab
 - **Do** require explicit confirmation for destructive Git actions (discard, abort merge, drop stash, pop stash, merge or close a pull request). Danger confirms focus Cancel, not the destructive button.
 
 ### Don't:
-- **Don't** turn GitWeb into glossy generic SaaS marketing with decorative gradients, hero-metric templates, or glass cards.
+- **Don't** turn OpenGitDesktop into glossy generic SaaS marketing with decorative gradients, hero-metric templates, or glass cards.
 - **Don't** use neon glows or speculative hype aesthetics.
 - **Don't** reduce the product to an undifferentiated CRUD admin panel; keep the daily Git path (changes → diff → commit) primary.
 - **Don't** compete with that path using equal-weight header cards or icon-only Settings/About buttons; Settings is a labeled tab, About lives inside it.

@@ -37,7 +37,7 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG já existe; reaproveitando."
           else
-            gh release create "$TAG" --draft --title "GitWeb $TAG" --notes "Empacotando…"
+            gh release create "$TAG" --draft --title "OpenGitDesktop $TAG" --notes "Empacotando…"
           fi
 
   build:
@@ -144,9 +144,9 @@ jobs:
             echo "---"
             echo ""
             if [[ -n "${PREV_TAG}" ]]; then
-              echo "**Changelog completo:** [GitWeb Release](https://github.com/${REPO}/compare/${PREV_TAG}...${TAG})"
+              echo "**Changelog completo:** [OpenGitDesktop Release](https://github.com/${REPO}/compare/${PREV_TAG}...${TAG})"
             else
-              echo "**Tag:** [GitWeb Release](https://github.com/${REPO}/releases/tag/${TAG})"
+              echo "**Tag:** [OpenGitDesktop Release](https://github.com/${REPO}/releases/tag/${TAG})"
             fi
           } > release-notes.md
           echo "----- release-notes.md -----"
@@ -168,6 +168,6 @@ jobs:
           fi
           echo "$COUNT assets em $TAG; publicando."
           gh release edit "$TAG" \
-            --title "GitWeb $TAG" \
+            --title "OpenGitDesktop $TAG" \
             --notes-file release-notes.md \
             --draft=false

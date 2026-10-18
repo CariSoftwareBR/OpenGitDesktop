@@ -118,7 +118,7 @@ jobs:
         run: |
           gh release create "v${{ steps.ver.outputs.version }}" \
             --draft \
-            --title "GitWeb v${{ steps.ver.outputs.version }}" \
+            --title "OpenGitDesktop v${{ steps.ver.outputs.version }}" \
             --notes "Empacotando…"
 
   build:
@@ -225,9 +225,9 @@ jobs:
             echo "---"
             echo ""
             if [[ -n "${PREV_TAG}" ]]; then
-              echo "**Changelog completo:** [GitWeb Release](https://github.com/${REPO}/compare/${PREV_TAG}...${TAG})"
+              echo "**Changelog completo:** [OpenGitDesktop Release](https://github.com/${REPO}/compare/${PREV_TAG}...${TAG})"
             else
-              echo "**Tag:** [GitWeb Release](https://github.com/${REPO}/releases/tag/${TAG})"
+              echo "**Tag:** [OpenGitDesktop Release](https://github.com/${REPO}/releases/tag/${TAG})"
             fi
           } > release-notes.md
           echo "----- release-notes.md -----"
@@ -251,6 +251,6 @@ jobs:
           fi
           echo "$COUNT assets em $TAG; publicando."
           gh release edit "$TAG" \
-            --title "GitWeb $TAG" \
+            --title "OpenGitDesktop $TAG" \
             --notes-file release-notes.md \
             --draft=false

@@ -6,7 +6,7 @@
 
 Imagina abrir el repositorio, mirar el diff, pedir *“crea una rama, haz el commit y abre el PR”*… y ver cada paso suceder **solo después de que tú lo apruebas**.
 
-Eso es **GitWeb**: un cliente Git de verdad para Windows, macOS y Linux — con el flujo completo del día a día y un asistente de IA que ejecuta acciones reales en el repositorio, bajo tus órdenes.
+Eso es **OpenGitDesktop**: un cliente Git de verdad para Windows, macOS y Linux — con el flujo completo del día a día y un asistente de IA que ejecuta acciones reales en el repositorio, bajo tus órdenes.
 
 Sin terminal obligatoria. Sin agentes sueltos en tu historial. Solo velocidad con control.
 
@@ -16,7 +16,7 @@ Sin terminal obligatoria. Sin agentes sueltos en tu historial. Solo velocidad co
 
 Hay excelentes clientes Git. Hay excelentes agentes de IA. Casi ninguno une ambas cosas de la forma correcta.
 
-| Solo GUI | Solo agente | **GitWeb** |
+| Solo GUI | Solo agente | **OpenGitDesktop** |
 |---|---|---|
 | Haces clic en todo | La IA lo hace sola | Conversas — y **apruebas** cada acción |
 | Seguro, pero lento | Rápido, pero arriesgado | Rápido **y** seguro |

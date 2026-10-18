@@ -137,7 +137,7 @@ async function sendOpenAiCompatible(
   // public app identity, not secrets.
   if (settings.provider === 'openrouter') {
     headers['HTTP-Referer'] = 'https://github.com/CariSoftwareBR/OpenGitDesktop'
-    headers['X-Title'] = 'GitWeb'
+    headers['X-Title'] = 'OpenGitDesktop'
   }
 
   const response = await httpFetch(`${baseUrl}/chat/completions`, {

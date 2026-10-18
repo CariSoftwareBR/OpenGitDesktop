@@ -1,5 +1,11 @@
+# appId fica com o nome antigo de propósito: o instalador NSIS deriva dele o
+# GUID de desinstalação e o Windows o usa como AppUserModelId. Trocá-lo faria a
+# atualização instalar um segundo app ao lado do antigo em vez de substituí-lo.
 appId: com.gitweb.app
-productName: GitWeb
+# Era "GitWeb", que colide com o pacote gitweb do Debian/Ubuntu (a interface
+# web CGI do git). A pasta de dados continua a mesma — ver USER_DATA_DIR em
+# src/main/index.ts.
+productName: OpenGitDesktop
 directories:
   buildResources: build
   output: dist
@@ -10,7 +16,10 @@ files:
   # APP_ICON em src/main/index.ts). Sem isto o caminho não existe dentro do
   # asar e a janela cai no ícone padrão do Electron, mesmo com o .exe já
   # carregando o icon.ico correto.
+  # O Windows usa o .ico para a janela e a barra de tarefas (o .png de 1024px
+  # reduzido pelo sistema fica borrado ou cai no ícone do Electron).
   - build/icon.png
+  - build/icon.ico
 icon: build/icon.png
 publish:
   provider: github
@@ -35,16 +44,24 @@ linux:
   category: Development
   maintainer: CariSoftwareBR <63272749+paulocarinhena@users.noreply.github.com>
   icon: build/icon.png
+  # O Electron usa o "desktopName" do package.json como WM_CLASS/app_id da
+  # janela. Sem ele, e sem o .desktop ter exatamente esse nome, o dock não liga
+  # a janela aberta ao atalho e mostra o ícone genérico do Electron.
+  syncDesktopName: true
 deb:
-  # O nome padrão viria do "name" do package.json ("gitweb"), que colide com
-  # o pacote gitweb oficial do Debian/Ubuntu (interface web CGI do git). Esse
-  # tem epoch ("1:2.43.0"), então o apt sempre o considera mais novo e, numa
-  # atualização de sistema, "atualiza" o GitWeb para ele — removendo o app.
-  packageName: opengitdesktop-gitweb
-  # Transição de instalações antigas publicadas como "gitweb" 0.x: o versionado
-  # "<< 1:0" pega só as nossas versões (sem epoch) e nunca o pacote do Ubuntu,
-  # então o dpkg remove o pacote antigo ao instalar este no lugar.
+  # Explícito para não depender do "name" do package.json. Nunca "gitweb": o
+  # pacote gitweb oficial do Debian/Ubuntu (interface web CGI do git) tem epoch
+  # ("1:2.43.0"), então o apt sempre o considera mais novo e, numa atualização
+  # de sistema, "atualiza" o app para ele — removendo-o.
+  packageName: opengitdesktop
+  # Transição dos nomes publicados antes, para o dpkg remover o pacote antigo
+  # ao instalar este no lugar:
+  # - "opengitdesktop-gitweb": o nome de contorno usado até a troca de nome;
+  # - "gitweb" 0.x: o versionado "<< 1:0" pega só as nossas versões (sem
+  #   epoch) e nunca o pacote do Ubuntu.
   fpm:
+    - --conflicts=opengitdesktop-gitweb
+    - --replaces=opengitdesktop-gitweb
     - --conflicts=gitweb (<< 1:0)
     - --replaces=gitweb (<< 1:0)
 nsis:
@@ -60,4 +77,9 @@ nsis:
   artifactName: ${productName}-Setup-${version}.${ext}
   oneClick: false
   allowToChangeInstallationDirectory: true
+  # Explícitos para o assistente (janela, cabeçalho) e o desinstalador não
+  # dependerem do fallback do electron-builder.
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
   perMachine: false

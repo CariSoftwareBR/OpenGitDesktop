@@ -84,7 +84,7 @@ const ptBR = {
     'Use as setas ↑↓ na lista de arquivos (com foco nela) ou clique em um caminho. Conflitos abrem o resolvedor.',
   abortMergeTitle: 'Abortar merge?',
   abortMergeMessage:
-    'Isso cancela o merge em andamento e descarta as resoluções de conflito ainda não commitadas. Não pode ser desfeito pelo GitWeb.',
+    'Isso cancela o merge em andamento e descarta as resoluções de conflito ainda não commitadas. Não pode ser desfeito pelo OpenGitDesktop.',
   discardManyTitle: (count: number) => `Descartar ${count} alterações?`,
   discardTitle: 'Descartar alterações?',
   undoTitle: 'Desfazer o último commit?',
@@ -187,7 +187,7 @@ const en: M = {
     'Use the ↑↓ arrows in the file list (while it has focus) or click a path. Conflicts open the resolver.',
   abortMergeTitle: 'Abort merge?',
   abortMergeMessage:
-    'This cancels the merge in progress and discards conflict resolutions that were not committed yet. GitWeb cannot undo it.',
+    'This cancels the merge in progress and discards conflict resolutions that were not committed yet. OpenGitDesktop cannot undo it.',
   discardManyTitle: (count) => `Discard ${count} changes?`,
   discardTitle: 'Discard changes?',
   undoTitle: 'Undo the last commit?',
@@ -289,7 +289,7 @@ const es: M = {
     'Usa las flechas ↑↓ en la lista de archivos (con el foco en ella) o haz clic en una ruta. Los conflictos abren el resolutor.',
   abortMergeTitle: '¿Abortar merge?',
   abortMergeMessage:
-    'Esto cancela el merge en curso y descarta las resoluciones de conflictos aún sin commit. GitWeb no puede deshacerlo.',
+    'Esto cancela el merge en curso y descarta las resoluciones de conflictos aún sin commit. OpenGitDesktop no puede deshacerlo.',
   discardManyTitle: (count) => `¿Descartar ${count} cambios?`,
   discardTitle: '¿Descartar cambios?',
   undoTitle: '¿Deshacer el último commit?',

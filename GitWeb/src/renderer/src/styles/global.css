@@ -5,7 +5,7 @@
 @import '@fontsource/jetbrains-mono/500.css';
 @import 'tailwindcss';
 
-/* Design tokens sourced from DESIGN.md (GitWeb design system) —
+/* Design tokens sourced from DESIGN.md (OpenGitDesktop design system) —
    colors, typography, radius, and elevation are copied from that file.
    Monospace is an intentional addition for genuine code/diff content —
    JetBrains Mono is used only there, never for UI chrome or labels. */

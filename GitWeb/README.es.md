@@ -1,4 +1,4 @@
-# GitWeb
+# OpenGitDesktop
 
 [Português](README.md) · [English](README.en.md) · **Español**
 
@@ -84,7 +84,7 @@ src/
 
 ## Autenticación con GitHub
 
-GitWeb ofrece dos métodos de inicio de sesión con GitHub, lado a lado — ninguno sustituye al otro:
+OpenGitDesktop ofrece dos métodos de inicio de sesión con GitHub, lado a lado — ninguno sustituye al otro:
 
 - **OAuth Device Flow** (por defecto, solo `github.com`): haces clic en "Continuar con GitHub", confirmas un código de un solo uso en `github.com/login/device` y la app recibe el token. Requiere un OAuth App registrado con Device Flow habilitado, cuyo `client_id` está en `GitWeb/src/main/githubDeviceFlow.ts` (o en la variable de entorno `GITWEB_GITHUB_OAUTH_CLIENT_ID`, para quien compile desde el código fuente y quiera usar su propio OAuth App).
 - **Personal Access Token**: obligatorio para GitHub Enterprise Server (Device Flow exigiría un OAuth App propio por instancia), disponible también en `github.com`.
@@ -104,9 +104,9 @@ El token **nunca** llega al proceso de renderizado. Todas las llamadas a la API 
 El `client_id` es público por naturaleza en Device Flow — cualquiera puede iniciar un inicio de sesión con el mismo
 `client_id` (GitHub CLI tiene exactamente la misma característica). El ataque que esto permite es el *device code
 phishing*: alguien inicia el flujo, te manda el código de ocho caracteres y te pide que lo confirmes en
-`github.com/login/device`. La pantalla de GitHub mostrará "GitWeb" normalmente, pero quien recibe el token es el
+`github.com/login/device`. La pantalla de GitHub mostrará "OpenGitDesktop" normalmente, pero quien recibe el token es el
 atacante. Un cliente público no tiene cómo impedirlo. La regla es simple: **solo escribe un código que el propio
-GitWeb acabe de mostrar en tu pantalla.**
+OpenGitDesktop acabe de mostrar en tu pantalla.**
 
 ### Cerrar sesión no revoca la autorización
 

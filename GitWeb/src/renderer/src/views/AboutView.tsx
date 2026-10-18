@@ -186,7 +186,7 @@ function AboutView(): JSX.Element {
           </div>
 
           <h1 className="rise-in mt-8 text-display font-semibold text-primary-text" style={stagger(1)}>
-            GitWeb
+            OpenGitDesktop
           </h1>
           <p className="rise-in mt-3 text-center text-body text-secondary-text" style={stagger(1)}>
             {t.tagline}

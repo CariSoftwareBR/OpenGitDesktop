@@ -7,10 +7,20 @@ import { getSettings, migrateLegacyAiLanguage } from './settings'
 import { applyLanguagePreference } from './language'
 
 // Resolved at runtime from __dirname, so it has to exist both unpackaged and
-// inside the asar — electron-builder.yml ships build/icon.png for that reason.
+// inside the asar — electron-builder.yml ships build/icon.{png,ico} for that reason.
 // The Windows .exe and the macOS bundle carry their own icon, but the window
 // and taskbar entry read this one, and Linux relies on it entirely.
-const APP_ICON = join(__dirname, '../../build/icon.png')
+// Windows gets the multi-size .ico: scaling the 1024px PNG down for the
+// taskbar looks blurry.
+const APP_ICON = join(__dirname, process.platform === 'win32' ? '../../build/icon.ico' : '../../build/icon.png')
+
+// The app was called GitWeb, and Electron names the data folder after the
+// product. Pinning the old folder keeps settings, recent repos and saved
+// logins: on Windows the key that decrypts secrets.json lives in this folder's
+// "Local State", so a fresh folder would leave every stored token unreadable.
+// Must run before anything reads userData.
+const USER_DATA_DIR = 'GitWeb'
+app.setPath('userData', join(app.getPath('appData'), USER_DATA_DIR))
 
 // Must run before app.whenReady(). Chromium's Local Network Access checks
 // block or reset fetch() to LAN LLM servers (192.168.x, localhost:11434).
@@ -69,6 +79,9 @@ function createWindow(): void {
 
 app.whenReady().then(async () => {
   if (process.platform === 'win32') app.setAppUserModelId('com.gitweb.app')
+  // Packaged, the .app bundle's icns sets the Dock icon. Under `npm run dev`
+  // the process is Electron.app, so the Dock would show Electron's icon.
+  if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(APP_ICON)
 
   // Before any IPC handler or the updater can produce a message.
   try {

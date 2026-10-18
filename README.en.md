@@ -6,7 +6,7 @@
 
 Picture opening the repository, looking at the diff, asking *“create a branch, commit and open the PR”*… and watching each step happen **only after you approve it**.
 
-That's **GitWeb**: a real Git client for Windows, macOS and Linux — with the full day-to-day workflow and an AI assistant that runs real actions on the repository, under your command.
+That's **OpenGitDesktop**: a real Git client for Windows, macOS and Linux — with the full day-to-day workflow and an AI assistant that runs real actions on the repository, under your command.
 
 No terminal required. No agent running loose in your history. Just speed with control.
 
@@ -16,7 +16,7 @@ No terminal required. No agent running loose in your history. Just speed with co
 
 There are great Git clients. There are great AI agents. Almost none brings the two together the right way.
 
-| GUI only | Agent only | **GitWeb** |
+| GUI only | Agent only | **OpenGitDesktop** |
 |---|---|---|
 | You click everything | The AI does it alone | You talk — and **approve** every action |
 | Safe, but slow | Fast, but risky | Fast **and** safe |

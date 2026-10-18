@@ -578,7 +578,7 @@ function InitialView(): JSX.Element {
           <FolderGit2 size={26} />
         </div>
         <div>
-          <h1 className="text-display font-semibold text-primary-text">GitWeb</h1>
+          <h1 className="text-display font-semibold text-primary-text">OpenGitDesktop</h1>
           <p className="mt-1 text-body text-secondary-text">{t.tagline}</p>
         </div>
       </div>

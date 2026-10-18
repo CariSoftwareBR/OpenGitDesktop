@@ -358,7 +358,7 @@ function installBrowserApiStub(): void {
 
   window.api = api
   document.documentElement.dataset.browserPreview = 'true'
-  console.info('[GitWeb] Browser preview stub active — Git/AI IPC is mocked.')
+  console.info('[OpenGitDesktop] Browser preview stub active — Git/AI IPC is mocked.')
 }
 
 installBrowserApiStub()

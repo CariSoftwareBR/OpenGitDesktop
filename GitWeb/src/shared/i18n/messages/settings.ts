@@ -8,7 +8,7 @@ const ptBR = {
     signInHint: 'Entre para listar e gerenciar Pull Requests dos seus repositórios.',
     signIn: 'Entrar com GitHub',
     revokeHintBefore:
-      'O token foi apagado desta máquina. A autorização do GitWeb continua ativa na sua conta do GitHub — para removê-la de vez, ',
+      'O token foi apagado desta máquina. A autorização do OpenGitDesktop continua ativa na sua conta do GitHub — para removê-la de vez, ',
     revokeHintLink: 'revogue o acesso do aplicativo no GitHub',
     revokeHintAfter: '.'
   },
@@ -34,7 +34,7 @@ const ptBR = {
   },
   app: {
     heading: 'Aplicativo',
-    about: 'Sobre o GitWeb',
+    about: 'Sobre o OpenGitDesktop',
     aboutHint: 'Nome, versão e data da build.'
   }
 }
@@ -51,7 +51,7 @@ const en: M = {
     signInHint: 'Sign in to list and manage Pull Requests for your repositories.',
     signIn: 'Sign in with GitHub',
     revokeHintBefore:
-      'The token was deleted from this machine. GitWeb’s authorization is still active on your GitHub account — to remove it for good, ',
+      'The token was deleted from this machine. OpenGitDesktop’s authorization is still active on your GitHub account — to remove it for good, ',
     revokeHintLink: 'revoke the app’s access on GitHub',
     revokeHintAfter: '.'
   },
@@ -77,7 +77,7 @@ const en: M = {
   },
   app: {
     heading: 'Application',
-    about: 'About GitWeb',
+    about: 'About OpenGitDesktop',
     aboutHint: 'Name, version and build date.'
   }
 }
@@ -92,7 +92,7 @@ const es: M = {
     signInHint: 'Inicia sesión para listar y gestionar los Pull Requests de tus repositorios.',
     signIn: 'Iniciar sesión con GitHub',
     revokeHintBefore:
-      'El token se borró de este equipo. La autorización de GitWeb sigue activa en tu cuenta de GitHub — para eliminarla definitivamente, ',
+      'El token se borró de este equipo. La autorización de OpenGitDesktop sigue activa en tu cuenta de GitHub — para eliminarla definitivamente, ',
     revokeHintLink: 'revoca el acceso de la aplicación en GitHub',
     revokeHintAfter: '.'
   },
@@ -118,7 +118,7 @@ const es: M = {
   },
   app: {
     heading: 'Aplicación',
-    about: 'Acerca de GitWeb',
+    about: 'Acerca de OpenGitDesktop',
     aboutHint: 'Nombre, versión y fecha de la build.'
   }
 }
