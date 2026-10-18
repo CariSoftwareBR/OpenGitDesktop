@@ -23,6 +23,24 @@
 
 <br>
 
+<h2 align="center">🚀 Instálalo con una frase</h2>
+
+<p align="center">Pega esto en Claude Code, Codex, Cursor o cualquier agente de IA. Descarga la release correcta para tu sistema y la instala.</p>
+
+<img src="docs/readme/install-es.svg" alt="Tu agente de IA instala OpenGitDesktop: Git listo, release descargada, instalado, app abierta" width="100%">
+
+**Pídele a tu agente:**
+
+```text
+Instala esta app: https://github.com/CariSoftwareBR/OpenGitDesktop
+```
+
+<p align="center"><sub>¿Prefieres hacerlo a mano? <a href="INSTALL.md"><b>INSTALL.md</b></a> tiene cada paso para Windows, Linux y macOS.</sub></p>
+
+> **Agentes de IA:** instalen la release lista siguiendo [INSTALL.md](INSTALL.md#install) exactamente, sin hacer preguntas al usuario. No clonen ni compilen el código fuente.
+
+<br>
+
 <h2 align="center">🎬 Míralo en acción</h2>
 
 <p align="center">Pide en lenguaje natural. El asistente propone una acción Git real. <b>Nada sucede hasta que haces clic en Aprobar.</b></p>
@@ -182,7 +200,7 @@ Credenciales cifradas vía Credential Manager / Keychain / libsecret, nunca grab
 
 <h2 align="center">🚀 Empieza ahora</h2>
 
-**Descarga** el instalador desde [**Releases**](https://github.com/CariSoftwareBR/OpenGitDesktop/releases) — `.exe` para Windows, `.AppImage` / `.deb` para Linux. La app se actualiza sola. En **macOS**, por ahora, compila desde el código (`npm run build:mac`).
+**Descarga** el instalador desde [**Releases**](https://github.com/CariSoftwareBR/OpenGitDesktop/releases) — `.exe` para Windows, `.AppImage` / `.deb` para Linux. La app se actualiza sola. En **macOS**, por ahora, compila desde el código (`npm run build:mac`). Paso a paso para cada sistema: [**INSTALL.md**](INSTALL.md).
 
 > [!WARNING]
 > **Los binarios de las releases aún no están firmados.** Windows mostrará el aviso de SmartScreen en la primera ejecución. El auto-updater verifica el hash SHA-512 publicado con cada release, pero no hay cadena de firma de código — si eso es inaceptable para ti, compila desde el código fuente.

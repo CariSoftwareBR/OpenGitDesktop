@@ -23,6 +23,24 @@
 
 <br>
 
+<h2 align="center">🚀 Install it with one sentence</h2>
+
+<p align="center">Paste this into Claude Code, Codex, Cursor or any AI agent. It downloads the right release for your system and installs it.</p>
+
+<img src="docs/readme/install-en.svg" alt="Your AI agent installs OpenGitDesktop: Git ready, release downloaded, installed, app open" width="100%">
+
+**Ask your agent:**
+
+```text
+Install this app: https://github.com/CariSoftwareBR/OpenGitDesktop
+```
+
+<p align="center"><sub>Rather do it by hand? <a href="INSTALL.md"><b>INSTALL.md</b></a> has every step for Windows, Linux and macOS.</sub></p>
+
+> **AI agents:** install the prebuilt release by following [INSTALL.md](INSTALL.md#install) exactly, without asking the user questions. Do not clone or build the source code.
+
+<br>
+
 <h2 align="center">🎬 See it in action</h2>
 
 <p align="center">Ask in plain language. The assistant proposes a real Git action. <b>Nothing happens until you click Approve.</b></p>
@@ -182,7 +200,7 @@ Credentials are encrypted via Credential Manager / Keychain / libsecret and neve
 
 <h2 align="center">🚀 Get started</h2>
 
-**Download** the installer from [**Releases**](https://github.com/CariSoftwareBR/OpenGitDesktop/releases) — `.exe` for Windows, `.AppImage` / `.deb` for Linux. The app updates itself. On **macOS**, build from source for now (`npm run build:mac`).
+**Download** the installer from [**Releases**](https://github.com/CariSoftwareBR/OpenGitDesktop/releases) — `.exe` for Windows, `.AppImage` / `.deb` for Linux. The app updates itself. On **macOS**, build from source for now (`npm run build:mac`). Step by step for every system: [**INSTALL.md**](INSTALL.md).
 
 > [!WARNING]
 > **Release binaries are not code-signed yet.** Windows will show a SmartScreen warning on first launch. The auto-updater checks the SHA-512 hash published with each release, but there is no signing chain — if that's unacceptable for you, build from source.

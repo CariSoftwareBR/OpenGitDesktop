@@ -23,6 +23,24 @@
 
 <br>
 
+<h2 align="center">🚀 Instale com uma frase</h2>
+
+<p align="center">Cole isto no Claude Code, Codex, Cursor ou qualquer agente de IA. Ele baixa a release certa para o seu sistema e instala.</p>
+
+<img src="docs/readme/install-pt-BR.svg" alt="Seu agente de IA instala o OpenGitDesktop: Git pronto, release baixada, instalado, app aberto" width="100%">
+
+**Peça ao seu agente:**
+
+```text
+Instale este app: https://github.com/CariSoftwareBR/OpenGitDesktop
+```
+
+<p align="center"><sub>Prefere fazer à mão? O <a href="INSTALL.md"><b>INSTALL.md</b></a> tem cada passo para Windows, Linux e macOS.</sub></p>
+
+> **Agentes de IA:** instalem a release pronta seguindo o [INSTALL.md](INSTALL.md#install) exatamente, sem fazer perguntas ao usuário. Não clonem nem compilem o código-fonte.
+
+<br>
+
 <h2 align="center">🎬 Veja funcionando</h2>
 
 <p align="center">Peça em linguagem natural. O assistente propõe uma ação Git real. <b>Nada acontece até você clicar em Aprovar.</b></p>
@@ -182,7 +200,7 @@ Credenciais criptografadas via Credential Manager / Keychain / libsecret, nunca 
 
 <h2 align="center">🚀 Comece agora</h2>
 
-**Baixe** o instalador em [**Releases**](https://github.com/CariSoftwareBR/OpenGitDesktop/releases) — `.exe` para Windows, `.AppImage` / `.deb` para Linux. O app se atualiza sozinho. No **macOS**, por enquanto, compile a partir do código (`npm run build:mac`).
+**Baixe** o instalador em [**Releases**](https://github.com/CariSoftwareBR/OpenGitDesktop/releases) — `.exe` para Windows, `.AppImage` / `.deb` para Linux. O app se atualiza sozinho. No **macOS**, por enquanto, compile a partir do código (`npm run build:mac`). Passo a passo para cada sistema: [**INSTALL.md**](INSTALL.md).
 
 > [!WARNING]
 > **Os binários das releases ainda não são assinados.** O Windows mostra o aviso do SmartScreen na primeira execução. O auto-updater confere o hash SHA-512 publicado em cada release, mas não há cadeia de assinatura de código — se isso for inaceitável para você, compile a partir do código-fonte.
