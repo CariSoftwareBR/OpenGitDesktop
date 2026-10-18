@@ -1,7 +1,5 @@
 import { app, BrowserWindow } from 'electron'
 import { autoUpdater } from 'electron-updater'
-import { getSecret } from './credentials'
-import { credentialKey } from '../shared/githubRemote'
 import type { UpdateStatus } from '../shared/updates'
 import { tMain } from './i18n'
 
@@ -119,35 +117,26 @@ function normalizeReleaseNotes(notes: string | { note?: string | null }[] | null
 
 function formatError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err)
-  if (/authentication token|404|Unable to find latest version/i.test(raw)) {
-    return tMain().updater.privateReleasesUnavailable(`${UPDATE_OWNER}/${UPDATE_REPO}`)
+  if (/404|Unable to find latest version/i.test(raw)) {
+    return tMain().updater.releasesUnavailable(`${UPDATE_OWNER}/${UPDATE_REPO}`)
   }
   return raw
 }
 
 /**
- * electron-updater uses PrivateGitHubProvider whenever a token is present.
- * Do NOT set `private: true` here: that flag makes it prefer process.env
- * GH_TOKEN/GITHUB_TOKEN over the token we pass — which breaks updates on
- * machines that have a unrelated GitHub token in the environment.
+ * The releases repo is public, so the feed needs no token: updates work for
+ * users who never signed in to GitHub, and nobody's token is sent along.
+ * Do NOT set `private: true` or pass a token — either one switches
+ * electron-updater to PrivateGitHubProvider (GitHub API, rate-limited, and
+ * with `private: true` it also picks up any unrelated GH_TOKEN/GITHUB_TOKEN
+ * from the environment).
  */
-async function configurePrivateFeed(): Promise<{ ok: true } | { ok: false; message: string }> {
-  const token = await getSecret(credentialKey('github.com'))
-  if (!token) {
-    return {
-      ok: false,
-      message: tMain().updater.privateFeedLoginRequired
-    }
-  }
-
+function configureFeed(): void {
   autoUpdater.setFeedURL({
     provider: 'github',
     owner: UPDATE_OWNER,
-    repo: UPDATE_REPO,
-    token
+    repo: UPDATE_REPO
   })
-
-  return { ok: true }
 }
 
 export function getUpdateStatus(): UpdateStatus {
@@ -242,12 +231,7 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
   // instead of starting a redundant, racing second one.
   if (isUpdateInProgress(currentStatus)) return currentStatus
 
-  const feed = await configurePrivateFeed()
-  if (!feed.ok) {
-    const status: UpdateStatus = { state: 'error', message: feed.message }
-    broadcast(status)
-    return status
-  }
+  configureFeed()
 
   try {
     broadcast({ state: 'checking' })
