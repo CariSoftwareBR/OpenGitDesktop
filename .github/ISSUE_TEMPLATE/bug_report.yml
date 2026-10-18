@@ -1,0 +1,43 @@
+name: Reportar um bug
+description: Algo não funciona como deveria.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: O que aconteceu?
+      description: Descreva o problema e o que você esperava que acontecesse.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Passos para reproduzir
+      placeholder: |
+        1. Abra um repositório com...
+        2. Clique em...
+        3. Veja o erro
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versão do app
+      placeholder: ex.: 0.1.51
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Sistema operacional
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Mensagens de erro ou prints
+      description: Remova tokens, chaves e caminhos privados antes de colar.

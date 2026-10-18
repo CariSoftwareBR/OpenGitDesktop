@@ -1,0 +1,21 @@
+name: Sugerir uma funcionalidade
+description: Uma ideia para melhorar o OpenGitDesktop.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qual problema isso resolve?
+      description: Conte o que você está tentando fazer e o que atrapalha hoje.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Como você imagina a solução?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas

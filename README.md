@@ -137,6 +137,12 @@ Documentação técnica mais profunda: [`GitWeb/README.md`](GitWeb/README.md).
 
 ---
 
+## Contribuir
+
+Issues e Pull Requests são bem-vindos. Leia o [guia de contribuição](CONTRIBUTING.md) e o [Código de Conduta](CODE_OF_CONDUCT.md). Falhas de segurança seguem o [`SECURITY.md`](SECURITY.md).
+
+---
+
 ## Licença
 
 MIT — livre para usar, estudar, modificar e distribuir.
