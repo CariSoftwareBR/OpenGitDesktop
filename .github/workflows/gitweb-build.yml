@@ -13,6 +13,10 @@ on:
   # pull_request only proves the build works — see the upload step below.
   workflow_dispatch:
 
+# PRs from forks run untrusted code; the token only needs to read the repo.
+permissions:
+  contents: read
+
 jobs:
   build:
     strategy:
