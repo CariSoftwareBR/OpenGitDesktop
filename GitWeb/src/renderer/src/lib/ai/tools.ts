@@ -1353,8 +1353,10 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string> {
     }
 
     case 'switch_branch':
-      await repo.switchBranch(a.branch_name)
-      if (useRepoStore.getState().error) throw new Error(useRepoStore.getState().error ?? t.switchFailed)
+      // Not interactive: the AI gets the refusal as an error instead of a dialog popping up.
+      if (!(await repo.switchBranch(a.branch_name, { interactive: false }))) {
+        throw new Error(useRepoStore.getState().error ?? t.switchFailed)
+      }
       return t.switchedTo(a.branch_name)
 
     case 'stash':

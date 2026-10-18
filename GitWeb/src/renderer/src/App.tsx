@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertCircle, Bot, CheckCircle2, X } from 'lucide-react'
+import { AlertCircle, Archive, Bot, CheckCircle2, X } from 'lucide-react'
 import { useRepoStore } from './store/repoStore'
 import { usePullRequestStore } from './store/pullRequestStore'
 import { useAppSettingsStore } from './store/appSettingsStore'
@@ -19,6 +19,39 @@ import TopBar from './components/TopBar'
 import UpdateBadge from './components/UpdateBadge'
 import ErrorExplainButton from './components/ErrorExplainButton'
 import { useDocumentLanguage, useT } from './lib/i18n'
+
+// Shown after switching onto a branch whose changes were parked in a stash
+// (typically by the blocked-switch dialog), so getting them back is one click.
+function BranchStashBanner(): JSX.Element | null {
+  const hint = useRepoStore((s) => s.branchStashHint)
+  const currentRepoPath = useRepoStore((s) => s.currentRepoPath)
+  const isBusy = useRepoStore((s) => s.isBusy)
+  const restore = useRepoStore((s) => s.restoreBranchStash)
+  const dismiss = useRepoStore((s) => s.dismissBranchStashHint)
+  const t = useT().topBar
+  if (!hint || hint.repoPath !== currentRepoPath) return null
+
+  return (
+    <div
+      role="status"
+      className="flex items-center gap-2 border-b border-command-blue/30 bg-command-blue-soft px-4 py-2 text-body text-command-blue"
+    >
+      <Archive size={14} className="shrink-0" aria-hidden />
+      <span className="flex-1 break-words">{t.branchStashHint(hint.branch)}</span>
+      <button type="button" className="btn-secondary h-7 px-3 text-caption" disabled={isBusy} onClick={() => void restore()}>
+        {t.restoreStash}
+      </button>
+      <button
+        type="button"
+        className="hit-area rounded-sm p-1 text-command-blue transition-colors hover:bg-hover-overlay"
+        onClick={dismiss}
+        aria-label={t.dismissStashHint}
+      >
+        <X size={14} />
+      </button>
+    </div>
+  )
+}
 
 const MIN_CHAT_WIDTH = 320
 const MAX_CHAT_WIDTH = 720
@@ -221,6 +254,7 @@ function App(): JSX.Element {
           </button>
         </div>
       )}
+      <BranchStashBanner />
       <div className="flex min-h-0 flex-1">
         <main className="view-enter min-w-0 flex-1 overflow-hidden">
           {view === 'changes' && <ChangesView />}

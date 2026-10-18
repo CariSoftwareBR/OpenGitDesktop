@@ -611,6 +611,48 @@ function UpdateIconButton({ iconBtn }: { iconBtn: (active: boolean) => string })
   )
 }
 
+const MAX_BLOCKING_FILES_SHOWN = 8
+
+// Mounted once for the whole repo screen: any switch (menu, PR flow, post-merge
+// action) can be refused by git because of local changes.
+function SwitchBlockedDialog(): JSX.Element {
+  const switchBlocked = useRepoStore((s) => s.switchBlocked)
+  const changeCount = useRepoStore((s) => s.status?.entries.length ?? 0)
+  const stashAndSwitch = useRepoStore((s) => s.stashAndSwitch)
+  const cancelBlockedSwitch = useRepoStore((s) => s.cancelBlockedSwitch)
+  const t = useT().topBar
+  const files = switchBlocked?.files ?? []
+  const shown = files.slice(0, MAX_BLOCKING_FILES_SHOWN)
+
+  return (
+    <ConfirmDialog
+      open={switchBlocked !== null}
+      title={t.switchBlockedTitle}
+      message={switchBlocked ? t.switchBlockedMessage(switchBlocked.from, switchBlocked.target) : ''}
+      // Fixed and short: a long branch name would wrap inside the 34px button.
+      confirmLabel={t.stashAndSwitch}
+      onCancel={cancelBlockedSwitch}
+      onConfirm={() => void stashAndSwitch()}
+    >
+      <ul className="mt-3 max-h-48 overflow-y-auto rounded-md border border-default-border bg-midnight-base px-3 py-2 font-mono text-caption text-secondary-text">
+        {shown.map((file) => (
+          <li key={file} className="truncate" title={file}>
+            {file}
+          </li>
+        ))}
+        {files.length > shown.length && (
+          <li className="font-sans text-tertiary-text">{t.switchBlockedMore(files.length - shown.length)}</li>
+        )}
+      </ul>
+      {switchBlocked && (
+        <p className="mt-3 text-caption text-tertiary-text">
+          {t.switchBlockedNote(switchBlocked.from, Math.max(changeCount, files.length))}
+        </p>
+      )}
+    </ConfirmDialog>
+  )
+}
+
 function TopBar(): JSX.Element {
   const view = useRepoStore((s) => s.view)
   const setView = useRepoStore((s) => s.setView)
@@ -700,6 +742,7 @@ function TopBar(): JSX.Element {
           )
         })}
       </nav>
+      <SwitchBlockedDialog />
     </>
   )
 }

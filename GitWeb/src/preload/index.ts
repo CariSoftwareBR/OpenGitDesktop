@@ -13,7 +13,8 @@ import type {
   RepoStatus,
   RepoUpdateResult,
   RepoUpdateStatus,
-  StashEntry
+  StashEntry,
+  SwitchBranchResult
 } from '../shared/git'
 import type { AiSettings, ResolvedAiConfig } from '../shared/ai'
 import type { ChatMessage, ChatRequestOutcome, ChatResponse, ToolDefinition } from '../shared/aiChat'
@@ -101,7 +102,7 @@ const api = {
     branches: (cwd: string): Promise<BranchInfo[]> => invoke('git:branches', cwd),
     createBranch: (name: string, cwd: string, checkout: boolean, from?: string): Promise<void> =>
       invoke('git:createBranch', name, cwd, checkout, from),
-    switchBranch: (name: string, cwd: string): Promise<void> =>
+    switchBranch: (name: string, cwd: string): Promise<SwitchBranchResult> =>
       invoke('git:switchBranch', name, cwd),
     log: (cwd: string, limit?: number, path?: string): Promise<CommitSummary[]> =>
       invoke('git:log', cwd, limit, path),
@@ -135,7 +136,7 @@ const api = {
     stashPatch: (cwd: string, ref: string): Promise<string> => invoke('git:stashPatch', cwd, ref),
     revertCommit: (hash: string, cwd: string): Promise<GitResult> => invoke('git:revertCommit', hash, cwd),
     remoteBranches: (cwd: string): Promise<string[]> => invoke('git:remoteBranches', cwd),
-    checkoutRemoteBranch: (remoteBranch: string, cwd: string): Promise<void> =>
+    checkoutRemoteBranch: (remoteBranch: string, cwd: string): Promise<SwitchBranchResult> =>
       invoke('git:checkoutRemoteBranch', remoteBranch, cwd),
     deleteBranch: (name: string, cwd: string, force: boolean): Promise<void> =>
       invoke('git:deleteBranch', name, cwd, force),

@@ -17,8 +17,10 @@ import type {
   RepoUpdateResult,
   RepoUpdateStatus,
   StashEntry,
-  StatusEntry
+  StatusEntry,
+  SwitchBranchResult
 } from '../shared/git'
+import { parseCheckoutBlockers } from '../shared/git'
 import { parseGitHubRemote, credentialKey } from '../shared/githubRemote'
 import { getSecret } from './credentials'
 import { tMain } from './i18n'
@@ -588,10 +590,23 @@ export async function getRemoteBranches(cwd: string): Promise<string[]> {
 }
 
 /** Creates the local branch tracking `origin/<name>` and switches to it. */
-export async function checkoutRemoteBranch(remoteBranch: string, cwd: string): Promise<void> {
+export async function checkoutRemoteBranch(remoteBranch: string, cwd: string): Promise<SwitchBranchResult> {
   assertNotOption(remoteBranch, tMain().git.optionLabel.remoteBranch)
-  const args = ['checkout', '--track', remoteBranch]
-  throwOnFailure(await runGit(args, cwd), args)
+  return runCheckout(['checkout', '--track', remoteBranch], cwd)
+}
+
+/**
+ * A checkout blocked by local changes comes back as data, not an error, so the
+ * UI can offer to stash them. LC_ALL=C keeps git's message in English, which
+ * is what parseCheckoutBlockers reads; any other failure still throws.
+ */
+async function runCheckout(args: string[], cwd: string): Promise<SwitchBranchResult> {
+  const result = await runGit(args, cwd, { extraEnv: { LC_ALL: 'C', LANGUAGE: 'C' } })
+  if (result.exitCode === 0) return { switched: true }
+  const blockingFiles = parseCheckoutBlockers(result.stderr)
+  if (blockingFiles) return { switched: false, blockingFiles }
+  throwOnFailure(result, args)
+  return { switched: true }
 }
 
 /**
@@ -620,9 +635,9 @@ export async function deleteRemoteBranch(name: string, cwd: string): Promise<voi
   throwOnFailure(await runGit(args, cwd, { extraEnv }), args)
 }
 
-export async function switchBranch(name: string, cwd: string): Promise<void> {
+export async function switchBranch(name: string, cwd: string): Promise<SwitchBranchResult> {
   assertNotOption(name, tMain().git.optionLabel.branchName)
-  throwOnFailure(await runGit(['checkout', name], cwd), ['checkout', name])
+  return runCheckout(['checkout', name], cwd)
 }
 
 // %b (body) is everything after the subject's blank line — the bullet-list

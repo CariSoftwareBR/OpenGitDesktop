@@ -44,6 +44,16 @@ const ptBR = {
   forcePushMessage: (branch: string) =>
     `Você desfez ou alterou commits de "${branch}" que já estavam no remoto. Forçar o push substitui esses commits no remoto pelos seus (com --force-with-lease: se alguém tiver enviado algo novo nesse meio-tempo, nada é sobrescrito).`,
   forcePushConfirm: 'Forçar push',
+  switchBlockedTitle: 'Alterações locais bloqueiam a troca',
+  switchBlockedMessage: (current: string, target: string) =>
+    `Trocar para "${target}" sobrescreveria alterações que você fez em "${current}" nestes arquivos:`,
+  switchBlockedMore: (n: number): string => (n === 1 ? '… e mais 1 arquivo' : `… e mais ${n} arquivos`),
+  switchBlockedNote: (current: string, total: number): string =>
+    `Todas as alterações (${total === 1 ? '1 arquivo' : `${total} arquivos`}) vão para um stash de "${current}". Ao voltar para essa branch, o app oferece restaurá-las.`,
+  stashAndSwitch: 'Guardar e trocar',
+  branchStashHint: (branch: string) => `Há alterações guardadas num stash de "${branch}".`,
+  restoreStash: 'Restaurar',
+  dismissStashHint: 'Dispensar aviso do stash',
   fetchOrigin: 'Buscar origin',
   publishBranch: 'Publicar branch',
   notPublished: 'Ainda não publicada',
@@ -114,6 +124,16 @@ const en: M = {
   forcePushMessage: (branch) =>
     `You undid or amended commits on "${branch}" that were already on the remote. Force pushing replaces those commits on the remote with yours (with --force-with-lease: if someone pushed something new in the meantime, nothing is overwritten).`,
   forcePushConfirm: 'Force push',
+  switchBlockedTitle: 'Local changes block the switch',
+  switchBlockedMessage: (current, target) =>
+    `Switching to "${target}" would overwrite changes you made on "${current}" in these files:`,
+  switchBlockedMore: (n) => (n === 1 ? '… and 1 more file' : `… and ${n} more files`),
+  switchBlockedNote: (current, total) =>
+    `All changes (${total === 1 ? '1 file' : `${total} files`}) go to a stash of "${current}". When you come back to that branch, the app offers to restore them.`,
+  stashAndSwitch: 'Stash and switch',
+  branchStashHint: (branch) => `There are changes saved in a stash of "${branch}".`,
+  restoreStash: 'Restore',
+  dismissStashHint: 'Dismiss stash notice',
   fetchOrigin: 'Fetch origin',
   publishBranch: 'Publish branch',
   notPublished: 'Not published yet',
@@ -182,6 +202,16 @@ const es: M = {
   forcePushMessage: (branch) =>
     `Deshiciste o modificaste commits de "${branch}" que ya estaban en el remoto. Forzar el push reemplaza esos commits en el remoto por los tuyos (con --force-with-lease: si alguien envió algo nuevo mientras tanto, no se sobrescribe nada).`,
   forcePushConfirm: 'Forzar push',
+  switchBlockedTitle: 'Hay cambios locales que bloquean el cambio de rama',
+  switchBlockedMessage: (current, target) =>
+    `Cambiar a "${target}" sobrescribiría cambios que hiciste en "${current}" en estos archivos:`,
+  switchBlockedMore: (n) => (n === 1 ? '… y 1 archivo más' : `… y ${n} archivos más`),
+  switchBlockedNote: (current, total) =>
+    `Todos los cambios (${total === 1 ? '1 archivo' : `${total} archivos`}) van a un stash de "${current}". Al volver a esa rama, la app ofrece restaurarlos.`,
+  stashAndSwitch: 'Guardar y cambiar',
+  branchStashHint: (branch) => `Hay cambios guardados en un stash de "${branch}".`,
+  restoreStash: 'Restaurar',
+  dismissStashHint: 'Descartar aviso del stash',
   fetchOrigin: 'Obtener origin',
   publishBranch: 'Publicar rama',
   notPublished: 'Aún no publicada',

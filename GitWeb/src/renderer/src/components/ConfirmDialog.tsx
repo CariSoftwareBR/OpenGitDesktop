@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../lib/useFocusTrap'
 import { useT } from '../lib/i18n'
@@ -11,6 +11,8 @@ interface ConfirmDialogProps {
   cancelLabel?: string
   danger?: boolean
   confirmClassName?: string
+  /** Extra detail between the message and the buttons (a file list, a note). */
+  children?: ReactNode
   onConfirm: () => void
   onCancel: () => void
 }
@@ -23,6 +25,7 @@ function ConfirmDialog({
   cancelLabel,
   danger = false,
   confirmClassName,
+  children,
   onConfirm,
   onCancel
 }: ConfirmDialogProps): JSX.Element | null {
@@ -54,6 +57,7 @@ function ConfirmDialog({
         <p id={descId} className="mt-2 break-words text-body text-secondary-text [overflow-wrap:anywhere]">
           {message}
         </p>
+        {children}
         <div className="mt-5 flex justify-end gap-2">
           <button ref={cancelRef} type="button" onClick={onCancel} className="btn-secondary">
             {cancelLabel ?? common.cancel}

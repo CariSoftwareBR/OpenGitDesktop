@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { isConflicted, isHistoryRewrittenMessage, sameRepoStatus } from '../../../shared/git'
+import { isConflicted, isHistoryRewrittenMessage, sameRepoStatus, stashBranchName } from '../../../shared/git'
 import type {
   BranchInfo,
   CommitFile,
@@ -55,6 +55,10 @@ interface RepoState {
   remoteBranches: string[]
   /** Set when a push was refused because already-pushed commits were rewritten locally. */
   forcePushPrompt: { branch: string } | null
+  /** A switch git refused because it would overwrite these local changes. */
+  switchBlocked: { from: string; target: string; remote: boolean; files: string[] } | null
+  /** Just switched onto a branch that has changes parked in a stash. */
+  branchStashHint: { repoPath: string; branch: string } | null
   log: CommitSummary[]
   stashes: StashEntry[]
   view: ViewName
@@ -115,8 +119,21 @@ interface RepoState {
   clearBatchResults: () => void
   updateSelectedRepos: () => Promise<void>
   setLogPath: (path: string | null) => Promise<void>
-  switchBranch: (name: string) => Promise<void>
-  checkoutRemoteBranch: (remoteBranch: string) => Promise<void>
+  /**
+   * Resolves true once the branch is checked out. When local changes block it,
+   * `interactive` (the default) opens the stash-and-switch dialog; otherwise
+   * the refusal lands in `error` — what the AI tool path wants.
+   */
+  switchBranch: (name: string, options?: { interactive?: boolean }) => Promise<boolean>
+  /** Same contract as switchBranch, for an origin/* branch with no local counterpart yet. */
+  checkoutRemoteBranch: (remoteBranch: string, options?: { interactive?: boolean }) => Promise<boolean>
+  /** Shared body of switchBranch / checkoutRemoteBranch. */
+  runCheckout: (target: string, remote: boolean, options?: { interactive?: boolean }) => Promise<boolean>
+  /** Stashes everything on the current branch, then retries the blocked switch. */
+  stashAndSwitch: () => Promise<void>
+  cancelBlockedSwitch: () => void
+  restoreBranchStash: () => Promise<void>
+  dismissBranchStashHint: () => void
   deleteBranch: (name: string, force: boolean) => Promise<boolean>
   renameBranch: (oldName: string, newName: string) => Promise<void>
   forcePush: () => Promise<void>
@@ -196,6 +213,8 @@ export const useRepoStore = create<RepoState>((set, get) => ({
   branches: [],
   remoteBranches: [],
   forcePushPrompt: null,
+  switchBlocked: null,
+  branchStashHint: null,
   log: [],
   stashes: [],
   view: 'changes',
@@ -340,7 +359,9 @@ export const useRepoStore = create<RepoState>((set, get) => ({
         lastFetchedAt: null,
         logPath: null,
         commitSummary: '',
-        commitDescription: ''
+        commitDescription: '',
+        switchBlocked: null,
+        branchStashHint: null
       })
       await Promise.all([get().refreshStatus(), get().refreshBranches(), get().refreshLog()])
     } catch (err) {
@@ -395,6 +416,8 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       branches: [],
       remoteBranches: [],
       forcePushPrompt: null,
+      switchBlocked: null,
+      branchStashHint: null,
       log: [],
       stashes: [],
       selectedFile: null,
@@ -786,19 +809,73 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     await get().refreshLog()
   },
 
-  switchBranch: async (name: string) => {
+  switchBranch: (name, options) => get().runCheckout(name, false, options),
+
+  checkoutRemoteBranch: (remoteBranch, options) => get().runCheckout(remoteBranch, true, options),
+
+  runCheckout: async (target, remote, options) => {
     const { currentRepoPath } = get()
-    if (!currentRepoPath) return
-    set({ isBusy: true, error: null })
+    if (!currentRepoPath) return false
+    const from = get().status?.branch ?? 'HEAD'
+    set({ isBusy: true, error: null, branchStashHint: null })
     try {
-      await window.api.git.switchBranch(name, currentRepoPath)
-      await Promise.all([get().refreshStatus(), get().refreshBranches(), get().refreshLog()])
+      const result = remote
+        ? await window.api.git.checkoutRemoteBranch(target, currentRepoPath)
+        : await window.api.git.switchBranch(target, currentRepoPath)
+      if (!result.switched) {
+        if (options?.interactive === false) {
+          set({ error: getT().stores.switchBlocked(target, result.blockingFiles.join(', ')) })
+        } else {
+          set({ switchBlocked: { from, target, remote, files: result.blockingFiles } })
+        }
+        return false
+      }
+      await Promise.all([get().refreshStatus(), get().refreshBranches(), get().refreshLog(), get().refreshStashes()])
+      // A branch just created from origin/* can't have stashes of its own yet.
+      if (!remote && get().stashes.some((stash) => stashBranchName(stash.message) === target)) {
+        set({ branchStashHint: { repoPath: currentRepoPath, branch: target } })
+      }
+      return true
     } catch (err) {
       set({ error: describeError(err) })
+      return false
     } finally {
       set({ isBusy: false })
     }
   },
+
+  stashAndSwitch: async () => {
+    const { switchBlocked, currentRepoPath } = get()
+    if (!switchBlocked || !currentRepoPath) return
+    set({ switchBlocked: null, isBusy: true, error: null })
+    try {
+      // -u: untracked files can block a checkout just like tracked edits.
+      await window.api.git.stashPush(currentRepoPath, getT().stores.leftChangesStash(switchBlocked.from))
+      set({ selectedFile: null, diffText: '' })
+    } catch (err) {
+      set({ error: describeError(err), isBusy: false })
+      return
+    }
+    set({ isBusy: false })
+    // Should the switch still fail, the changes are already safe in the stash.
+    const switched = await get().runCheckout(switchBlocked.target, switchBlocked.remote, { interactive: false })
+    if (!switched) await Promise.all([get().refreshStatus(), get().refreshStashes()])
+  },
+
+  cancelBlockedSwitch: () => set({ switchBlocked: null }),
+
+  // Looked up again at click time: stash@{n} indexes shift whenever another
+  // stash is pushed or dropped, so a ref captured at switch time can go stale.
+  restoreBranchStash: async () => {
+    const { branchStashHint, currentRepoPath } = get()
+    set({ branchStashHint: null })
+    if (!branchStashHint || branchStashHint.repoPath !== currentRepoPath) return
+    await get().refreshStashes()
+    const parked = get().stashes.find((stash) => stashBranchName(stash.message) === branchStashHint.branch)
+    if (parked) await get().popStash(parked.ref)
+  },
+
+  dismissBranchStashHint: () => set({ branchStashHint: null }),
 
   createBranch: async (name: string, checkout: boolean, from?: string) => {
     const { currentRepoPath } = get()
@@ -871,9 +948,12 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     }
     set({ isBusy: false })
     if (get().status?.branch !== head) {
-      if (get().branches.some((b) => b.name === head)) await get().switchBranch(head)
-      else await get().checkoutRemoteBranch(`origin/${head}`)
-      if (get().error) return
+      // A switch blocked by local changes opens its dialog and reports false —
+      // merging anyway would land origin/<base> on the wrong branch.
+      const switched = get().branches.some((b) => b.name === head)
+        ? await get().switchBranch(head)
+        : await get().checkoutRemoteBranch(`origin/${head}`)
+      if (!switched) return
     }
     await get().mergeBranch(`origin/${base}`)
     // Conflicts (the usual reason to be here) are resolved in Alterações.
@@ -927,20 +1007,6 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     } catch (err) {
       if (isHistoryRewritten(err) && status.branch) set({ forcePushPrompt: { branch: status.branch } })
       else set({ error: describeError(err) })
-    } finally {
-      set({ isBusy: false })
-    }
-  },
-
-  checkoutRemoteBranch: async (remoteBranch: string) => {
-    const { currentRepoPath } = get()
-    if (!currentRepoPath) return
-    set({ isBusy: true, error: null })
-    try {
-      await window.api.git.checkoutRemoteBranch(remoteBranch, currentRepoPath)
-      await Promise.all([get().refreshStatus(), get().refreshBranches(), get().refreshLog()])
-    } catch (err) {
-      set({ error: describeError(err) })
     } finally {
       set({ isBusy: false })
     }

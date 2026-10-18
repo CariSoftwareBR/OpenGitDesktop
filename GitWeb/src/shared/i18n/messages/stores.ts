@@ -50,7 +50,10 @@ const ptBR = {
   aiStillHasMarkers: (id: number) => `A resolução da IA para o bloco #${id} ainda contém marcadores de conflito.`,
   conflictSummary: (path: string) => `Resolução de conflito em ${path}`,
 
-  checking: 'Verificando…'
+  checking: 'Verificando…',
+  leftChangesStash: (branch: string) => `Alterações deixadas em ${branch}`,
+  switchBlocked: (target: string, files: string) =>
+    `Não foi possível trocar para "${target}": alterações locais seriam sobrescritas (${files}). Faça commit ou stash antes.`
 }
 
 type M = typeof ptBR
@@ -105,7 +108,10 @@ const en: M = {
   aiStillHasMarkers: (id) => `The AI resolution for block #${id} still contains conflict markers.`,
   conflictSummary: (path) => `Conflict resolution in ${path}`,
 
-  checking: 'Checking…'
+  checking: 'Checking…',
+  leftChangesStash: (branch) => `Changes left on ${branch}`,
+  switchBlocked: (target, files) =>
+    `Could not switch to "${target}": local changes would be overwritten (${files}). Commit or stash them first.`
 }
 
 const es: M = {
@@ -159,7 +165,10 @@ const es: M = {
   aiStillHasMarkers: (id) => `La resolución de la IA para el bloque #${id} todavía contiene marcadores de conflicto.`,
   conflictSummary: (path) => `Resolución de conflicto en ${path}`,
 
-  checking: 'Comprobando…'
+  checking: 'Comprobando…',
+  leftChangesStash: (branch) => `Cambios dejados en ${branch}`,
+  switchBlocked: (target, files) =>
+    `No se pudo cambiar a "${target}": se sobrescribirían cambios locales (${files}). Haz commit o stash antes.`
 }
 
 export default { 'pt-BR': ptBR, en, es }

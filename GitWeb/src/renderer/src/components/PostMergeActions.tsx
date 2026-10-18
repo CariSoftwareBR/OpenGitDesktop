@@ -30,9 +30,11 @@ function PostMergeActions(): JSX.Element | null {
     if (!path) return
     setRunning('switch')
     try {
-      if (repo.branches.some((b) => b.name === baseRef)) await repo.switchBranch(baseRef)
-      else await repo.checkoutRemoteBranch(`origin/${baseRef}`)
-      if (useRepoStore.getState().error) return
+      // A blocked switch opens the stash dialog and returns false: never pull onto the wrong branch.
+      const switched = repo.branches.some((b) => b.name === baseRef)
+        ? await repo.switchBranch(baseRef)
+        : await repo.checkoutRemoteBranch(`origin/${baseRef}`)
+      if (!switched) return
       const result = await window.api.git.pull(path)
       if (result.exitCode !== 0) useRepoStore.getState().setError(result.stderr.trim() || t.pullFailed)
       await Promise.all([repo.refreshStatus(), repo.refreshBranches(), repo.refreshLog()])

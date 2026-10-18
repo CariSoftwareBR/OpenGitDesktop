@@ -170,6 +170,40 @@ export interface RecentReposData {
   repos: RecentRepository[]
 }
 
+/** A checkout git refused because it would overwrite local changes. */
+export type SwitchBranchResult = { switched: true } | { switched: false; blockingFiles: string[] }
+
+/**
+ * Files listed under git's "would be overwritten by checkout:" headers (tracked
+ * changes and untracked files alike), or null when the failure is something
+ * else. Expects git's untranslated output — the caller runs it with LC_ALL=C.
+ */
+export function parseCheckoutBlockers(stderr: string): string[] | null {
+  const files: string[] = []
+  let inList = false
+  let matched = false
+  for (const line of stderr.split(/\r?\n/)) {
+    if (/would be overwritten by checkout:\s*$/.test(line)) {
+      inList = true
+      matched = true
+    } else if (inList && /^\t/.test(line)) {
+      files.push(line.trim())
+    } else {
+      inList = false
+    }
+  }
+  return matched ? files : null
+}
+
+/**
+ * Branch a stash was made on, from git's own subject: "On <branch>: <message>"
+ * or "WIP on <branch>: <hash> <subject>". Null for anything else.
+ */
+export function stashBranchName(subject: string): string | null {
+  const match = /^(?:WIP on|On) ([^:]+):/.exec(subject)
+  return match ? match[1] : null
+}
+
 export interface StashEntry {
   ref: string
   message: string

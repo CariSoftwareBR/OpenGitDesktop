@@ -12,7 +12,8 @@ import type {
   RepoStatus,
   RepoUpdateResult,
   RepoUpdateStatus,
-  StashEntry
+  StashEntry,
+  SwitchBranchResult
 } from '../shared/git'
 import type { AiSettings, ResolvedAiConfig } from '../shared/ai'
 import type { ChatMessage, ChatRequestOutcome, ChatResponse, ToolDefinition } from '../shared/aiChat'
@@ -61,7 +62,7 @@ export interface Api {
     commitAmend: (cwd: string, summary?: string, description?: string) => Promise<void>
     branches: (cwd: string) => Promise<BranchInfo[]>
     createBranch: (name: string, cwd: string, checkout: boolean, from?: string) => Promise<void>
-    switchBranch: (name: string, cwd: string) => Promise<void>
+    switchBranch: (name: string, cwd: string) => Promise<SwitchBranchResult>
     log: (cwd: string, limit?: number, path?: string) => Promise<CommitSummary[]>
     commitFiles: (hash: string, cwd: string) => Promise<CommitFile[]>
     commitDiff: (hash: string, path: string, cwd: string) => Promise<string>
@@ -84,7 +85,7 @@ export interface Api {
     stashPatch: (cwd: string, ref: string) => Promise<string>
     revertCommit: (hash: string, cwd: string) => Promise<GitResult>
     remoteBranches: (cwd: string) => Promise<string[]>
-    checkoutRemoteBranch: (remoteBranch: string, cwd: string) => Promise<void>
+    checkoutRemoteBranch: (remoteBranch: string, cwd: string) => Promise<SwitchBranchResult>
     deleteBranch: (name: string, cwd: string, force: boolean) => Promise<void>
     renameBranch: (oldName: string, newName: string, cwd: string) => Promise<void>
     deleteRemoteBranch: (name: string, cwd: string) => Promise<void>
