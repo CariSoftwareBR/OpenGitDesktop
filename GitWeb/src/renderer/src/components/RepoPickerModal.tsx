@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { FolderGit2 } from 'lucide-react'
 import { useFocusTrap } from '../lib/useFocusTrap'
+import { useT } from '../lib/i18n'
 
 interface RepoPickerModalProps {
   open: boolean
@@ -13,6 +14,8 @@ function RepoPickerModal({ open, repoPaths, onConfirm, onCancel }: RepoPickerMod
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const messages = useT()
+  const t = messages.ui
 
   useFocusTrap(panelRef, open, { onEscape: onCancel })
 
@@ -44,16 +47,16 @@ function RepoPickerModal({ open, repoPaths, onConfirm, onCancel }: RepoPickerMod
         onClick={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className="text-title font-semibold text-primary-text">
-          {repoPaths.length} repositórios encontrados
+          {t.reposFound(repoPaths.length)}
         </h2>
-        <p className="text-body text-secondary-text">Selecione quais deseja adicionar à lista de recentes.</p>
+        <p className="text-body text-secondary-text">{t.pickRepos}</p>
 
         <button
           type="button"
           onClick={() => setSelected(allSelected ? new Set() : new Set(repoPaths))}
           className="self-start text-caption text-command-blue hover:underline"
         >
-          {allSelected ? 'Desmarcar todos' : 'Selecionar todos'}
+          {allSelected ? t.deselectAll : t.selectAll}
         </button>
 
         <ul className="max-h-72 overflow-y-auto rounded-md border border-default-border">
@@ -81,7 +84,7 @@ function RepoPickerModal({ open, repoPaths, onConfirm, onCancel }: RepoPickerMod
 
         <div className="mt-1 flex justify-end gap-2">
           <button type="button" onClick={onCancel} className="btn-secondary">
-            Cancelar
+            {messages.common.cancel}
           </button>
           <button
             type="button"
@@ -89,7 +92,7 @@ function RepoPickerModal({ open, repoPaths, onConfirm, onCancel }: RepoPickerMod
             disabled={selected.size === 0}
             className="btn-primary"
           >
-            Adicionar {selected.size > 0 ? selected.size : ''}
+            {t.add(selected.size)}
           </button>
         </div>
       </div>

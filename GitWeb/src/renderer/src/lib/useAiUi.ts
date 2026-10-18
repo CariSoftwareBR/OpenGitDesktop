@@ -1,11 +1,10 @@
 import { aiUiStrings, type AiLanguage } from '../../../shared/aiPrompts'
-import { useAiStore } from '../store/aiStore'
+import { useLocale } from './i18n'
 
 export function useAiLanguage(): AiLanguage {
-  return useAiStore((state) => state.settings?.language ?? 'pt-BR')
+  return useLocale()
 }
 
 export function useAiUi() {
-  const language = useAiLanguage()
-  return aiUiStrings(language)
+  return aiUiStrings(useLocale())
 }

@@ -20,8 +20,8 @@ import type {
   StatusEntry
 } from '../shared/git'
 import { parseGitHubRemote, credentialKey } from '../shared/githubRemote'
-import { HISTORY_REWRITTEN_MESSAGE } from '../shared/git'
 import { getSecret } from './credentials'
+import { tMain } from './i18n'
 
 const DEFAULT_TIMEOUT_MS = 10 * 60 * 1000
 const NETWORK_TIMEOUT_MS = 30 * 60 * 1000
@@ -179,7 +179,7 @@ const ABSOLUTE_LOCAL_PATH = /^([a-zA-Z]:[\\/]|[\\/])/
 
 function assertSafeCloneUrl(url: string): void {
   if (url.startsWith('-')) {
-    throw new Error('URL inválida: uma URL de repositório não pode começar com "-".')
+    throw new Error(tMain().git.cloneUrlStartsWithDash)
   }
   const lower = url.toLowerCase()
   const allowed =
@@ -187,16 +187,13 @@ function assertSafeCloneUrl(url: string): void {
     SCP_LIKE_REMOTE.test(url) ||
     ABSOLUTE_LOCAL_PATH.test(url)
   if (!allowed) {
-    throw new Error(
-      'URL inválida: use https://, ssh://, git@host:dono/repo ou um caminho local. ' +
-        'Transportes como "ext::" não são aceitos.'
-    )
+    throw new Error(tMain().git.cloneUrlNotAllowed)
   }
 }
 
 // Rejects values that git would parse as an option instead of a ref name.
 function assertNotOption(value: string, label: string): void {
-  if (value.startsWith('-')) throw new Error(`${label} inválido: não pode começar com "-".`)
+  if (value.startsWith('-')) throw new Error(tMain().git.optionLikeValue(label))
 }
 
 // `git clone --progress` writes lines like
@@ -511,9 +508,7 @@ async function resetSoftHeadInQueue(cwd: string): Promise<void> {
     // throw away the whole branch instead of one commit. Only the genuine root
     // commit — HEAD itself having no parents — may take the update-ref path.
     if (!(await isRootCommit(cwd))) {
-      throw new Error(
-        'Não foi possível desfazer o commit: o commit anterior não está disponível neste repositório (clone raso ou histórico truncado).'
-      )
+      throw new Error(tMain().git.undoParentUnavailable)
     }
     throwOnFailure(await runGit(['update-ref', '-d', 'HEAD'], cwd, { serialize: false }), ['update-ref', '-d', 'HEAD'])
     return
@@ -663,7 +658,7 @@ export async function getLog(cwd: string, limit = 100, path?: string): Promise<C
 export async function getCommitDetails(cwd: string, ref: string): Promise<CommitDetails | null> {
   // The AI agent's read_commit tool passes a model-chosen ref here with no
   // approval step, and `git show --output=<file>` writes an arbitrary file.
-  assertNotOption(ref, 'Referência de commit')
+  assertNotOption(ref, tMain().git.labels.commitRef)
   const format = [...LOG_FORMAT_FIELDS, '%P'].join(FS)
   const result = await readGit(['show', '-s', `--pretty=format:${format}${RS}`, ref], cwd)
   if (result.exitCode !== 0) {
@@ -698,7 +693,7 @@ async function runShowWithMergeDiff(args: string[], cwd: string): Promise<GitRes
 }
 
 export async function getCommitFiles(hash: string, cwd: string): Promise<CommitFile[]> {
-  assertNotOption(hash, 'Referência de commit')
+  assertNotOption(hash, tMain().git.labels.commitRef)
   const result = await runShowWithMergeDiff(['--name-status', '--pretty=format:', hash], cwd)
   throwOnFailure(result, ['show'])
 
@@ -712,14 +707,14 @@ export async function getCommitFiles(hash: string, cwd: string): Promise<CommitF
 }
 
 export async function getCommitPatch(cwd: string, ref: string): Promise<string> {
-  assertNotOption(ref, 'Referência de commit')
+  assertNotOption(ref, tMain().git.labels.commitRef)
   const result = await runShowWithMergeDiff(['-U3', '--pretty=format:', ref], cwd)
   throwOnFailure(result, ['show'])
   return result.stdout
 }
 
 export async function getCommitDiff(hash: string, path: string, cwd: string): Promise<string> {
-  assertNotOption(hash, 'Referência de commit')
+  assertNotOption(hash, tMain().git.labels.commitRef)
   // Same first-parent handling as getCommitPatch/getCommitFiles — a plain
   // `git show` on a merge commit prints no diff at all.
   const result = await runShowWithMergeDiff(['-U3', '--pretty=format:', hash, '--', path], cwd)
@@ -882,7 +877,7 @@ export async function getRepoUpdateStatus(
 
   const remoteUrl = await getRemoteUrl(cwd)
   if (!remoteUrl) {
-    return { ...common, state: 'noRemote', message: 'Repositório sem remote configurado.' }
+    return { ...common, state: 'noRemote', message: tMain().git.noRemote }
   }
 
   if (options?.fetch) {
@@ -892,7 +887,7 @@ export async function getRepoUpdateStatus(
       return {
         ...common,
         state: 'failed',
-        message: firstErrorLine(err instanceof Error ? err.message : String(err), 'Falha ao buscar do remote.')
+        message: firstErrorLine(err instanceof Error ? err.message : String(err), tMain().git.fetchFailed)
       }
     }
   }
@@ -902,7 +897,7 @@ export async function getRepoUpdateStatus(
     return {
       ...common,
       state: 'noDefaultBranch',
-      message: 'Não foi possível determinar o branch padrão do remote.'
+      message: tMain().git.noDefaultBranchDetected
     }
   }
 
@@ -922,17 +917,15 @@ export async function getRepoUpdateStatus(
   // Without a local default branch there is nothing to fast-forward, so the
   // card offers no checkbox and no action — saying only "N commits atrás"
   // would leave the user staring at a warning with no way to act on it.
+  const t = tMain().git
   const behindMessage =
-    `${behindDefault} commit(s) atrás de origin/${defaultBranch}.` +
-    (hasLocalDefault
-      ? ''
-      : ` Não existe um branch "${defaultBranch}" local para avançar — abra o repositório e faça checkout dele, ou um pull no branch atual.`)
+    t.behindDefault(behindDefault, defaultBranch) + (hasLocalDefault ? '' : t.noLocalDefaultToAdvance(defaultBranch))
 
   const message = diverged
-    ? `"${defaultBranch}" local divergiu: ${localDefaultAhead} commit(s) só seu(s), ${localDefaultBehind} no remote.`
+    ? t.localDefaultDivergedDetail(defaultBranch, localDefaultAhead, localDefaultBehind)
     : behindDefault > 0
       ? behindMessage
-      : `Em dia com origin/${defaultBranch}.`
+      : t.upToDateWith(defaultBranch)
 
   return {
     ...common,
@@ -956,30 +949,30 @@ export async function getRepoUpdateStatus(
 export async function updateToDefaultBranch(cwd: string): Promise<RepoUpdateResult> {
   const defaultBranch = await resolveDefaultBranch(cwd)
   if (!defaultBranch) {
-    return { outcome: 'skippedNoDefault', message: 'Sem branch padrão no remote.', commitsPulled: 0 }
+    return { outcome: 'skippedNoDefault', message: tMain().git.noDefaultBranch, commitsPulled: 0 }
   }
-  assertNotOption(defaultBranch, 'Branch padrão')
+  assertNotOption(defaultBranch, tMain().git.labels.defaultBranch)
 
   const localRef = `refs/heads/${defaultBranch}`
   if (!(await refExists(cwd, localRef))) {
     return {
       outcome: 'skippedNoDefault',
-      message: `Não existe um branch "${defaultBranch}" local.`,
+      message: tMain().git.noLocalBranch(defaultBranch),
       commitsPulled: 0
     }
   }
 
   const counts = await countAheadBehind(cwd, localRef, `refs/remotes/origin/${defaultBranch}`)
   if (!counts) {
-    return { outcome: 'failed', message: `Não foi possível comparar com origin/${defaultBranch}.`, commitsPulled: 0 }
+    return { outcome: 'failed', message: tMain().git.compareFailed(defaultBranch), commitsPulled: 0 }
   }
   if (counts.behind === 0) {
-    return { outcome: 'alreadyUpToDate', message: `"${defaultBranch}" já está em dia.`, commitsPulled: 0 }
+    return { outcome: 'alreadyUpToDate', message: tMain().git.alreadyUpToDate(defaultBranch), commitsPulled: 0 }
   }
   if (counts.ahead > 0) {
     return {
       outcome: 'skippedDiverged',
-      message: `"${defaultBranch}" local divergiu (${counts.ahead} commit(s) só seu(s)).`,
+      message: tMain().git.localDefaultDiverged(defaultBranch, counts.ahead),
       commitsPulled: 0
     }
   }
@@ -991,7 +984,7 @@ export async function updateToDefaultBranch(cwd: string): Promise<RepoUpdateResu
     if (status.entries.length > 0) {
       return {
         outcome: 'skippedDirty',
-        message: `${status.entries.length} alteração(ões) local(is) não commitada(s).`,
+        message: tMain().git.uncommittedChanges(status.entries.length),
         commitsPulled: 0
       }
     }
@@ -999,13 +992,13 @@ export async function updateToDefaultBranch(cwd: string): Promise<RepoUpdateResu
     if (result.exitCode !== 0) {
       return {
         outcome: 'failed',
-        message: firstErrorLine(result.stderr, 'git pull --ff-only falhou.'),
+        message: firstErrorLine(result.stderr, tMain().git.pullFfOnlyFailed),
         commitsPulled: 0
       }
     }
     return {
       outcome: 'updated',
-      message: `${counts.behind} commit(s) baixado(s) em "${defaultBranch}".`,
+      message: tMain().git.commitsPulled(counts.behind, defaultBranch),
       commitsPulled: counts.behind
     }
   }
@@ -1018,13 +1011,13 @@ export async function updateToDefaultBranch(cwd: string): Promise<RepoUpdateResu
   if (result.exitCode !== 0) {
     return {
       outcome: 'failed',
-      message: firstErrorLine(result.stderr, `Falha ao avançar "${defaultBranch}".`),
+      message: firstErrorLine(result.stderr, tMain().git.advanceFailed(defaultBranch)),
       commitsPulled: 0
     }
   }
   return {
     outcome: 'updated',
-    message: `"${defaultBranch}" avançou ${counts.behind} commit(s); você continua em "${status.branch ?? 'HEAD desanexado'}".`,
+    message: tMain().git.advancedWhileOnOther(defaultBranch, counts.behind, status.branch ?? tMain().git.detachedHead),
     commitsPulled: counts.behind
   }
 }
@@ -1052,7 +1045,7 @@ async function integrateUpstreamIfBehind(cwd: string, extraEnv?: Record<string, 
   const count = Number(behind.stdout.trim())
   if (!Number.isFinite(count) || count <= 0) return
 
-  if (await upstreamWasLocalTip(cwd)) throw new Error(HISTORY_REWRITTEN_MESSAGE)
+  if (await upstreamWasLocalTip(cwd)) throw new Error(tMain().git.historyRewritten)
 
   // A plain rebase linearizes: a merge the user made locally (e.g. main into
   // their feature branch, conflicts already resolved) would be flattened into
@@ -1065,24 +1058,18 @@ async function integrateUpstreamIfBehind(cwd: string, extraEnv?: Record<string, 
     const merge = await runGit(['pull', '--no-rebase', '--ff', '--no-edit', '--autostash'], cwd, { extraEnv })
     if (merge.exitCode === 0) return
     await runGit(['merge', '--abort'], cwd).catch(() => undefined)
-    throw new Error(
-      merge.stderr.trim() ||
-        'O branch local divergiu do remoto e o merge falhou. Resolva os conflitos e tente de novo.'
-    )
+    throw new Error(merge.stderr.trim() || tMain().git.divergedMergeFailed)
   }
 
   const rebase = await runGit(['pull', '--rebase', '--autostash'], cwd, { extraEnv })
   if (rebase.exitCode === 0) return
 
   await runGit(['rebase', '--abort'], cwd).catch(() => undefined)
-  throw new Error(
-    rebase.stderr.trim() ||
-      'O branch local divergiu do remoto e o rebase falhou. Resolva os conflitos e tente de novo.'
-  )
+  throw new Error(rebase.stderr.trim() || tMain().git.divergedRebaseFailed)
 }
 
 export async function pushBranch(cwd: string, branch: string, setUpstream: boolean): Promise<void> {
-  if (setUpstream) assertNotOption(branch, 'Nome de branch')
+  if (setUpstream) assertNotOption(branch, tMain().git.labels.branchName)
   const extraEnv = await buildAuthEnv(await getRemoteUrl(cwd))
 
   // First publish has no upstream yet — nothing to integrate.
@@ -1128,7 +1115,7 @@ export async function forcePushBranch(cwd: string): Promise<void> {
  * thrown, and the UI reads the conflicted files from status.
  */
 export async function revertCommit(hash: string, cwd: string): Promise<GitResult> {
-  assertNotOption(hash, 'Referência de commit')
+  assertNotOption(hash, tMain().git.labels.commitRef)
   const details = await getCommitDetails(cwd, hash)
   const args = ['revert', '--no-edit']
   if (details && details.parents.length > 1) args.push('-m', '1')
@@ -1169,7 +1156,7 @@ export async function pushStash(cwd: string, message: string): Promise<void> {
  * older git rejects the flag and gets the tracked part only.
  */
 export async function getStashPatch(cwd: string, ref: string): Promise<string> {
-  assertNotOption(ref, 'Referência de stash')
+  assertNotOption(ref, tMain().git.labels.stashRef)
   const withUntracked = await readGit(['stash', 'show', '-p', '--include-untracked', ref], cwd)
   if (withUntracked.exitCode === 0) return withUntracked.stdout
   if (!/unknown option|include-untracked/i.test(withUntracked.stderr)) throwOnFailure(withUntracked, ['stash', 'show'])
@@ -1179,17 +1166,17 @@ export async function getStashPatch(cwd: string, ref: string): Promise<string> {
 }
 
 export async function applyStash(cwd: string, ref: string): Promise<void> {
-  assertNotOption(ref, 'Referência de stash')
+  assertNotOption(ref, tMain().git.labels.stashRef)
   throwOnFailure(await runGit(['stash', 'apply', ref], cwd), ['stash', 'apply'])
 }
 
 export async function popStash(cwd: string, ref: string): Promise<void> {
-  assertNotOption(ref, 'Referência de stash')
+  assertNotOption(ref, tMain().git.labels.stashRef)
   throwOnFailure(await runGit(['stash', 'pop', ref], cwd), ['stash', 'pop'])
 }
 
 export async function dropStash(cwd: string, ref: string): Promise<void> {
-  assertNotOption(ref, 'Referência de stash')
+  assertNotOption(ref, tMain().git.labels.stashRef)
   throwOnFailure(await runGit(['stash', 'drop', ref], cwd), ['stash', 'drop'])
 }
 
@@ -1288,7 +1275,7 @@ export async function isPathIgnored(cwd: string, relativePath: string): Promise<
 const UNPUBLISHED_RANGE = ['HEAD', '--not', '--remotes']
 
 export async function isCommitPublished(cwd: string, ref = 'HEAD'): Promise<boolean> {
-  assertNotOption(ref, 'Referência')
+  assertNotOption(ref, tMain().git.labels.ref)
   const result = await readGit(['rev-list', '-n', '1', ref, '--not', '--remotes'], cwd)
   throwOnFailure(result, ['rev-list', ref, '--not', '--remotes'])
   return result.stdout.trim() === ''
@@ -1302,18 +1289,16 @@ export async function isCommitPublished(cwd: string, ref = 'HEAD'): Promise<bool
 export async function undoUnpublishedCommit(cwd: string, expectedHash: string): Promise<void> {
   await enqueue(queueKey(cwd), async () => {
     const head = await readGit(['rev-parse', '--verify', 'HEAD'], cwd)
-    if (head.exitCode !== 0) throw new Error('Este repositório ainda não tem commits.')
+    if (head.exitCode !== 0) throw new Error(tMain().git.noCommitsYet)
     const hash = head.stdout.trim()
     if (hash !== expectedHash) {
-      throw new Error('O último commit mudou desde a aprovação. Peça de novo para ver o commit atual.')
+      throw new Error(tMain().git.lastCommitChanged)
     }
     if ((await readGit(['rev-parse', '-q', '--verify', 'MERGE_HEAD'], cwd)).exitCode === 0) {
-      throw new Error('Há um merge em andamento. Conclua ou aborte o merge antes de desfazer um commit.')
+      throw new Error(tMain().git.mergeInProgress)
     }
     if (await isCommitPublished(cwd, hash)) {
-      throw new Error(
-        'O último commit já foi enviado para o remoto. Desfazê-lo exigiria force push, que é um passo manual — não faço isso pelo chat.'
-      )
+      throw new Error(tMain().git.lastCommitPublished)
     }
     await resetSoftHeadInQueue(cwd)
   })
@@ -1415,18 +1400,14 @@ export async function readFileForAgent(cwd: string, relativePath: string): Promi
   // check below safe to do by segment.
   const target = await resolveRealWithinRepo(cwd, relativePath)
   if (isInsideGitDir(await realpath(resolve(cwd)), target)) {
-    throw new Error(
-      `"${relativePath}" está dentro de .git/ e não pode ser lido pela IA — o diretório do git guarda credenciais e estado interno.`
-    )
+    throw new Error(tMain().git.agentReadGitDir(relativePath))
   }
   if (await isPathIgnored(cwd, relativePath)) {
-    throw new Error(
-      `"${relativePath}" está no .gitignore e não pode ser lido pela IA — arquivos ignorados costumam guardar segredos.`
-    )
+    throw new Error(tMain().git.agentReadIgnored(relativePath))
   }
   const content = await readFile(target, 'utf-8')
   if (looksBinary(content)) {
-    throw new Error(`"${relativePath}" parece ser um arquivo binário e não pode ser lido como texto.`)
+    throw new Error(tMain().git.agentReadBinary(relativePath))
   }
   return content
 }
@@ -1465,14 +1446,14 @@ export async function addToGitIgnore(
 
     const toAdd = normalized.filter((p) => !existing.has(p))
     if (toAdd.length === 0) {
-      return { success: true, message: 'O padrão já existe no .gitignore.' }
+      return { success: true, message: tMain().git.gitignorePatternExists }
     }
 
     let next = existingText
     if (next.length > 0 && !next.endsWith('\n')) next += '\n'
     next += toAdd.map((p) => `${p}\n`).join('')
     await writeFile(gitignorePath, next, 'utf-8')
-    return { success: true, message: `Adicionado ao .gitignore: ${toAdd.join(', ')}` }
+    return { success: true, message: tMain().git.gitignoreAdded(toAdd.join(', ')) }
   } catch (err) {
     return { success: false, message: err instanceof Error ? err.message : String(err) }
   }
@@ -1488,7 +1469,7 @@ export async function stopTracking(
   const result = await runGit(['rm', '--cached', '-f', '--', ...distinct], cwd)
   if (result.exitCode === 0) return { success: true, message: '' }
   const message = (result.stderr || result.stdout).trim()
-  return { success: false, message: message || 'Falha ao parar o tracking dos arquivos.' }
+  return { success: false, message: message || tMain().git.stopTrackingFailed }
 }
 
 export function resolveRepoPath(cwd: string, relativePath: string): string {

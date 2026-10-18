@@ -4,6 +4,7 @@ import Github from './icons/Github'
 import { useGithubAuthStore } from '../store/githubAuthStore'
 import { useFocusTrap } from '../lib/useFocusTrap'
 import type { GitHubUser } from '../lib/github'
+import { useT } from '../lib/i18n'
 
 interface GithubLoginModalProps {
   open: boolean
@@ -28,14 +29,16 @@ function GithubLoginModal({
   const panelRef = useRef<HTMLDivElement>(null)
   const confirmRef = useRef<HTMLButtonElement>(null)
   const [scopes, setScopes] = useState<string[]>([])
+  const messages = useT()
+  const t = messages.githubLogin
 
   const isPolling = deviceFlow?.status === 'polling'
 
   const failureMessage: Record<Exclude<NonNullable<typeof deviceFlow>['status'], 'polling' | 'success'>, string> = {
-    denied: 'Autorização negada no GitHub.',
-    expired: 'O código expirou. Tente novamente.',
-    cancelled: 'Login cancelado.',
-    error: deviceFlow?.errorMessage ?? 'Falha ao entrar com o GitHub.'
+    denied: t.denied,
+    expired: t.expired,
+    cancelled: t.cancelled,
+    error: deviceFlow?.errorMessage ?? t.failed
   }
 
   const handleClose = useCallback((): void => {
@@ -82,9 +85,9 @@ function GithubLoginModal({
       >
         <div className="flex items-center justify-between">
           <h2 id={titleId} className="text-title font-semibold text-primary-text">
-            Entrar com GitHub
+            {t.title}
           </h2>
-          <button type="button" onClick={handleClose} className="hit-area rounded-sm p-1 text-tertiary-text hover:bg-hover-overlay" aria-label="Fechar">
+          <button type="button" onClick={handleClose} className="hit-area rounded-sm p-1 text-tertiary-text hover:bg-hover-overlay" aria-label={messages.common.close}>
             <X size={16} />
           </button>
         </div>
@@ -97,7 +100,7 @@ function GithubLoginModal({
               {isPolling ? (
                 <>
                   <p className="text-body text-secondary-text">
-                    Acesse{' '}
+                    {t.visit}{' '}
                     <a
                       href={deviceFlow.verificationUriComplete ?? deviceFlow.verificationUri}
                       target="_blank"
@@ -106,13 +109,13 @@ function GithubLoginModal({
                     >
                       {deviceFlow.verificationUri}
                     </a>{' '}
-                    e informe o código:
+                    {t.enterCode}
                   </p>
                   <p className="text-title font-semibold tracking-widest text-primary-text">{deviceFlow.userCode}</p>
                   <div className="flex items-center gap-2 text-caption text-tertiary-text">
-                    <Loader2 size={14} className="animate-spin" /> Aguardando autorização…
+                    <Loader2 size={14} className="animate-spin" /> {t.waiting}
                     <button type="button" onClick={cancelDeviceFlowLogin} className="ml-auto text-command-blue hover:underline">
-                      Cancelar
+                      {messages.common.cancel}
                     </button>
                   </div>
                 </>
@@ -122,7 +125,7 @@ function GithubLoginModal({
                     {failureMessage[deviceFlow.status as Exclude<typeof deviceFlow.status, 'polling' | 'success'>]}
                   </p>
                   <button type="button" onClick={handleStart} className="text-command-blue hover:underline">
-                    Tentar de novo
+                    {t.tryAgain}
                   </button>
                 </div>
               )}
@@ -132,7 +135,7 @@ function GithubLoginModal({
               {scopes.length > 0 && (
                 <div className="rounded-md border border-default-border bg-coal-raised px-3 py-2.5">
                   <p className="text-caption text-secondary-text">
-                    O GitHub vai pedir estas permissões:{' '}
+                    {t.scopesIntro}{' '}
                     {scopes.map((scope, index) => (
                       <span key={scope}>
                         {index > 0 && ', '}
@@ -144,15 +147,13 @@ function GithubLoginModal({
                     .
                   </p>
                   <p className="mt-1.5 text-caption text-tertiary-text">
-                    <code className="font-mono">repo</code> dá leitura e escrita nos seus repositórios públicos e
-                    privados; <code className="font-mono">workflow</code> é exigido pelo GitHub para enviar commits que
-                    alterem arquivos em <code className="font-mono">.github/workflows/</code>. O token fica guardado no
-                    cofre do sistema operacional, só nesta máquina.
+                    <code className="font-mono">repo</code> {t.scopeRepo} <code className="font-mono">workflow</code>{' '}
+                    {t.scopeWorkflow} <code className="font-mono">.github/workflows/</code>. {t.tokenStorage}
                   </p>
                 </div>
               )}
               <button ref={confirmRef} type="button" onClick={handleStart} className="btn-primary flex w-full items-center justify-center gap-2">
-                <Github size={16} /> Continuar com GitHub
+                <Github size={16} /> {t.continueGithub}
               </button>
             </div>
           )}

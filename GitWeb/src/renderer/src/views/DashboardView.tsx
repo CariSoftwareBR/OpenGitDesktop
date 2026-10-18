@@ -15,6 +15,10 @@ import {
 } from 'lucide-react'
 import { useRepoStore } from '../store/repoStore'
 import type { CommitSummary } from '../../../shared/git'
+import type { Messages } from '../../../shared/i18n'
+import { useFormatters, useT } from '../lib/i18n'
+
+type DashboardMessages = Messages['dashboard']
 
 // ---------------------------------------------------------------------------
 // Data shaping
@@ -22,25 +26,19 @@ import type { CommitSummary } from '../../../shared/git'
 
 type Period = '30d' | '90d' | '12m' | 'all'
 
-const PERIODS: { id: Period; label: string; comparison: string }[] = [
-  { id: '30d', label: '30 dias', comparison: 'vs. 30 dias anteriores' },
-  { id: '90d', label: '90 dias', comparison: 'vs. 90 dias anteriores' },
-  { id: '12m', label: '12 meses', comparison: 'vs. 12 meses anteriores' },
-  { id: 'all', label: 'Tudo', comparison: '' }
-]
+const PERIODS: Period[] = ['30d', '90d', '12m', 'all']
 
 const DAY = 86_400_000
 const PERIOD_DAYS: Record<Exclude<Period, 'all'>, number> = { '30d': 30, '90d': 91, '12m': 364 }
 // Enough history for a year of a busy repo without making the log call slow.
 const LOG_LIMIT = 5000
 
-const nf = new Intl.NumberFormat('pt-BR')
-const nf1 = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 })
-const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-const WEEKDAYS_LONG = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
-const MONTHS = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
 // Heatmap rows start on Monday, the way a work week reads.
 const HEATMAP_ROWS = [1, 2, 3, 4, 5, 6, 0]
+
+// Sentinels, translated only when shown.
+const IMAGES = '\u0000images'
+const OTHER = '\u0000other'
 
 const LANGUAGES: Record<string, string> = {
   ts: 'TypeScript',
@@ -91,16 +89,15 @@ const LANGUAGES: Record<string, string> = {
   vue: 'Vue',
   svelte: 'Svelte',
   dart: 'Dart',
-  png: 'Imagens',
-  jpg: 'Imagens',
-  jpeg: 'Imagens',
-  gif: 'Imagens',
-  svg: 'Imagens',
-  webp: 'Imagens',
-  ico: 'Imagens'
+  png: IMAGES,
+  jpg: IMAGES,
+  jpeg: IMAGES,
+  gif: IMAGES,
+  svg: IMAGES,
+  webp: IMAGES,
+  ico: IMAGES
 }
 
-const OTHER = 'Outros'
 const MAX_LANGUAGE_SLOTS = 7
 
 interface Bin {
@@ -129,33 +126,30 @@ function dayKey(ts: number): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 }
 
-function formatDay(ts: number): string {
+function formatDay(t: DashboardMessages, ts: number): string {
   const d = new Date(ts)
-  return `${d.getDate()} ${MONTHS[d.getMonth()]}`
+  return t.day(d.getDate(), t.months[d.getMonth()])
 }
 
-function relativeTime(ts: number, now: number): string {
+function relativeTime(t: DashboardMessages, ts: number, now: number): string {
   // Rounded: across a DST change two local midnights are 23h or 25h apart.
   const days = Math.round((startOfDay(now) - startOfDay(ts)) / DAY)
-  if (days <= 0) return 'hoje'
-  if (days === 1) return 'ontem'
-  if (days < 30) return `há ${days} dias`
-  if (days < 365) {
-    const months = Math.min(11, Math.floor(days / 30))
-    return months === 1 ? 'há 1 mês' : `há ${months} meses`
-  }
-  const years = Math.floor(days / 365)
-  return years === 1 ? 'há 1 ano' : `há ${years} anos`
+  if (days <= 0) return t.today
+  if (days === 1) return t.yesterday
+  if (days < 30) return t.daysAgo(days)
+  if (days < 365) return t.monthsAgo(Math.min(11, Math.floor(days / 30)))
+  return t.yearsAgo(Math.floor(days / 365))
 }
 
-function buildBins(times: number[], period: Period, now: number): Bin[] {
+function buildBins(t: DashboardMessages, times: number[], period: Period, now: number): Bin[] {
   const today = startOfDay(now)
   const bins: Bin[] = []
+  const MONTHS = t.months
 
   if (period === '30d') {
     for (let i = 29; i >= 0; i--) {
       const start = addDays(today, -i)
-      bins.push({ start, end: addDays(start, 1), count: 0, label: formatDay(start), title: formatDay(start) })
+      bins.push({ start, end: addDays(start, 1), count: 0, label: formatDay(t, start), title: formatDay(t, start) })
     }
   } else if (period === '90d' || period === '12m') {
     const weeks = period === '90d' ? 13 : 52
@@ -166,8 +160,8 @@ function buildBins(times: number[], period: Period, now: number): Bin[] {
         start,
         end: addDays(start, 7),
         count: 0,
-        label: formatDay(start),
-        title: `Semana de ${formatDay(start)}`
+        label: formatDay(t, start),
+        title: t.weekOf(formatDay(t, start))
       })
     }
   } else {
@@ -184,16 +178,16 @@ function buildBins(times: number[], period: Period, now: number): Bin[] {
       const next = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)
       // "ago/26", not "ago 26": the daily view labels read "26 ago" (day 26).
       const label = `${MONTHS[cursor.getMonth()]}/${String(cursor.getFullYear()).slice(2)}`
-      bins.push({ start, end: next.getTime(), count: 0, label, title: `${MONTHS[cursor.getMonth()]} de ${cursor.getFullYear()}` })
+      bins.push({ start, end: next.getTime(), count: 0, label, title: t.monthOf(MONTHS[cursor.getMonth()], cursor.getFullYear()) })
       cursor.setMonth(cursor.getMonth() + 1)
     }
   }
 
-  for (const t of times) {
+  for (const time of times) {
     // Bins are contiguous and sorted, so a binary search would do — but even
     // 5 000 commits × 52 bins is trivial, and the linear scan stays obvious.
     for (const bin of bins) {
-      if (t >= bin.start && t < bin.end) {
+      if (time >= bin.start && time < bin.end) {
         bin.count++
         break
       }
@@ -230,15 +224,21 @@ interface Stats {
   lastCommit: CommitSummary | null
 }
 
-function computeStats(commits: CommitSummary[], period: Period, now: number, truncated: boolean): Stats {
-  const times = commits.map((c) => Date.parse(c.date)).filter((t) => Number.isFinite(t))
-  const bins = buildBins(times, period, now)
+function computeStats(
+  t: DashboardMessages,
+  commits: CommitSummary[],
+  period: Period,
+  now: number,
+  truncated: boolean
+): Stats {
+  const times = commits.map((c) => Date.parse(c.date)).filter((time) => Number.isFinite(time))
+  const bins = buildBins(t, times, period, now)
   const periodStart = bins[0]?.start ?? now
   const periodEnd = bins[bins.length - 1]?.end ?? now
 
   const inPeriod = commits.filter((c) => {
-    const t = Date.parse(c.date)
-    return t >= periodStart && t < periodEnd
+    const time = Date.parse(c.date)
+    return time >= periodStart && time < periodEnd
   })
 
   let previous: number | null = null
@@ -247,17 +247,18 @@ function computeStats(commits: CommitSummary[], period: Period, now: number, tru
     // When the log hit LOG_LIMIT, the previous window may reach past the oldest
     // fetched commit; comparing against a partial count would fake a jump.
     const oldest = times.length ? Math.min(...times) : now
-    previous = truncated && previousStart < oldest ? null : times.filter((t) => t >= previousStart && t < periodStart).length
+    previous =
+      truncated && previousStart < oldest ? null : times.filter((time) => time >= previousStart && time < periodStart).length
   }
 
   const heatmap = Array.from({ length: 7 }, () => Array<number>(24).fill(0))
   const people = new Map<string, Contributor>()
   const days = new Set<string>()
   for (const c of inPeriod) {
-    const t = Date.parse(c.date)
-    const d = new Date(t)
+    const time = Date.parse(c.date)
+    const d = new Date(time)
     heatmap[d.getDay()][d.getHours()]++
-    days.add(dayKey(t))
+    days.add(dayKey(time))
     const key = (c.authorEmail || c.authorName).toLowerCase()
     const entry = people.get(key)
     if (entry) entry.count++
@@ -436,13 +437,14 @@ function Card({
 }
 
 function Delta({ current, previous, comparison }: { current: number; previous: number | null; comparison: string }): JSX.Element | null {
+  const t = useT().dashboard
   if (previous === null) return null
   if (previous === 0 && current === 0) return null
   const change = previous === 0 ? null : (current - previous) / previous
   const up = current > previous
   const flat = current === previous
   const Icon = flat ? Minus : up ? TrendingUp : TrendingDown
-  const text = change === null ? 'novo' : `${up ? '+' : ''}${Math.round(change * 100)}%`
+  const text = change === null ? t.deltaNew : `${up ? '+' : ''}${Math.round(change * 100)}%`
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span
@@ -460,6 +462,8 @@ function Delta({ current, previous, comparison }: { current: number; previous: n
 
 function ActivityChart({ bins }: { bins: Bin[] }): JSX.Element {
   const [wrapRef, width] = useElementWidth<HTMLDivElement>()
+  const t = useT().dashboard
+  const fmt = useFormatters()
   const gradientId = useId()
   const [active, setActive] = useState<number | null>(null)
   const height = 232
@@ -495,7 +499,7 @@ function ActivityChart({ bins }: { bins: Bin[] }): JSX.Element {
           width={width}
           height={height}
           role="img"
-          aria-label="Commits ao longo do período. Use as setas para percorrer os pontos."
+          aria-label={t.chartAria}
           tabIndex={0}
           className="block outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-command-blue/50"
           onPointerMove={(e) => pick(e.clientX, e.currentTarget.getBoundingClientRect())}
@@ -514,11 +518,11 @@ function ActivityChart({ bins }: { bins: Bin[] }): JSX.Element {
             </linearGradient>
           </defs>
 
-          {ticks.map((t) => (
-            <g key={t}>
-              <line x1={pad.left} x2={width - pad.right} y1={y(t)} y2={y(t)} stroke={t === 0 ? 'var(--viz-axis)' : 'var(--viz-grid)'} />
-              <text x={pad.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-tertiary-text text-[11px] tabular-nums">
-                {nf.format(t)}
+          {ticks.map((tick) => (
+            <g key={tick}>
+              <line x1={pad.left} x2={width - pad.right} y1={y(tick)} y2={y(tick)} stroke={tick === 0 ? 'var(--viz-axis)' : 'var(--viz-grid)'} />
+              <text x={pad.left - 8} y={y(tick)} dy="0.32em" textAnchor="end" className="fill-tertiary-text text-[11px] tabular-nums">
+                {fmt.number(tick)}
               </text>
             </g>
           ))}
@@ -557,7 +561,7 @@ function ActivityChart({ bins }: { bins: Bin[] }): JSX.Element {
                 textAnchor={x(peakIndex) > width - pad.right - 40 ? 'end' : x(peakIndex) < pad.left + 40 ? 'start' : 'middle'}
                 className="fill-secondary-text text-[11px] font-medium"
               >
-                pico · {nf.format(bins[peakIndex].count)}
+                {t.peak} · {fmt.number(bins[peakIndex].count)}
               </text>
             </g>
           )}
@@ -573,7 +577,7 @@ function ActivityChart({ bins }: { bins: Bin[] }): JSX.Element {
       {active !== null && bins[active] && (
         <Tooltip x={x(active)} y={y(bins[active].count)}>
           <p className="text-body font-semibold tabular-nums text-primary-text">
-            {nf.format(bins[active].count)} {bins[active].count === 1 ? 'commit' : 'commits'}
+            {fmt.number(bins[active].count)} {t.commitCount(bins[active].count)}
           </p>
           <p className="flex items-center gap-1.5 text-tertiary-text">
             <span className="h-0.5 w-3 rounded-full bg-[var(--viz-1)]" aria-hidden />
@@ -582,7 +586,7 @@ function ActivityChart({ bins }: { bins: Bin[] }): JSX.Element {
         </Tooltip>
       )}
       <table className="sr-only">
-        <caption>Commits por período</caption>
+        <caption>{t.commitsByPeriod}</caption>
         <tbody>
           {bins.map((b) => (
             <tr key={b.start}>
@@ -599,6 +603,8 @@ function ActivityChart({ bins }: { bins: Bin[] }): JSX.Element {
 function Heatmap({ grid, max }: { grid: number[][]; max: number }): JSX.Element {
   const [hover, setHover] = useState<{ day: number; hour: number; x: number; y: number } | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const t = useT().dashboard
+  const fmt = useFormatters()
   const level = (count: number): number => (count === 0 || max === 0 ? 0 : Math.min(5, Math.max(1, Math.ceil((count / max) * 5))))
   const fill = (lvl: number): string => (lvl === 0 ? 'var(--color-coal-raised)' : `var(--viz-seq-${lvl})`)
 
@@ -607,7 +613,7 @@ function Heatmap({ grid, max }: { grid: number[][]; max: number }): JSX.Element 
       <div className="grid grid-cols-[28px_repeat(24,minmax(0,1fr))] gap-[3px]" onPointerLeave={() => setHover(null)}>
         {HEATMAP_ROWS.map((day) => (
           <div key={day} className="contents">
-            <span className="flex items-center text-[11px] text-tertiary-text">{WEEKDAYS[day]}</span>
+            <span className="flex items-center text-[11px] text-tertiary-text">{t.weekdays[day]}</span>
             {grid[day].map((count, hour) => (
               <span
                 key={hour}
@@ -632,30 +638,30 @@ function Heatmap({ grid, max }: { grid: number[][]; max: number }): JSX.Element 
       </div>
 
       <div className="mt-3 flex items-center justify-end gap-1.5 text-[11px] text-tertiary-text" aria-hidden>
-        Menos
+        {t.less}
         {[0, 1, 2, 3, 4, 5].map((lvl) => (
           <span key={lvl} className="size-3 rounded-[3px]" style={{ backgroundColor: fill(lvl) }} />
         ))}
-        Mais
+        {t.more}
       </div>
 
       {hover && (
         <Tooltip x={hover.x} y={hover.y}>
           <p className="text-body font-semibold tabular-nums text-primary-text">
-            {nf.format(grid[hover.day][hover.hour])} {grid[hover.day][hover.hour] === 1 ? 'commit' : 'commits'}
+            {fmt.number(grid[hover.day][hover.hour])} {t.commitCount(grid[hover.day][hover.hour])}
           </p>
           <p className="text-tertiary-text">
-            {WEEKDAYS_LONG[hover.day]}, {hover.hour}h–{hover.hour + 1}h
+            {t.weekdaysLong[hover.day]}, {hover.hour}h–{hover.hour + 1}h
           </p>
         </Tooltip>
       )}
 
       <table className="sr-only">
-        <caption>Commits por dia da semana e hora</caption>
+        <caption>{t.commitsByWeekday}</caption>
         <tbody>
           {HEATMAP_ROWS.map((day) => (
             <tr key={day}>
-              <th scope="row">{WEEKDAYS_LONG[day]}</th>
+              <th scope="row">{t.weekdaysLong[day]}</th>
               <td>{grid[day].reduce((a, b) => a + b, 0)} commits</td>
             </tr>
           ))}
@@ -667,13 +673,15 @@ function Heatmap({ grid, max }: { grid: number[][]; max: number }): JSX.Element 
 
 function Contributors({ people, total }: { people: Contributor[]; total: number }): JSX.Element {
   const max = Math.max(1, ...people.map((p) => p.count))
+  const t = useT().dashboard
+  const fmt = useFormatters()
   if (people.length === 0) {
-    return <p className="text-caption text-tertiary-text">Nenhum commit no período.</p>
+    return <p className="text-caption text-tertiary-text">{t.noCommitsInPeriod}</p>
   }
   return (
     <ol className="flex flex-col gap-3.5">
       {people.map((person, i) => (
-        <li key={person.key} className="flex items-center gap-3" title={`${person.name}: ${person.count} commits`}>
+        <li key={person.key} className="flex items-center gap-3" title={t.personCommits(person.name, person.count)}>
           <span
             className="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold shadow-[var(--shadow-raised)]"
             style={{ backgroundColor: `var(--viz-${(i % 8) + 1})`, color: `var(--viz-${(i % 8) + 1}-ink)` }}
@@ -685,7 +693,7 @@ function Contributors({ people, total }: { people: Contributor[]; total: number 
             <div className="flex items-baseline justify-between gap-2">
               <span className="truncate text-body text-primary-text">{person.name}</span>
               <span className="shrink-0 text-caption tabular-nums text-secondary-text">
-                <span className="font-semibold text-primary-text">{nf.format(person.count)}</span> · {percent(person.count / Math.max(1, total))}
+                <span className="font-semibold text-primary-text">{fmt.number(person.count)}</span> · {percent(person.count / Math.max(1, total))}
               </span>
             </div>
             <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-hover-overlay">
@@ -703,7 +711,10 @@ function Contributors({ people, total }: { people: Contributor[]; total: number 
 
 function Languages({ shares, fileCount }: { shares: LanguageShare[]; fileCount: number }): JSX.Element {
   const [hover, setHover] = useState<number | null>(null)
-  if (shares.length === 0) return <p className="text-caption text-tertiary-text">Nenhum arquivo rastreado.</p>
+  const t = useT().dashboard
+  const fmt = useFormatters()
+  const displayName = (name: string): string => (name === OTHER ? t.other : name === IMAGES ? t.images : name)
+  if (shares.length === 0) return <p className="text-caption text-tertiary-text">{t.noTrackedFiles}</p>
   return (
     // `relative` anchors the sr-only summary; without it the absolutely
     // positioned text escapes the scroll container and stretches the window.
@@ -733,16 +744,16 @@ function Languages({ shares, fileCount }: { shares: LanguageShare[]; fileCount: 
           >
             <span className="mt-1 size-2.5 shrink-0 rounded-[3px]" style={{ backgroundColor: s.color }} aria-hidden />
             <span className="min-w-0">
-              <span className="block truncate text-body text-primary-text">{s.name}</span>
+              <span className="block truncate text-body text-primary-text">{displayName(s.name)}</span>
               <span className="text-caption text-tertiary-text">
-                <span className="font-semibold text-secondary-text">{percent(s.share)}</span> · {nf.format(s.files)}{' '}
-                {s.files === 1 ? 'arquivo' : 'arquivos'}
+                <span className="font-semibold text-secondary-text">{percent(s.share)}</span> · {fmt.number(s.files)}{' '}
+                {t.fileCount(s.files)}
               </span>
             </span>
           </li>
         ))}
       </ul>
-      <p className="sr-only">Total de {fileCount} arquivos.</p>
+      <p className="sr-only">{t.totalFiles(fileCount)}</p>
     </div>
   )
 }
@@ -798,6 +809,8 @@ function DashboardView(): JSX.Element {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const requestRef = useRef(0)
+  const t = useT().dashboard
+  const fmt = useFormatters()
 
   const load = useCallback(async () => {
     if (!currentRepoPath) return
@@ -829,11 +842,11 @@ function DashboardView(): JSX.Element {
 
   const now = useMemo(() => Date.now(), [data]) // eslint-disable-line react-hooks/exhaustive-deps
   const stats = useMemo(
-    () => (data ? computeStats(data.commits, period, now, data.commits.length >= LOG_LIMIT) : null),
-    [data, period, now]
+    () => (data ? computeStats(t, data.commits, period, now, data.commits.length >= LOG_LIMIT) : null),
+    [t, data, period, now]
   )
   const languages = useMemo(() => (data ? computeLanguages(data.files) : []), [data])
-  const periodInfo = PERIODS.find((p) => p.id === period) ?? PERIODS[0]
+  const periodInfo = t.period[period]
 
   const pending = status?.entries.length ?? 0
   const repoName = currentRepoPath?.split(/[\\/]/).filter(Boolean).pop() ?? ''
@@ -845,23 +858,23 @@ function DashboardView(): JSX.Element {
           <div className="min-w-0">
             <h1 className="text-headline font-semibold text-primary-text">Dashboard</h1>
             <p className="mt-0.5 truncate text-body text-secondary-text">
-              Como anda o <span className="font-medium text-primary-text">{repoName}</span>
+              {t.howIsRepo} <span className="font-medium text-primary-text">{repoName}</span>
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex rounded-md border border-default-border bg-obsidian-panel p-1 shadow-[var(--shadow-raised)]" role="radiogroup" aria-label="Período">
+            <div className="flex rounded-md border border-default-border bg-obsidian-panel p-1 shadow-[var(--shadow-raised)]" role="radiogroup" aria-label={t.periodAria}>
               {PERIODS.map((p) => (
                 <button
-                  key={p.id}
+                  key={p}
                   type="button"
                   role="radio"
-                  aria-checked={period === p.id}
-                  onClick={() => setPeriod(p.id)}
+                  aria-checked={period === p}
+                  onClick={() => setPeriod(p)}
                   className={`rounded-sm px-3 py-1 text-caption font-medium transition-colors duration-150 ${
-                    period === p.id ? 'bg-command-blue-soft text-command-blue' : 'text-secondary-text hover:bg-hover-overlay hover:text-primary-text'
+                    period === p ? 'bg-command-blue-soft text-command-blue' : 'text-secondary-text hover:bg-hover-overlay hover:text-primary-text'
                   }`}
                 >
-                  {p.label}
+                  {t.period[p].label}
                 </button>
               ))}
             </div>
@@ -870,8 +883,8 @@ function DashboardView(): JSX.Element {
               onClick={() => void load()}
               disabled={loading}
               className="btn-secondary size-[34px] px-0"
-              aria-label="Atualizar dados"
-              title="Atualizar dados"
+              aria-label={t.refresh}
+              title={t.refresh}
             >
               <RefreshCw size={14} className={loading ? 'animate-spin' : undefined} aria-hidden />
             </button>
@@ -887,7 +900,7 @@ function DashboardView(): JSX.Element {
 
         {!stats && !error && (
           <div className="flex h-80 items-center justify-center gap-2 text-body text-secondary-text">
-            <Loader2 size={16} className="animate-spin" aria-hidden /> Lendo o histórico…
+            <Loader2 size={16} className="animate-spin" aria-hidden /> {t.readingHistory}
           </div>
         )}
 
@@ -896,8 +909,8 @@ function DashboardView(): JSX.Element {
             <span className="empty-medallion rise-in">
               <CalendarDays size={20} aria-hidden />
             </span>
-            <p className="text-title font-semibold text-primary-text">Ainda não há commits</p>
-            <p className="max-w-sm text-body text-secondary-text">Faça o primeiro commit e a atividade do repositório aparece aqui.</p>
+            <p className="text-title font-semibold text-primary-text">{t.noCommitsYet}</p>
+            <p className="max-w-sm text-body text-secondary-text">{t.noCommitsYetHint}</p>
           </div>
         )}
 
@@ -907,34 +920,34 @@ function DashboardView(): JSX.Element {
             <section className="rise-in grid min-w-0 grid-cols-1 overflow-hidden rounded-lg border border-default-border bg-obsidian-panel shadow-[var(--shadow-raised)] @[820px]:grid-cols-[260px_minmax(0,1fr)]">
               <div className="flex flex-col gap-4 border-b border-default-border p-6 @[820px]:border-b-0 @[820px]:border-r">
                 <div>
-                  <p className="text-body font-semibold text-primary-text">Commits</p>
-                  <p className="text-caption text-tertiary-text">{period === 'all' ? 'Todo o histórico' : `Últimos ${periodInfo.label}`}</p>
+                  <p className="text-body font-semibold text-primary-text">{t.commits}</p>
+                  <p className="text-caption text-tertiary-text">{period === 'all' ? t.allHistory : t.lastPeriod(periodInfo.label)}</p>
                 </div>
-                <p className="text-[56px] font-semibold leading-none tracking-[-0.03em] text-primary-text">{nf.format(stats.total)}</p>
+                <p className="text-[56px] font-semibold leading-none tracking-[-0.03em] text-primary-text">{fmt.number(stats.total)}</p>
                 <Delta current={stats.total} previous={stats.previous} comparison={periodInfo.comparison} />
                 <dl className="mt-auto flex flex-col gap-2.5 border-t border-default-border pt-4 text-caption">
                   <div className="flex justify-between gap-3">
-                    <dt className="text-tertiary-text">Média por semana</dt>
-                    <dd className="font-medium text-primary-text">{nf1.format(stats.perWeek)}</dd>
+                    <dt className="text-tertiary-text">{t.perWeek}</dt>
+                    <dd className="font-medium text-primary-text">{fmt.decimal(stats.perWeek)}</dd>
                   </div>
                   <div className="flex justify-between gap-3">
-                    <dt className="text-tertiary-text">Maior sequência</dt>
+                    <dt className="text-tertiary-text">{t.longestStreak}</dt>
                     <dd className="font-medium text-primary-text">
-                      {stats.longestStreak} {stats.longestStreak === 1 ? 'dia' : 'dias'}
+                      {stats.longestStreak} {t.days(stats.longestStreak)}
                     </dd>
                   </div>
                   {stats.lastCommit && (
                     <div className="flex justify-between gap-3">
-                      <dt className="text-tertiary-text">Último commit</dt>
+                      <dt className="text-tertiary-text">{t.lastCommit}</dt>
                       <dd className="truncate font-medium text-primary-text" title={stats.lastCommit.summary}>
-                        {relativeTime(Date.parse(stats.lastCommit.date), now)}
+                        {relativeTime(t, Date.parse(stats.lastCommit.date), now)}
                       </dd>
                     </div>
                   )}
                 </dl>
               </div>
               <div className="min-w-0 p-6 pb-4">
-                <p className="mb-2 text-body font-semibold text-primary-text">Atividade</p>
+                <p className="mb-2 text-body font-semibold text-primary-text">{t.activity}</p>
                 <ActivityChart key={period} bins={stats.bins} />
               </div>
             </section>
@@ -943,48 +956,48 @@ function DashboardView(): JSX.Element {
             <section className="rise-in grid grid-cols-2 divide-default-border overflow-hidden rounded-lg border border-default-border bg-obsidian-panel shadow-[var(--shadow-raised)] [animation-delay:60ms] @[720px]:grid-cols-4 @[720px]:divide-x">
               <StatItem
                 icon={Users}
-                label="Contribuidores"
-                value={nf.format(stats.contributorCount)}
-                detail={period === 'all' ? 'em todo o histórico' : `nos últimos ${periodInfo.label}`}
+                label={t.contributors}
+                value={fmt.number(stats.contributorCount)}
+                detail={period === 'all' ? t.inAllHistory : t.inLastPeriod(periodInfo.label)}
               />
               <StatItem
                 icon={CalendarDays}
-                label="Dias com commits"
-                value={nf.format(stats.activeDays)}
-                detail={period === 'all' ? 'em todo o histórico' : `nos últimos ${periodInfo.label}`}
+                label={t.activeDays}
+                value={fmt.number(stats.activeDays)}
+                detail={period === 'all' ? t.inAllHistory : t.inLastPeriod(periodInfo.label)}
               />
               <StatItem
                 icon={GitBranch}
-                label="Branches locais"
-                value={nf.format(branches.length)}
-                detail={status?.branch ? `atual: ${status.branch}` : undefined}
+                label={t.localBranches}
+                value={fmt.number(branches.length)}
+                detail={status?.branch ? t.currentBranch(status.branch) : undefined}
               />
               <StatItem
                 icon={pending > 0 ? FilePen : Archive}
-                label="Alterações pendentes"
-                value={nf.format(pending)}
-                detail={`${nf.format(stashCount)} ${stashCount === 1 ? 'stash guardado' : 'stashes guardados'}`}
+                label={t.pendingChanges}
+                value={fmt.number(pending)}
+                detail={`${fmt.number(stashCount)} ${t.stashesSaved(stashCount)}`}
               />
             </section>
 
             <div className="grid grid-cols-1 gap-5 @[900px]:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
-              <Card title="Quando os commits acontecem" subtitle="Por dia da semana e hora (horário local)" className="[animation-delay:120ms]">
+              <Card title={t.whenCommits} subtitle={t.whenCommitsHint} className="[animation-delay:120ms]">
                 <Heatmap key={period} grid={stats.heatmap} max={stats.heatmapMax} />
               </Card>
-              <Card title="Quem mais contribui" subtitle={`${nf.format(stats.total)} commits no período`} className="[animation-delay:160ms]">
+              <Card title={t.topContributors} subtitle={t.commitsInPeriod(fmt.number(stats.total))} className="[animation-delay:160ms]">
                 <Contributors key={period} people={stats.contributors} total={stats.total} />
               </Card>
             </div>
 
-            <Card title="Linguagens" subtitle={`${nf.format(data.files.length)} arquivos no repositório, por extensão`} className="@container [animation-delay:200ms]">
+            <Card title={t.languages} subtitle={t.languagesHint(fmt.number(data.files.length))} className="@container [animation-delay:200ms]">
               <Languages shares={languages} fileCount={data.files.length} />
             </Card>
 
             <p className="flex items-center justify-center gap-1.5 pb-2 text-caption text-tertiary-text">
               <FileCode2 size={12} aria-hidden />
               {data.commits.length >= LOG_LIMIT
-                ? `Baseado nos ${nf.format(LOG_LIMIT)} commits mais recentes do branch atual.`
-                : 'Baseado no histórico do branch atual.'}
+                ? t.basedOnRecent(fmt.number(LOG_LIMIT))
+                : t.basedOnBranch}
             </p>
           </div>
         )}

@@ -10,6 +10,7 @@ import {
 } from '../lib/github'
 import { useRepoStore } from './repoStore'
 import { useGithubAuthStore } from './githubAuthStore'
+import { getT } from '../lib/i18n'
 
 interface PullRequestDetail {
   pr: PullRequest
@@ -71,9 +72,8 @@ function describeError(err: unknown): string {
 async function ensurePullRequestStillOpen(remote: RemoteInfo, pr: PullRequest): Promise<PullRequest> {
   const fresh = await window.api.github.getPullRequest(remote.host, remote.owner, remote.repo, pr.number)
   if (fresh.state !== 'open') {
-    throw new Error(
-      `A pull request #${fresh.number} não está mais aberta (estado atual: ${fresh.state === 'closed' ? 'fechada' : fresh.state}).`
-    )
+    const t = getT().stores
+    throw new Error(t.prNoLongerOpen(fresh.number, fresh.state === 'closed' ? t.prStateClosed : fresh.state))
   }
   return fresh
 }
@@ -394,7 +394,7 @@ export const usePullRequestStore = create<PullRequestStoreState>((set, get) => (
       await get().refreshPullRequests()
       set({
         detail: null,
-        successMessage: `Pull request #${number} "${prTitle}" mesclado com sucesso.`,
+        successMessage: getT().stores.prMerged(number, prTitle),
         lastMerged: { number, headRef: detail.pr.headRef, baseRef: detail.pr.baseRef }
       })
     } catch (err) {
@@ -420,8 +420,8 @@ export const usePullRequestStore = create<PullRequestStoreState>((set, get) => (
         detail: null,
         successMessage:
           state === 'closed'
-            ? `Pull request #${detail.pr.number} "${detail.pr.title}" fechada.`
-            : `Pull request #${detail.pr.number} "${detail.pr.title}" reaberta.`
+            ? getT().stores.prClosed(detail.pr.number, detail.pr.title)
+            : getT().stores.prReopened(detail.pr.number, detail.pr.title)
       })
     } catch (err) {
       await reportActionFailure(get, set, detail.pr, err)

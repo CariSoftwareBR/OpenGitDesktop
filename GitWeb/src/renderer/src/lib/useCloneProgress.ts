@@ -1,17 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ClonePhase, CloneProgress } from '../../../shared/git'
-
-const PHASE_LABEL: Record<ClonePhase, string> = {
-  counting: 'Contando objetos',
-  compressing: 'Comprimindo objetos',
-  receiving: 'Recebendo objetos',
-  resolving: 'Resolvendo deltas',
-  checkingOut: 'Atualizando arquivos'
-}
-
-export function clonePhaseLabel(phase: ClonePhase): string {
-  return PHASE_LABEL[phase]
-}
+import type { CloneProgress } from '../../../shared/git'
 
 interface CloneProgressState {
   progress: CloneProgress | null

@@ -1,6 +1,7 @@
 import type { ResolvedAiConfig, SamplingParams } from '../shared/ai'
 import type { ChatMessage, ChatRequestOutcome, ChatResponse, ToolCallRequest, ToolDefinition } from '../shared/aiChat'
 import { httpFetch } from './httpFetch'
+import { tMain } from './i18n'
 
 // Carries the HTTP status code so callers can tell "provider doesn't support
 // this feature" (400/404/422/501 — worth falling back for) apart from any
@@ -64,7 +65,7 @@ function defaultBaseUrl(settings: ResolvedAiConfig): string {
     case 'claude':
       return 'https://api.anthropic.com/v1'
     case 'local':
-      throw new Error('Configure a URL base para o provedor local nas configurações de IA.')
+      throw new Error(tMain().ai.localBaseUrlRequired)
   }
 }
 
@@ -320,7 +321,7 @@ export async function sendToolAwareChatRequest(
     return { ok: true, response }
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
-      return { ok: false, errorMessage: 'Requisição cancelada.' }
+      return { ok: false, errorMessage: tMain().network.cancelled }
     }
     return {
       ok: false,
@@ -337,7 +338,7 @@ export async function listModels(settings: ResolvedAiConfig, apiKey: string): Pr
 
   const baseUrl = defaultBaseUrl(settings)
   const response = await httpFetch(`${baseUrl}/models`, { headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {} })
-  if (!response.ok) throw new Error(`Não foi possível listar modelos (HTTP ${response.status}).`)
+  if (!response.ok) throw new Error(tMain().ai.listModelsFailed(response.status))
   const json = await response.json()
   const list: { id: string }[] = json.data ?? json.models ?? []
   return list.map((m) => m.id).sort()

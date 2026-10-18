@@ -10,6 +10,8 @@ import DiffViewer from '../components/DiffViewer'
 import ConfirmDialog, { PromptDialog } from '../components/ConfirmDialog'
 import { sanitizeBranchInput, validateBranchName } from '../lib/branchName'
 import Pagination from '../components/Pagination'
+import { useFormatters, useLocale, useT } from '../lib/i18n'
+import type { Formatters } from '../../../shared/i18n'
 
 const MIN_FILES_WIDTH = 180
 const MAX_FILES_WIDTH = 640
@@ -17,9 +19,9 @@ const DEFAULT_FILES_WIDTH = 260
 const COMMIT_ROW_ESTIMATE = 58
 const HISTORY_PAGE_SIZE = 10
 
-function formatDate(iso: string): string {
+function formatDate(fmt: Formatters, iso: string): string {
   try {
-    return new Date(iso).toLocaleString('pt-BR')
+    return fmt.dateTime(iso)
   } catch {
     return iso
   }
@@ -34,6 +36,8 @@ function CommitList({
 }): JSX.Element {
   const selectedCommit = useRepoStore((s) => s.selectedCommit)
   const parentRef = useRef<HTMLDivElement>(null)
+  const t = useT().history
+  const fmt = useFormatters()
 
   const virtualizer = useVirtualizer({
     count: commits.length,
@@ -49,7 +53,7 @@ function CommitList({
   if (commits.length === 0) {
     return (
       <div className="min-h-0 flex-1 px-3 py-4 text-center text-caption text-tertiary-text">
-        Nenhum commit encontrado.
+        {t.noCommits}
       </div>
     )
   }
@@ -74,7 +78,7 @@ function CommitList({
               >
                 <div className="whitespace-normal text-body font-medium text-primary-text [overflow-wrap:anywhere]">{commit.summary}</div>
                 <div className="whitespace-normal text-caption text-tertiary-text [overflow-wrap:anywhere]">
-                  {commit.authorName} · {formatDate(commit.date)} · {commit.shortHash}
+                  {commit.authorName} · {formatDate(fmt, commit.date)} · {commit.shortHash}
                 </div>
               </button>
             </li>
@@ -96,6 +100,8 @@ function HistoryView(): JSX.Element {
   const setLogPath = useRepoStore((s) => s.setLogPath)
   const narrow = useMediaQuery(NARROW_LAYOUT_QUERY)
   const [query, setQuery] = useState('')
+  const t = useT().history
+  const fmt = useFormatters()
 
   const selectedCommitInfo = selectedCommit ? log.find((c) => c.hash === selectedCommit.hash) : undefined
 
@@ -106,7 +112,7 @@ function HistoryView(): JSX.Element {
   const clearChat = useAiStore((s) => s.clearChat)
   const aiBusy = useAiStore((s) => s.isBusy)
   const aiReady = isAiConfigured(aiSettings, aiApiKey)
-  const aiNotConfigured = aiNotConfiguredMessage(aiSettings?.language ?? 'pt-BR')
+  const aiNotConfigured = aiNotConfiguredMessage(useLocale())
   const ui = useAiUi()
   const branches = useRepoStore((s) => s.branches)
   const createBranch = useRepoStore((s) => s.createBranch)
@@ -200,8 +206,8 @@ function HistoryView(): JSX.Element {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar mensagem, autor ou hash"
-          aria-label="Buscar no histórico"
+          placeholder={t.searchPlaceholder}
+          aria-label={t.search}
           className="field h-[34px] py-0"
         />
         {logPath && (
@@ -228,9 +234,9 @@ function HistoryView(): JSX.Element {
           type="button"
           onClick={() => clearSelectedCommit()}
           className="flex h-10 shrink-0 items-center gap-2 border-b border-default-border px-3 text-body text-secondary-text hover:bg-hover-overlay hover:text-primary-text"
-          aria-label="Voltar para a lista de commits"
+          aria-label={t.backToCommits}
         >
-          <ArrowLeft size={16} aria-hidden /> Commits
+          <ArrowLeft size={16} aria-hidden /> {t.commits}
         </button>
       )}
       <div className="max-h-[40%] shrink-0 overflow-y-auto border-b border-default-border p-4">
@@ -258,26 +264,26 @@ function HistoryView(): JSX.Element {
           </button>
         </div>
         <p className="mt-1 text-caption text-tertiary-text">
-          {selectedCommitInfo.authorName} · {formatDate(selectedCommitInfo.date)} · {selectedCommitInfo.shortHash}
+          {selectedCommitInfo.authorName} · {formatDate(fmt, selectedCommitInfo.date)} · {selectedCommitInfo.shortHash}
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <button
             type="button"
             className="btn-ghost h-7 gap-1.5 px-2 text-caption"
             onClick={() => void copyHash(selectedCommitInfo.hash)}
-            title="Copiar o hash completo do commit"
+            title={t.copyHashTitle}
           >
             {copiedHash === selectedCommitInfo.hash ? <Check size={13} aria-hidden /> : <Copy size={13} aria-hidden />}
-            {copiedHash === selectedCommitInfo.hash ? 'Copiado' : 'Copiar hash'}
+            {copiedHash === selectedCommitInfo.hash ? t.copied : t.copyHash}
           </button>
           <button
             type="button"
             className="btn-ghost h-7 gap-1.5 px-2 text-caption"
             disabled={repoBusy}
             onClick={() => setBranchFrom({ hash: selectedCommitInfo.hash, shortHash: selectedCommitInfo.shortHash })}
-            title="Criar uma branch que começa neste commit"
+            title={t.branchHereTitle}
           >
-            <GitBranchPlus size={13} aria-hidden /> Nova branch daqui
+            <GitBranchPlus size={13} aria-hidden /> {t.branchHere}
           </button>
           <button
             type="button"
@@ -290,9 +296,9 @@ function HistoryView(): JSX.Element {
                 summary: selectedCommitInfo.summary
               })
             }
-            title="Criar um novo commit que desfaz as mudanças deste"
+            title={t.revertTitle}
           >
-            <Undo2 size={13} aria-hidden /> Reverter commit
+            <Undo2 size={13} aria-hidden /> {t.revert}
           </button>
         </div>
         {selectedCommitInfo.body && (
@@ -305,11 +311,9 @@ function HistoryView(): JSX.Element {
           className={`shrink-0 overflow-y-auto p-3 ${narrow ? 'max-h-40 border-b border-default-border' : ''}`}
           style={narrow ? undefined : { width: filesWidth }}
         >
-          <h3 className="mb-2 text-label uppercase tracking-wide text-tertiary-text">Arquivos alterados</h3>
+          <h3 className="mb-2 text-label uppercase tracking-wide text-tertiary-text">{t.changedFiles}</h3>
           {selectedCommit.files.length === 0 && (
-            <p className="px-1 text-caption text-tertiary-text">
-              Nenhum arquivo alterado em relação ao commit anterior (comum em merges que mantiveram a versão da branch).
-            </p>
+            <p className="px-1 text-caption text-tertiary-text">{t.noChangedFiles}</p>
           )}
           <ul className="flex flex-col gap-0.5">
             {selectedCommit.files.map((file) => (
@@ -325,8 +329,8 @@ function HistoryView(): JSX.Element {
                 </button>
                 <button
                   type="button"
-                  title={`Histórico de ${file.path}`}
-                  aria-label={`Ver histórico só de ${file.path}`}
+                  title={t.fileHistoryTitle(file.path)}
+                  aria-label={t.fileHistoryAria(file.path)}
                   onClick={() => void setLogPath(file.path)}
                   className="shrink-0 rounded-sm p-1.5 text-tertiary-text hover:bg-hover-overlay hover:text-primary-text"
                 >
@@ -341,7 +345,7 @@ function HistoryView(): JSX.Element {
           <div
             role="separator"
             aria-orientation="vertical"
-            aria-label="Redimensionar lista de arquivos"
+            aria-label={t.resizeFiles}
             aria-valuemin={MIN_FILES_WIDTH}
             aria-valuemax={MAX_FILES_WIDTH}
             aria-valuenow={filesWidth}
@@ -371,11 +375,11 @@ function HistoryView(): JSX.Element {
     <>
     <PromptDialog
         open={branchFrom !== null}
-        title="Nova branch a partir deste commit"
-        message={branchFrom ? `A branch começa em ${branchFrom.shortHash} e vira a branch atual.` : undefined}
-        label="Nome da branch"
+        title={t.branchFromTitle}
+        message={branchFrom ? t.branchFromMessage(branchFrom.shortHash) : undefined}
+        label={t.branchName}
         placeholder="feature/…"
-        confirmLabel="Criar branch"
+        confirmLabel={t.createBranch}
         transform={sanitizeBranchInput}
         validate={(name) => validateBranchName(name, branches.map((b) => b.name))}
         onCancel={() => setBranchFrom(null)}
@@ -387,13 +391,9 @@ function HistoryView(): JSX.Element {
       />
       <ConfirmDialog
         open={revertTarget !== null}
-        title="Reverter commit?"
-        message={
-          revertTarget
-            ? `Cria um novo commit que desfaz "${revertTarget.summary}" (${revertTarget.shortHash}). O histórico não é reescrito, então é seguro mesmo que ele já esteja no remoto.`
-            : ''
-        }
-        confirmLabel="Reverter"
+        title={t.revertDialogTitle}
+        message={revertTarget ? t.revertDialogMessage(revertTarget.summary, revertTarget.shortHash) : ''}
+        confirmLabel={t.revertConfirm}
         onCancel={() => setRevertTarget(null)}
         onConfirm={() => {
           const target = revertTarget
@@ -403,10 +403,10 @@ function HistoryView(): JSX.Element {
       />
       <ConfirmDialog
       open={pendingExplore !== null}
-      title="Parar o trabalho atual?"
-      message="Já há uma análise em andamento. Parar e explorar este commit, ou deixar a atual terminar?"
-      confirmLabel="Parar e começar"
-      cancelLabel="Deixar terminar"
+      title={t.stopWorkTitle}
+      message={t.stopWorkMessage}
+      confirmLabel={t.stopAndStart}
+      cancelLabel={t.letFinish}
       onCancel={() => setPendingExplore(null)}
       onConfirm={() => {
         const commit = pendingExplore
@@ -420,7 +420,7 @@ function HistoryView(): JSX.Element {
   if (narrow) {
     return (
       <div className="flex h-full">
-        <h1 className="sr-only">Histórico</h1>
+        <h1 className="sr-only">{t.title}</h1>
         {selectedCommit ? detail : commitList}
         {exploreDialog}
       </div>
@@ -429,14 +429,14 @@ function HistoryView(): JSX.Element {
 
   return (
     <div className="flex h-full">
-      <h1 className="sr-only">Histórico</h1>
+      <h1 className="sr-only">{t.title}</h1>
       {commitList}
       {detail ?? (
         <div className="flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-3 text-body text-secondary-text">
           <span className="empty-medallion rise-in">
             <GitCommitHorizontal size={20} aria-hidden />
           </span>
-          Selecione um commit.
+          {t.selectCommit}
         </div>
       )}
       {exploreDialog}

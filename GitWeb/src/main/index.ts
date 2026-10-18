@@ -3,6 +3,8 @@ import { join } from 'path'
 import { registerIpcHandlers } from './ipc'
 import { initAutoUpdater } from './updater'
 import { isAppOrigin, RENDERER_INDEX } from './security'
+import { getSettings, migrateLegacyAiLanguage } from './settings'
+import { applyLanguagePreference } from './language'
 
 // Resolved at runtime from __dirname, so it has to exist both unpackaged and
 // inside the asar — electron-builder.yml ships build/icon.png for that reason.
@@ -65,8 +67,16 @@ function createWindow(): void {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   if (process.platform === 'win32') app.setAppUserModelId('com.gitweb.app')
+
+  // Before any IPC handler or the updater can produce a message.
+  try {
+    await migrateLegacyAiLanguage()
+    applyLanguagePreference((await getSettings()).language)
+  } catch (err) {
+    console.error('Failed to load the language preference:', err)
+  }
 
   // The preload runs on whatever page a webContents ends up showing, so a
   // top-level navigation to a remote origin would hand `window.api` — the whole

@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
 import { AlertCircle } from 'lucide-react'
+import { getT } from '../lib/i18n'
 
 interface State {
   error: Error | null
@@ -25,22 +26,22 @@ class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   render(): ReactNode {
     const { error } = this.state
     if (!error) return this.props.children
+    // A class component can't use the hook; the crash screen is static anyway.
+    const t = getT().ui
     return (
       <div className="flex h-screen items-center justify-center bg-midnight-base p-6">
         <div role="alert" className="w-full max-w-lg rounded-lg border border-default-border bg-obsidian-panel p-5 shadow-floating">
           <h1 className="flex items-center gap-2 text-title font-semibold text-primary-text">
             <AlertCircle size={18} className="shrink-0 text-danger-red" aria-hidden />
-            Algo deu errado na interface
+            {t.crashTitle}
           </h1>
-          <p className="mt-2 text-body text-secondary-text">
-            Seus repositórios e configurações não foram afetados. Recarregue a interface para continuar.
-          </p>
+          <p className="mt-2 text-body text-secondary-text">{t.crashMessage}</p>
           <pre className="mt-3 max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-coal-raised p-3 font-mono text-caption text-danger-red">
             {error.message}
           </pre>
           <div className="mt-5 flex justify-end">
             <button type="button" className="btn-primary" onClick={() => window.location.reload()}>
-              Recarregar interface
+              {t.reloadUi}
             </button>
           </div>
         </div>

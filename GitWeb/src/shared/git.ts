@@ -1,3 +1,5 @@
+import { allTranslations } from './i18n'
+
 export interface GitResult {
   stdout: string
   stderr: string
@@ -207,6 +209,8 @@ export function sameRepoStatus(a: RepoStatus | null, b: RepoStatus | null): bool
 
 // Thrown by main's push when the remote is "ahead" only because the user
 // rewrote already-pushed commits locally (undo last commit / amend). The
-// renderer recognises it by this exact text and offers a force push instead.
-export const HISTORY_REWRITTEN_MESSAGE =
-  'Você reescreveu commits que já estavam no remoto (desfazer ou alterar o último commit). Para publicar, é preciso forçar o push — ele substitui no remoto os commits que você reescreveu.'
+// renderer recognises it by its text (in any app language, since the main
+// process may have thrown it before a language switch) and offers a force push.
+export function isHistoryRewrittenMessage(message: string): boolean {
+  return allTranslations((m) => m.main.git.historyRewritten).some((text) => message.includes(text))
+}

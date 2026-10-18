@@ -30,6 +30,7 @@ import {
   reasoningInstruction,
   shouldIncludePrSkills,
   selectScmSkills,
+  type AiLanguage,
   type ScmSkillId,
   userRequestLabel
 } from '../../../shared/aiPrompts'
@@ -56,12 +57,18 @@ import MERGE_BRANCH_SKILL_EN from '../lib/ai/skills/en/merge-branch.md?raw'
 import CODEOWNERS_SKILL_EN from '../lib/ai/skills/en/codeowners.md?raw'
 import REPOSITORY_RISK_SKILL_EN from '../lib/ai/skills/en/repository-risk.md?raw'
 import UNWANTED_FILE_SKILL_EN from '../lib/ai/skills/en/unwanted-file.md?raw'
+import GIT_WORKFLOW_SKILL_ES from '../lib/ai/skills/es/git-workflow.md?raw'
+import MERGE_BRANCH_SKILL_ES from '../lib/ai/skills/es/merge-branch.md?raw'
+import CODEOWNERS_SKILL_ES from '../lib/ai/skills/es/codeowners.md?raw'
+import REPOSITORY_RISK_SKILL_ES from '../lib/ai/skills/es/repository-risk.md?raw'
+import UNWANTED_FILE_SKILL_ES from '../lib/ai/skills/es/unwanted-file.md?raw'
 import { investigateCommitWithWorkers } from '../lib/ai/commitInvestigation'
 import type { InvestigationFinding, InvestigationStep } from '../lib/ai/commitInvestigation'
 import { proposeFileFix } from '../lib/ai/proposeFix'
 import { formatAiError } from '../lib/ai/errors'
+import { getLocale, getT } from '../lib/i18n'
 
-const SCM_SKILLS: Record<AiSettings['language'], Record<ScmSkillId, string>> = {
+const SCM_SKILLS: Record<AiLanguage, Record<ScmSkillId, string>> = {
   'pt-BR': {
     'git-workflow': GIT_WORKFLOW_SKILL_PT,
     'merge-branch': MERGE_BRANCH_SKILL_PT,
@@ -75,6 +82,13 @@ const SCM_SKILLS: Record<AiSettings['language'], Record<ScmSkillId, string>> = {
     codeowners: CODEOWNERS_SKILL_EN,
     'repository-risk': REPOSITORY_RISK_SKILL_EN,
     'unwanted-file': UNWANTED_FILE_SKILL_EN
+  },
+  es: {
+    'git-workflow': GIT_WORKFLOW_SKILL_ES,
+    'merge-branch': MERGE_BRANCH_SKILL_ES,
+    codeowners: CODEOWNERS_SKILL_ES,
+    'repository-risk': REPOSITORY_RISK_SKILL_ES,
+    'unwanted-file': UNWANTED_FILE_SKILL_ES
   }
 }
 
@@ -165,7 +179,7 @@ export async function getActiveAiConfig(): Promise<{ settings: AiSettings; apiKe
     ;({ settings, apiKey } = useAiStore.getState())
   }
   if (!settings || !isAiConfigured(settings, apiKey)) {
-    throw new Error(aiNotConfiguredMessage(settings?.language ?? 'pt-BR'))
+    throw new Error(aiNotConfiguredMessage(getLocale()))
   }
   return { settings, apiKey, config: resolveActiveConfig(settings) }
 }
@@ -185,7 +199,7 @@ function configKey(config: ResolvedAiConfig): string {
   return `${config.provider}|${config.apiBaseUrl}|${config.model}`
 }
 
-function buildRepoContext(language: AiSettings['language']): string {
+function buildRepoContext(language: AiLanguage): string {
   const repo = useRepoStore.getState()
   const branch = repo.branches.find((b) => b.isCurrent)?.name ?? repo.status?.branch ?? '?'
   const statusLines = (repo.status?.entries ?? []).map((e) => `${e.index}${e.worktree} ${e.path}`).join('\n')
@@ -208,7 +222,7 @@ function buildRepoContext(language: AiSettings['language']): string {
 // Recomputed every turn from the whole conversation (the error may be many
 // messages back) so the facts follow the repo as each tool runs. Best effort:
 // a failed lookup only means the model gets the skill without the facts.
-async function unwantedFileFacts(messages: ChatUiMessage[], language: AiSettings['language']): Promise<string> {
+async function unwantedFileFacts(messages: ChatUiMessage[], language: AiLanguage): Promise<string> {
   const repoPath = useRepoStore.getState().currentRepoPath
   if (!repoPath) return ''
   const userText = messages
@@ -358,9 +372,9 @@ export const useAiStore = create<AiState>((set, get) => ({
     set({ isBusy: true, error: null, testResult: null })
     try {
       const response = await sendChatRequest(resolveActiveConfig(settings), apiKey, [
-        { role: 'user', content: 'Responda apenas "ok".' }
+        { role: 'user', content: getT().stores.aiPing }
       ])
-      set({ testResult: response.content || 'Conexão OK.' })
+      set({ testResult: response.content || getT().stores.connectionOk })
     } catch (err) {
       set({ error: err instanceof Error ? err.message : String(err), testResult: null })
     } finally {
@@ -385,16 +399,16 @@ export const useAiStore = create<AiState>((set, get) => ({
   explainBugDescription: async (description: string) => {
     const { settings, apiKey } = get()
     if (!settings || !isAiConfigured(settings, apiKey)) {
-    throw new Error(aiNotConfiguredMessage(settings?.language ?? 'pt-BR'))
+    throw new Error(aiNotConfiguredMessage(getLocale()))
   }
     const response = await sendChatRequest(resolveActiveConfig(settings), apiKey, [
       {
         role: 'system',
-        content: explainBugDescriptionPrompt(settings.language)
+        content: explainBugDescriptionPrompt(getLocale())
       },
       { role: 'user', content: description }
     ])
-    return response.content.trim() || explainBugFallback(settings.language)
+    return response.content.trim() || explainBugFallback(getLocale())
   },
 
   explainDiff: async (path: string, diff: string) => {
@@ -420,7 +434,7 @@ export const useAiStore = create<AiState>((set, get) => ({
         [
           {
             role: 'system',
-            content: explainDiffPrompt(settings.language)
+            content: explainDiffPrompt(getLocale())
           },
           {
             role: 'user',
@@ -433,15 +447,15 @@ export const useAiStore = create<AiState>((set, get) => ({
       if (activeRequestId === requestId) activeRequestId = null
       if (turn !== activeTurn) return
 
-      const truncationNote = wasTruncated ? diffTruncationNote(settings.language) : ''
-      const content = response.content.trim() || explainDiffFallback(settings.language)
+      const truncationNote = wasTruncated ? diffTruncationNote(getLocale()) : ''
+      const content = response.content.trim() || explainDiffFallback(getLocale())
       set((state) => ({
         messages: [
           ...state.messages,
           {
             id: newId(),
             role: 'assistant',
-            content: `${diffExplanationHeader(settings.language, path)}${content}${truncationNote}`
+            content: `${diffExplanationHeader(getLocale(), path)}${content}${truncationNote}`
           }
         ]
       }))
@@ -465,7 +479,7 @@ export const useAiStore = create<AiState>((set, get) => ({
       id: newId(),
       role: 'user',
       content: errorText.trim(),
-      modelInstruction: explainBannerErrorInstruction(settings.language)
+      modelInstruction: explainBannerErrorInstruction(getLocale())
     }
     set({ panelOpen: true, messages: [...messages, userMessage], isBusy: true, phase: 'thinking', error: null })
 
@@ -496,8 +510,8 @@ export const useAiStore = create<AiState>((set, get) => ({
     const userMessage: ChatUiMessage = {
       id: newId(),
       role: 'user',
-      content: askAsTeacherUserMessage(settings.language, subject),
-      modelInstruction: askAsTeacherInstruction(settings.language, subject)
+      content: askAsTeacherUserMessage(getLocale(), subject),
+      modelInstruction: askAsTeacherInstruction(getLocale(), subject)
     }
     set({
       panelOpen: true,
@@ -571,7 +585,7 @@ export const useAiStore = create<AiState>((set, get) => ({
           item.id === progressMessageId
             ? {
                 ...item,
-                content: investigationFailedMessage(settings.language, message),
+                content: investigationFailedMessage(getLocale(), message),
                 investigation: item.investigation
                   ? { ...item.investigation, stage: 'completed', active: 0 }
                   : item.investigation
@@ -589,11 +603,11 @@ export const useAiStore = create<AiState>((set, get) => ({
     const repoPath = useRepoStore.getState().currentRepoPath
     const { settings, apiKey } = get()
     if (!repoPath) {
-      set({ error: openRepoBeforeFixMessage(settings?.language ?? 'pt-BR') })
+      set({ error: openRepoBeforeFixMessage(getLocale()) })
       return
     }
     if (!settings || !isAiConfigured(settings, apiKey)) {
-      set({ error: aiNotConfiguredMessage(settings?.language ?? 'pt-BR') })
+      set({ error: aiNotConfiguredMessage(getLocale()) })
       return
     }
     const requestId = nextRequestId()
@@ -608,7 +622,7 @@ export const useAiStore = create<AiState>((set, get) => ({
       const proposed = await proposeFileFix({
         finding,
         fileContent,
-        language: settings.language,
+        language: getLocale(),
         config: resolveActiveConfig(settings),
         apiKey,
         requestId
@@ -631,7 +645,7 @@ export const useAiStore = create<AiState>((set, get) => ({
         pendingFix: null,
         isBusy: false,
         error: missing
-          ? proposeFixMissingFileError(settings.language, finding.path)
+          ? proposeFixMissingFileError(getLocale(), finding.path)
           : formatted
       })
     } finally {
@@ -644,7 +658,7 @@ export const useAiStore = create<AiState>((set, get) => ({
     const repoPath = useRepoStore.getState().currentRepoPath
     const { settings, apiKey } = get()
     if (!pending || pending.status !== 'ready' || !repoPath) return
-    const language = settings?.language ?? 'pt-BR'
+    const language = getLocale()
     set({ pendingFix: { ...pending, status: 'applying' }, isBusy: true, error: null })
     try {
       // The dialog can sit open for a long time; writing the whole file blindly would
@@ -689,7 +703,7 @@ export const useAiStore = create<AiState>((set, get) => ({
   },
 
   cancelToolCall: (messageId: string, callId: string) => {
-    updateToolCall(set, messageId, callId, 'cancelled', 'Ação cancelada pelo usuário.')
+    updateToolCall(set, messageId, callId, 'cancelled', getT().stores.actionCancelled)
     void continueIfAllResolved(get, set, messageId)
   },
 
@@ -821,17 +835,18 @@ async function continueIfAllResolved(
     set({
       isBusy: false,
       phase: 'idle',
-      error: `A IA encadeou ${MAX_TOOL_ROUNDS_PER_REQUEST} rodadas de ferramentas sem concluir. Envie uma nova mensagem para continuar.`
+      error: getT().stores.tooManyToolRounds(MAX_TOOL_ROUNDS_PER_REQUEST)
     })
     return
   }
 
+  const noResult = getT().stores.noResult
   const summary = message.toolCalls
-    .map((c) => `[Tool feedback] ${c.call.name}: ${c.result ?? '(sem resultado)'}`)
+    .map((c) => `[Tool feedback] ${c.call.name}: ${c.result ?? noResult}`)
     .join('\n')
   const toolFeedback: ToolFeedbackEntry[] = message.toolCalls.map((c) => ({
     name: c.call.name,
-    result: c.result ?? '(sem resultado)'
+    result: c.result ?? noResult
   }))
   const followUp: ChatUiMessage = { id: newId(), role: 'user', content: summary, toolFeedback }
   const turn = ++activeTurn
@@ -865,7 +880,7 @@ async function buildUiToolCalls(calls: ToolCallRequest[]): Promise<UiToolCall[]>
   )
 }
 
-function buildApiHistory(messages: ChatUiMessage[], useNative: boolean, language: AiSettings['language']): ChatMessage[] {
+function buildApiHistory(messages: ChatUiMessage[], useNative: boolean, language: AiLanguage): ChatMessage[] {
   const history: ChatMessage[] = []
 
   for (const m of messages) {
@@ -929,16 +944,16 @@ async function requestAssistantTurn(
   // Re-resolved (not just effort flipped) so sampling also switches to the
   // non-thinking set, matching what the settings hint promises for effort off.
   if (reasoningEffortUnsupported.has(key)) config = resolveActiveConfig(activeSettings, 'off')
-  const reasoning = reasoningInstruction(activeSettings.language, chatEffort)
-  const language = languageInstruction(activeSettings.language)
+  const reasoning = reasoningInstruction(getLocale(), chatEffort)
+  const language = languageInstruction(getLocale())
   const includePrSkills = shouldIncludePrSkills(messages)
   const scmSkillIds = selectScmSkills(messages)
-  const scmSkills = scmSkillIds.map((id) => SCM_SKILLS[activeSettings.language][id])
-  const fileFacts = scmSkillIds.includes('unwanted-file') ? await unwantedFileFacts(messages, activeSettings.language) : ''
+  const scmSkills = scmSkillIds.map((id) => SCM_SKILLS[getLocale()][id])
+  const fileFacts = scmSkillIds.includes('unwanted-file') ? await unwantedFileFacts(messages, getLocale()) : ''
 
   function buildSystemContent(useNative: boolean): string {
     return [
-      appSystemPrompt(activeSettings.language),
+      appSystemPrompt(getLocale()),
       language,
       useNative ? TOOL_RULES_SECTION : buildTextualToolsPrompt(TOOL_CATALOG),
       includePrSkills ? CREATE_PULL_REQUEST_SKILL : '',
@@ -947,14 +962,14 @@ async function requestAssistantTurn(
       ...scmSkills,
       fileFacts,
       reasoning,
-      buildRepoContext(activeSettings.language)
+      buildRepoContext(getLocale())
     ]
       .filter(Boolean)
       .join('\n\n')
   }
 
   async function attempt(useNative: boolean): Promise<{ content: string; toolCalls: ToolCallRequest[] } | null> {
-    const history = buildApiHistory(messages, useNative, activeSettings.language)
+    const history = buildApiHistory(messages, useNative, getLocale())
     const fullHistory: ChatMessage[] = [{ role: 'system', content: buildSystemContent(useNative) }, ...history]
     const requestId = nextRequestId()
     activeRequestId = requestId
@@ -996,7 +1011,7 @@ async function requestAssistantTurn(
       return null // signal: caller should retry with the textual fallback
     }
 
-    throw new Error(outcome.errorMessage ?? contactProviderFailedMessage(activeSettings.language))
+    throw new Error(outcome.errorMessage ?? contactProviderFailedMessage(getLocale()))
   }
 
   try {
@@ -1008,7 +1023,7 @@ async function requestAssistantTurn(
     // attempt(false) never returns null (that only happens on the native-tools
     // rejection path, which requires useNative=true) — this satisfies the type
     // checker for what is otherwise an unreachable case.
-    if (result === null) throw new Error(contactProviderFailedMessage(activeSettings.language))
+    if (result === null) throw new Error(contactProviderFailedMessage(getLocale()))
 
     const toolCalls = result.toolCalls.length > 0 ? await buildUiToolCalls(result.toolCalls) : undefined
     if (turn !== activeTurn) return

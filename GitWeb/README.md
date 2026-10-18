@@ -1,5 +1,7 @@
 # GitWeb
 
+**Português** · [English](README.en.md) · [Español](README.es.md)
+
 Cliente Git multiplataforma (Windows, macOS, Linux), inspirado no [GitDesktop](../GitDesktop) — a versão WinUI 3 (só Windows) deste mesmo projeto. Este é um app novo e independente; o `GitDesktop/` continua existindo e sendo mantido em paralelo.
 
 ## Stack
@@ -12,7 +14,7 @@ Cliente Git multiplataforma (Windows, macOS, Linux), inspirado no [GitDesktop](.
 | Build/dev | electron-vite (Vite) |
 | Empacotamento | electron-builder |
 | Git | Git CLI (via `child_process.spawn` no processo principal) |
-| GitHub | REST API (`fetch` direto no renderer) + OAuth Device Flow ou PAT, ambos também usados para autenticar o `git` CLI |
+| GitHub | REST API (no processo principal) + OAuth Device Flow ou PAT, ambos também usados para autenticar o `git` CLI |
 | IA | OpenAI, Claude, OpenRouter, Ollama ou endpoint local compatível com OpenAI |
 | Credenciais | `safeStorage` do Electron (Credential Manager / Keychain / libsecret) |
 
@@ -58,12 +60,13 @@ src/
 ├─ main/          # processo principal (Node) — git, credenciais, diálogos, IPC, settings
 ├─ preload/       # contextBridge — API tipada exposta ao renderer
 ├─ shared/        # tipos compartilhados entre main/preload/renderer
+│  └─ i18n/       # idiomas e dicionários de tradução (pt-BR, en, es)
 └─ renderer/
    └─ src/
       ├─ views/       # Initial, Changes, History, Stashes, PullRequests, AiChat
       ├─ components/  # TopBar, DiffViewer, ConflictResolver
       ├─ store/       # estado global (zustand): repo, pull requests, IA
-      └─ lib/         # github.ts (REST), ai/ (providers, tools, commit message)
+      └─ lib/         # github.ts (REST), ai/ (providers, tools, commit message, skills/)
 ```
 
 ## Funcionalidades
@@ -76,6 +79,7 @@ src/
 - Sync: fetch/pull/push/publicar branch adaptativo conforme o estado ahead/behind/upstream.
 - Pull Requests: login com OAuth Device Flow (GitHub.com) ou PAT (GitHub.com ou Enterprise), listar, criar, ver arquivos/comentários, mesclar, fechar/reabrir.
 - Chat de IA com ferramentas (criar/trocar/mesclar branch, commit, push/pull/fetch, stash, listar/criar PR) com fluxo de aprovação humana antes de cada ação.
+- Interface, mensagens do processo principal e respostas da IA em português (Brasil), inglês ou espanhol — segue o idioma do sistema por padrão e pode ser trocado na hora em Configurações.
 - Temas claro/escuro automáticos (via preferência do sistema) e suporte a alto contraste (Windows High Contrast Mode / `prefers-contrast`).
 
 ## Autenticação GitHub

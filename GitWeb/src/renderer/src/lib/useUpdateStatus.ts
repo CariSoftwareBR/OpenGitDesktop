@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { UpdateStatus } from '../../../shared/updates'
+import type { Messages } from '../../../shared/i18n'
 
 /** Shared by UpdateBadge (InitialView) and TopBar's inline update icon. */
 export function useUpdateStatus(): UpdateStatus {
@@ -13,14 +14,14 @@ export function useUpdateStatus(): UpdateStatus {
   return status
 }
 
-export function updateStatusLabel(status: UpdateStatus): string | null {
+export function updateStatusLabel(t: Messages['about'], status: UpdateStatus): string | null {
   switch (status.state) {
     case 'available':
-      return `Nova versão ${status.version} disponível`
+      return t.badgeAvailable(status.version)
     case 'downloading':
-      return `Baixando atualização… ${Math.max(0, Math.min(100, Math.round(status.percent)))}%`
+      return t.badgeDownloading(Math.max(0, Math.min(100, Math.round(status.percent))))
     case 'downloaded':
-      return `Versão ${status.version} pronta para instalar`
+      return t.badgeReady(status.version)
     default:
       return null
   }

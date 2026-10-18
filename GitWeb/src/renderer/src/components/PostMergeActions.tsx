@@ -3,6 +3,7 @@ import { GitMerge, Loader2, Trash2, X } from 'lucide-react'
 import { usePullRequestStore } from '../store/pullRequestStore'
 import { useRepoStore } from '../store/repoStore'
 import ConfirmDialog from './ConfirmDialog'
+import { useT } from '../lib/i18n'
 
 /**
  * What is left to do once a PR is merged from this screen: the local base is
@@ -17,6 +18,7 @@ function PostMergeActions(): JSX.Element | null {
   const [running, setRunning] = useState<'switch' | 'delete' | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleted, setDeleted] = useState(false)
+  const t = useT().ui
 
   if (!lastMerged) return null
   const { headRef, baseRef, number } = lastMerged
@@ -32,7 +34,7 @@ function PostMergeActions(): JSX.Element | null {
       else await repo.checkoutRemoteBranch(`origin/${baseRef}`)
       if (useRepoStore.getState().error) return
       const result = await window.api.git.pull(path)
-      if (result.exitCode !== 0) useRepoStore.getState().setError(result.stderr.trim() || 'git pull falhou.')
+      if (result.exitCode !== 0) useRepoStore.getState().setError(result.stderr.trim() || t.pullFailed)
       await Promise.all([repo.refreshStatus(), repo.refreshBranches(), repo.refreshLog()])
     } finally {
       setRunning(null)
@@ -71,15 +73,15 @@ function PostMergeActions(): JSX.Element | null {
         <GitMerge size={16} className="mt-0.5 shrink-0 text-success-green" aria-hidden />
         <div className="min-w-0 flex-1">
           <p className="text-body font-medium text-primary-text">
-            PR #{number} mesclada em {baseRef}
+            {t.prMergedInto(number, baseRef)}
           </p>
-          <p className="mt-0.5 text-caption text-secondary-text">Próximos passos sugeridos:</p>
+          <p className="mt-0.5 text-caption text-secondary-text">{t.nextSteps}</p>
         </div>
         <button
           type="button"
           onClick={dismiss}
           className="hit-area rounded-sm p-1 text-tertiary-text transition-colors hover:bg-hover-overlay hover:text-primary-text"
-          aria-label="Dispensar próximos passos"
+          aria-label={t.dismissNextSteps}
         >
           <X size={14} aria-hidden />
         </button>
@@ -92,32 +94,32 @@ function PostMergeActions(): JSX.Element | null {
           disabled={running !== null}
         >
           {running === 'switch' && <Loader2 size={13} className="animate-spin" aria-hidden />}
-          {onBase ? `Atualizar ${baseRef}` : `Ir para ${baseRef} e atualizar`}
+          {onBase ? t.updateBase(baseRef) : t.switchAndUpdate(baseRef)}
         </button>
         <button
           type="button"
           className="btn-ghost justify-center text-danger-red"
           onClick={() => setConfirmDelete(true)}
           disabled={running !== null || deleted || currentBranch === headRef}
-          title={currentBranch === headRef ? `Troque para outra branch antes de excluir "${headRef}".` : undefined}
+          title={currentBranch === headRef ? t.switchBeforeDelete(headRef) : undefined}
         >
           {running === 'delete' ? (
             <Loader2 size={13} className="animate-spin" aria-hidden />
           ) : (
             <Trash2 size={13} aria-hidden />
           )}
-          {deleted ? `"${headRef}" excluída` : `Excluir a branch "${headRef}"`}
+          {deleted ? t.branchDeleted(headRef) : t.deleteBranch(headRef)}
         </button>
         {currentBranch === headRef && !deleted && (
-          <p className="text-caption text-tertiary-text">Para excluir a branch, primeiro vá para {baseRef}.</p>
+          <p className="text-caption text-tertiary-text">{t.goToBaseFirst(baseRef)}</p>
         )}
       </div>
       <ConfirmDialog
         open={confirmDelete}
         danger
-        title="Excluir branch mesclada?"
-        message={`Excluir "${headRef}" no remoto (origin)${hasLocalHead ? ' e localmente' : ''}? O conteúdo dela já está em ${baseRef} pela PR #${number}.`}
-        confirmLabel="Excluir"
+        title={t.deleteMergedTitle}
+        message={t.deleteMergedMessage(headRef, hasLocalHead, baseRef, number)}
+        confirmLabel={t.delete}
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => {
           setConfirmDelete(false)

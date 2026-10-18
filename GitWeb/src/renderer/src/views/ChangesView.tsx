@@ -37,6 +37,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import FileContextMenu, { type FileContextMenuTarget } from '../components/FileContextMenu'
 import { basename } from '../lib/path'
 import { isConflicted, type StatusEntry } from '../../../shared/git'
+import { useLocale, useT } from '../lib/i18n'
 
 type FlatEntry =
   | { kind: 'conflict'; entry: StatusEntry }
@@ -67,13 +68,14 @@ const DEFAULT_COMMIT_PANEL_HEIGHT = 280
 function SectionHint({ text, children, align = 'left' }: { text?: string; children?: ReactNode; align?: 'left' | 'right' }): JSX.Element {
   const [pinned, setPinned] = useState(false)
   const hintId = useId()
+  const t = useT().changes
 
   return (
     <span className="group relative inline-flex shrink-0 items-center">
       <button
         type="button"
         className="hit-area rounded-sm p-0.5 text-tertiary-text transition-colors hover:text-secondary-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-command-blue"
-        aria-label="Mais informações sobre esta seção"
+        aria-label={t.sectionHelp}
         aria-expanded={pinned}
         aria-controls={hintId}
         onClick={(e) => {
@@ -115,6 +117,7 @@ function LastCommitMenu({
   onUndo: () => void
   onAmend: () => void
 }): JSX.Element {
+  const t = useT().changes
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -151,8 +154,8 @@ function LastCommitMenu({
         disabled={disabled}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Ações do último commit"
-        title="Ações do último commit"
+        aria-label={t.lastCommitActions}
+        title={t.lastCommitActions}
         onClick={toggle}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown' && !open) {
@@ -170,7 +173,7 @@ function LastCommitMenu({
           <div
             ref={menuRef}
             role="menu"
-            aria-label="Ações do último commit"
+            aria-label={t.lastCommitActions}
             style={{ top: pos.top, left: pos.left, transform: 'translateY(-100%)' }}
             className={LAST_COMMIT_MENU}
           >
@@ -184,7 +187,7 @@ function LastCommitMenu({
               }}
             >
               <Undo2 size={14} className="shrink-0 text-tertiary-text" aria-hidden />
-              Desfazer último commit
+              {t.undoLastCommit}
             </button>
             <button
               type="button"
@@ -196,7 +199,7 @@ function LastCommitMenu({
               }}
             >
               <Pencil size={14} className="shrink-0 text-tertiary-text" aria-hidden />
-              Alterar último
+              {t.amendLast}
             </button>
           </div>,
           document.body
@@ -221,24 +224,25 @@ function UnstagedSectionHeader({
   onDiscardAll: () => void
 }): JSX.Element {
   const busy = bulkAction !== null
+  const t = useT().changes
   return (
-    <div role="row" aria-label={`Fora do stage, ${count}`} className="mt-2 px-3 py-2">
+    <div role="row" aria-label={t.unstagedRow(count)} className="mt-2 px-3 py-2">
       <div role="gridcell" className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="flex min-w-0 items-center gap-1.5 text-label uppercase tracking-wide text-tertiary-text">
-          Fora do stage <span className="count-badge">{count}</span>
-          <SectionHint text="Arquivos ainda fora do commit. Incluir no stage os prepara; Descartar os remove do disco (irreversível)." />
+          {t.unstaged} <span className="count-badge">{count}</span>
+          <SectionHint text={t.unstagedHint} />
         </span>
         <span className="ml-auto flex shrink-0 items-center gap-2">
           <button
             type="button"
             onClick={onDiscardAll}
             disabled={count === 0 || busy}
-            title="Descartar todas as alterações deste grupo"
-            aria-label="Descartar todas as alterações"
+            title={t.discardGroupTitle}
+            aria-label={t.discardAllAria}
             className="flex items-center gap-1.5 text-caption text-danger-red transition-opacity hover:opacity-80 active:opacity-60 disabled:opacity-30"
           >
             {bulkAction === 'discard' && <Loader2 size={12} className="animate-spin" aria-hidden />}
-            {bulkAction === 'discard' ? 'Descartando…' : 'Descartar tudo'}
+            {bulkAction === 'discard' ? t.discarding : t.discardAll}
           </button>
           <button
             type="button"
@@ -247,7 +251,7 @@ function UnstagedSectionHeader({
             className="flex items-center gap-1.5 text-caption text-command-blue transition-opacity hover:opacity-80 active:opacity-60 disabled:opacity-30"
           >
             {bulkAction === 'stage' && <Loader2 size={12} className="animate-spin" aria-hidden />}
-            {bulkAction === 'stage' ? 'Incluindo…' : 'Incluir tudo no stage'}
+            {bulkAction === 'stage' ? t.staging : t.stageAll}
           </button>
         </span>
       </div>
@@ -294,8 +298,9 @@ function ChangesView(): JSX.Element {
   const commitAndPush = useAppSettingsStore((s) => s.settings?.commitAndPush ?? false)
   const aiSettings = useAiStore((s) => s.settings)
   const aiApiKey = useAiStore((s) => s.apiKey)
-  const aiLanguage = aiSettings?.language ?? 'pt-BR'
+  const aiLanguage = useLocale()
   const aiNotConfigured = aiNotConfiguredMessage(aiLanguage)
+  const t = useT().changes
   const ui = useAiUi()
   const aiBusy = useAiStore((s) => s.isBusy)
   const explainDiff = useAiStore((s) => s.explainDiff)
@@ -561,7 +566,7 @@ function ChangesView(): JSX.Element {
       setSummary('')
       setDescription('')
       setJustCommitted(true)
-      const success = commitAndPush ? `Commit criado e enviado em ${currentBranch}.` : `Commit criado em ${currentBranch}.`
+      const success = commitAndPush ? t.committedAndPushed(currentBranch) : t.committed(currentBranch)
       setLiveMessage(success)
       setTimeout(() => setJustCommitted(false), 1800)
     } finally {
@@ -597,7 +602,7 @@ function ChangesView(): JSX.Element {
       const generated = await generateCommitMessage(settings, apiKey, currentBranch, statusText, diff)
       setSummary(generated.summary)
       setDescription(generated.description)
-      setLiveMessage('Resumo do commit gerado com IA.')
+      setLiveMessage(t.aiSummaryGenerated)
     } catch (err) {
       setAiError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -643,9 +648,9 @@ function ChangesView(): JSX.Element {
   async function handleCopyPath(text: string): Promise<void> {
     try {
       await navigator.clipboard.writeText(text)
-      setLiveMessage('Caminho copiado.')
+      setLiveMessage(t.pathCopied)
     } catch {
-      setLiveMessage('Não foi possível copiar o caminho.')
+      setLiveMessage(t.pathCopyFailed)
     }
   }
 
@@ -676,7 +681,7 @@ function ChangesView(): JSX.Element {
     setBulkAction('stage')
     try {
       await stagePaths(filteredUnstaged.map((e) => e.path))
-      setLiveMessage(`${filteredUnstaged.length} arquivo(s) em staged.`)
+      setLiveMessage(t.stagedCount(filteredUnstaged.length))
     } finally {
       setBulkAction(null)
     }
@@ -686,7 +691,7 @@ function ChangesView(): JSX.Element {
     setBulkAction('unstage')
     try {
       await unstagePaths(filteredStaged.map((e) => e.path))
-      setLiveMessage(`${filteredStaged.length} arquivo(s) removido(s) do staged.`)
+      setLiveMessage(t.unstagedCount(filteredStaged.length))
     } finally {
       setBulkAction(null)
     }
@@ -759,26 +764,24 @@ function ChangesView(): JSX.Element {
     if (action.type === 'abort') {
       clearError()
       await abortMerge()
-      setLiveMessage('Merge abortado.')
+      setLiveMessage(t.mergeAborted)
       return
     }
     if (action.type === 'undo') {
       await undoLastCommit()
-      setLiveMessage('Último commit desfeito. Os arquivos voltaram para o stage.')
+      setLiveMessage(t.lastCommitUndone)
       return
     }
     if (action.type === 'amend') {
       await amendCommit(summary.trim() || undefined, description.trim() || undefined)
-      setLiveMessage('Último commit atualizado.')
+      setLiveMessage(t.lastCommitAmended)
       return
     }
     if (action.paths.length > 1) setBulkAction('discard')
     try {
       await discardPaths(action.paths)
       setLiveMessage(
-        action.paths.length === 1
-          ? `Alterações descartadas em ${action.paths[0]}.`
-          : `${action.paths.length} arquivo(s) com alterações descartadas.`
+        action.paths.length === 1 ? t.discardedOne(action.paths[0]) : t.discardedMany(action.paths.length)
       )
     } finally {
       setBulkAction(null)
@@ -798,43 +801,41 @@ function ChangesView(): JSX.Element {
     )
     const newCount = paths.filter((p) => untrackedPaths.has(p)).length
     const subject =
-      paths.length === 1 ? `As alterações locais em "${basename(paths[0])}"` : `As alterações locais em ${paths.length} arquivos`
+      paths.length === 1 ? t.discardSubjectOne(basename(paths[0])) : t.discardSubjectMany(paths.length)
     if (newCount === paths.length) {
-      return paths.length === 1
-        ? `"${basename(paths[0])}" é um arquivo novo e vai para a Lixeira.`
-        : `Os ${paths.length} arquivos novos vão para a Lixeira.`
+      return paths.length === 1 ? t.discardNewOne(basename(paths[0])) : t.discardNewMany(paths.length)
     }
-    const trashNote = newCount > 0 ? ` Os ${newCount} arquivo(s) novo(s) vão para a Lixeira.` : ''
-    return `${subject} serão perdidas. Isso não pode ser desfeito.${trashNote}`
+    const trashNote = newCount > 0 ? t.discardTrashNote(newCount) : ''
+    return t.discardLost(subject, trashNote)
   }
 
   const commitLabel = committing
-    ? 'Commitando…'
+    ? t.committing
     : justCommitted
-      ? 'Commit criado'
+      ? t.commitCreated
       : canConcludeMerge
         ? commitAndPush
-          ? 'Concluir merge e push'
-          : 'Concluir merge'
+          ? t.concludeMergeAndPush
+          : t.concludeMerge
         : commitAndPush
-          ? `Commit e push em ${currentBranch}`
-          : `Commit em ${currentBranch}`
+          ? t.commitAndPushTo(currentBranch)
+          : t.commitTo(currentBranch)
 
   const commitDisabledReason = canConcludeMerge
     ? null
     : totalCount === 0
       ? null
       : generating
-        ? 'Aguarde o agente terminar de gerar a mensagem.'
+        ? t.waitForAgent
         : staged.length === 0
-        ? 'Inclua pelo menos um arquivo no stage para habilitar o commit.'
+        ? t.stageAtLeastOne
         : !summary.trim()
-          ? 'Escreva um resumo para habilitar o commit.'
+          ? t.writeSummary
           : null
 
   return (
     <div className="flex h-full">
-      <h1 className="sr-only">Alterações</h1>
+      <h1 className="sr-only">{t.title}</h1>
       <div
         className={`flex flex-col overflow-hidden bg-obsidian-panel ${narrow ? (showFileDetail ? 'hidden' : 'min-w-0 w-full') : 'shrink-0'}`}
         style={narrow ? undefined : { width: sidebarWidth }}
@@ -846,19 +847,16 @@ function ChangesView(): JSX.Element {
         {canConcludeMerge && (
           <section className="border-b border-warning-amber/20 bg-warning-amber-soft p-3">
             <h2 className="mb-2 flex items-center gap-1.5 text-label uppercase tracking-wide text-warning-amber">
-              <GitMerge size={13} aria-hidden /> Merge em andamento
+              <GitMerge size={13} aria-hidden /> {t.mergeInProgress}
             </h2>
-            <p className="mb-2 text-caption text-secondary-text">
-              Todos os conflitos foram resolvidos. Conclua o merge com o commit abaixo — com o resumo vazio, é usada a
-              mensagem padrão do merge.
-            </p>
+            <p className="mb-2 text-caption text-secondary-text">{t.mergeResolvedHint}</p>
             <button
               type="button"
               onClick={() => setConfirm({ type: 'abort' })}
               disabled={isBusy}
               className="btn-secondary w-full justify-center border-warning-amber/40 text-warning-amber"
             >
-              Abortar merge
+              {t.abortMerge}
             </button>
           </section>
         )}
@@ -866,12 +864,10 @@ function ChangesView(): JSX.Element {
         {conflicted.length > 0 && (
           <section className="border-b border-warning-amber/20 bg-warning-amber-soft p-3">
             <h2 className="mb-2 flex items-center gap-1.5 text-label uppercase tracking-wide text-warning-amber">
-              <AlertTriangle size={13} aria-hidden /> Conflitos
+              <AlertTriangle size={13} aria-hidden /> {t.conflicts}
               <span className="count-badge bg-warning-amber/20 text-warning-amber">{conflicted.length}</span>
             </h2>
-            <p className="mb-2 text-caption text-secondary-text">
-              Resolva cada arquivo abaixo antes de fazer stage e commit. Abortar desfaz o merge em andamento.
-            </p>
+            <p className="mb-2 text-caption text-secondary-text">{t.conflictsHint}</p>
             <ul className="flex flex-col gap-0.5">
               {conflicted.map((entry) => {
                 const flatIdx = flatEntries.findIndex((f) => f.kind === 'conflict' && f.entry.path === entry.path)
@@ -897,7 +893,7 @@ function ChangesView(): JSX.Element {
               disabled={isBusy}
               className="btn-secondary mt-2 w-full justify-center border-warning-amber/40 text-warning-amber"
             >
-              Abortar merge
+              {t.abortMerge}
             </button>
           </section>
         )}
@@ -906,30 +902,30 @@ function ChangesView(): JSX.Element {
           <div className="flex items-center gap-2">
             <input
               type="text"
-              placeholder="Filtrar arquivos alterados"
-              aria-label="Filtrar arquivos alterados"
+              placeholder={t.filterFiles}
+              aria-label={t.filterFiles}
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               className="field flex-1"
             />
             <SectionHint align="right">
-              <p className="mb-2 font-medium text-primary-text">Atalhos da lista</p>
+              <p className="mb-2 font-medium text-primary-text">{t.shortcuts}</p>
               <dl className="space-y-1.5">
                 <div className="flex items-center justify-between gap-3">
                   <dt className="kbd">↑ ↓</dt>
-                  <dd className="text-right">Navegar pelos arquivos</dd>
+                  <dd className="text-right">{t.shortcutNavigate}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="kbd">Espaço</dt>
-                  <dd className="text-right">Stage ou unstage</dd>
+                  <dt className="kbd">{t.keySpace}</dt>
+                  <dd className="text-right">{t.shortcutToggle}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <dt className="kbd">Ctrl + Enter</dt>
-                  <dd className="text-right">Criar commit</dd>
+                  <dd className="text-right">{t.shortcutCommit}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <dt className="kbd">Ctrl + Shift + S</dt>
-                  <dd className="text-right">Stage de todos</dd>
+                  <dd className="text-right">{t.shortcutStageAll}</dd>
                 </div>
               </dl>
             </SectionHint>
@@ -946,17 +942,15 @@ function ChangesView(): JSX.Element {
             <span className="empty-medallion rise-in mb-1 text-success-green">
               <Check size={20} aria-hidden />
             </span>
-            <p className="text-title font-semibold text-primary-text">Árvore de trabalho limpa</p>
-            <p className="max-w-[240px] text-caption text-secondary-text">
-              Não há alterações locais. Edite arquivos no repositório ou troque de branch para ver mudanças aqui.
-            </p>
+            <p className="text-title font-semibold text-primary-text">{t.cleanTree}</p>
+            <p className="max-w-[240px] text-caption text-secondary-text">{t.cleanTreeHint}</p>
           </div>
         ) : (
           <div
             ref={listRef}
             tabIndex={0}
             role="grid"
-            aria-label="Arquivos alterados"
+            aria-label={t.changedFiles}
             aria-activedescendant={
               flatEntries[focusIndex]
                 ? rowId(flatEntries[focusIndex].kind, flatEntries[focusIndex].entry.path)
@@ -978,11 +972,11 @@ function ChangesView(): JSX.Element {
                       style={{ transform: `translateY(${vRow.start}px)` }}
                     >
                       {row.type === 'staged-header' ? (
-                        <div role="row" aria-label={`Em stage, ${row.count}`} className="px-3 py-2">
+                        <div role="row" aria-label={t.stagedRow(row.count)} className="px-3 py-2">
                           <div role="gridcell" className="flex items-center justify-between">
                             <span className="flex items-center gap-1.5 text-label uppercase tracking-wide text-tertiary-text">
-                              Em stage <span className="count-badge">{row.count}</span>
-                              <SectionHint text="Arquivos prontos para o próximo commit. Desmarque o checkbox para tirar do staged." />
+                              {t.staged} <span className="count-badge">{row.count}</span>
+                              <SectionHint text={t.stagedHint} />
                             </span>
                             <button
                               type="button"
@@ -991,7 +985,7 @@ function ChangesView(): JSX.Element {
                               className="flex items-center gap-1.5 text-caption text-command-blue transition-opacity hover:opacity-80 active:opacity-60 disabled:opacity-30"
                             >
                               {bulkAction === 'unstage' && <Loader2 size={12} className="animate-spin" aria-hidden />}
-                              {bulkAction === 'unstage' ? 'Removendo…' : 'Tirar tudo do stage'}
+                              {bulkAction === 'unstage' ? t.unstaging : t.unstageAll}
                             </button>
                           </div>
                         </div>
@@ -1004,7 +998,7 @@ function ChangesView(): JSX.Element {
                         />
                       ) : row.type === 'empty-unstaged' ? (
                         <div role="row">
-                          <p role="gridcell" className="px-3 py-2 text-caption text-tertiary-text">Nenhuma alteração pendente fora do stage.</p>
+                          <p role="gridcell" className="px-3 py-2 text-caption text-tertiary-text">{t.noUnstaged}</p>
                         </div>
                       ) : (
                         (() => {
@@ -1016,7 +1010,7 @@ function ChangesView(): JSX.Element {
                               <li
                                 id={rowId(kind, entry.path)}
                                 role="row"
-                                aria-label={`${entry.path}, ${staged ? 'em stage' : 'fora do stage'}`}
+                                aria-label={staged ? t.fileRowStaged(entry.path) : t.fileRowUnstaged(entry.path)}
                                 aria-selected={selectedFile?.path === entry.path && selectedFile.staged === staged}
                                 onContextMenu={(e) => void openFileContextMenu(e, entry)}
                                 className={`list-row py-1.5 pr-1.5 ${selectedFile?.path === entry.path && selectedFile.staged === staged ? 'is-selected' : ''} ${isRowFocused(kind, entry.path) ? 'ring-1 ring-command-blue/50' : ''}`}
@@ -1043,8 +1037,8 @@ function ChangesView(): JSX.Element {
                                   {!staged && (
                                     <button
                                       type="button"
-                                      title="Descartar"
-                                      aria-label={`Descartar alterações em ${entry.path}`}
+                                      title={t.discard}
+                                      aria-label={t.discardFileAria(entry.path)}
                                       onClick={() => requestDiscard(entry.path)}
                                       className="shrink-0 rounded-sm p-1.5 text-tertiary-text transition-colors hover:bg-hover-overlay hover:text-danger-red active:scale-95"
                                     >
@@ -1063,11 +1057,11 @@ function ChangesView(): JSX.Element {
               </div>
             ) : (
               <>
-            <div role="row" aria-label={`Em stage, ${filteredStaged.length}`} className="px-3 py-2">
+            <div role="row" aria-label={t.stagedRow(filteredStaged.length)} className="px-3 py-2">
               <div role="gridcell" className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-label uppercase tracking-wide text-tertiary-text">
-                  Em stage <span className="count-badge">{filteredStaged.length}</span>
-                  <SectionHint text="Arquivos prontos para o próximo commit. Desmarque o checkbox para tirar do staged." />
+                  {t.staged} <span className="count-badge">{filteredStaged.length}</span>
+                  <SectionHint text={t.stagedHint} />
                 </span>
                 <button
                   type="button"
@@ -1076,7 +1070,7 @@ function ChangesView(): JSX.Element {
                   className="flex items-center gap-1.5 text-caption text-command-blue transition-opacity hover:opacity-80 active:opacity-60 disabled:opacity-30"
                 >
                   {bulkAction === 'unstage' && <Loader2 size={12} className="animate-spin" aria-hidden />}
-                  {bulkAction === 'unstage' ? 'Removendo…' : 'Tirar tudo do stage'}
+                  {bulkAction === 'unstage' ? t.unstaging : t.unstageAll}
                 </button>
               </div>
             </div>
@@ -1089,7 +1083,7 @@ function ChangesView(): JSX.Element {
                     key={entry.path}
                     id={rowId('staged', entry.path)}
                     role="row"
-                    aria-label={`${entry.path}, em stage`}
+                    aria-label={t.fileRowStaged(entry.path)}
                     aria-selected={selectedFile?.path === entry.path && selectedFile.staged}
                     onContextMenu={(e) => void openFileContextMenu(e, entry)}
                     className={`list-row py-1.5 pr-1.5 ${selectedFile?.path === entry.path && selectedFile.staged ? 'is-selected' : ''} ${isRowFocused('staged', entry.path) ? 'ring-1 ring-command-blue/50' : ''}`}
@@ -1134,7 +1128,7 @@ function ChangesView(): JSX.Element {
                     key={entry.path}
                     id={rowId('unstaged', entry.path)}
                     role="row"
-                    aria-label={`${entry.path}, fora do stage`}
+                    aria-label={t.fileRowUnstaged(entry.path)}
                     aria-selected={selectedFile?.path === entry.path && !selectedFile.staged}
                     onContextMenu={(e) => void openFileContextMenu(e, entry)}
                     className={`list-row py-1.5 pr-1.5 ${selectedFile?.path === entry.path && !selectedFile.staged ? 'is-selected' : ''} ${isRowFocused('unstaged', entry.path) ? 'ring-1 ring-command-blue/50' : ''}`}
@@ -1160,8 +1154,8 @@ function ChangesView(): JSX.Element {
                       </button>
                       <button
                         type="button"
-                        title="Descartar"
-                        aria-label={`Descartar alterações em ${entry.path}`}
+                        title={t.discard}
+                        aria-label={t.discardFileAria(entry.path)}
                         onClick={() => requestDiscard(entry.path)}
                         className="shrink-0 rounded-sm p-1.5 text-tertiary-text transition-colors hover:bg-hover-overlay hover:text-danger-red active:scale-95"
                       >
@@ -1173,7 +1167,7 @@ function ChangesView(): JSX.Element {
               })}
               {filteredUnstaged.length === 0 && (
                 <li role="row" className="px-2 py-2 text-caption text-tertiary-text">
-                  <span role="gridcell">Nenhuma alteração pendente fora do stage.</span>
+                  <span role="gridcell">{t.noUnstaged}</span>
                 </li>
               )}
             </ul>
@@ -1185,7 +1179,7 @@ function ChangesView(): JSX.Element {
         <div
           role="separator"
           aria-orientation="horizontal"
-          aria-label="Redimensionar painel de commit"
+          aria-label={t.resizeCommitPanel}
           aria-valuemin={MIN_COMMIT_PANEL_HEIGHT}
           aria-valuemax={MAX_COMMIT_PANEL_HEIGHT}
           aria-valuenow={commitPanelHeight}
@@ -1208,12 +1202,12 @@ function ChangesView(): JSX.Element {
           className="flex shrink-0 flex-col gap-2 overflow-y-auto border-t border-default-border bg-obsidian-panel p-3"
           style={{ height: commitPanelHeight }}
         >
-          <h2 className="shrink-0 text-label uppercase tracking-wide text-tertiary-text">Commit</h2>
+          <h2 className="shrink-0 text-label uppercase tracking-wide text-tertiary-text">{t.commitHeading}</h2>
           {aiError && (
             <div className="flex items-start gap-2 rounded-md border border-danger-red/30 bg-danger-red-soft px-2.5 py-2 text-caption text-danger-red" role="alert">
               <span className="flex-1">{aiError}</span>
-              <button type="button" className="underline" onClick={() => setAiError(null)} aria-label="Fechar erro da IA">
-                Fechar
+              <button type="button" className="underline" onClick={() => setAiError(null)} aria-label={t.dismissAiError}>
+                {t.close}
               </button>
             </div>
           )}
@@ -1228,18 +1222,18 @@ function ChangesView(): JSX.Element {
             }`}
           >
             <label htmlFor={summaryId} className="sr-only">
-              Resumo do commit
+              {t.commitSummary}
             </label>
             <textarea
               id={summaryId}
               placeholder={
                 generating
-                  ? 'Gerando com o agente…'
+                  ? t.generatingWithAgent
                   : canConcludeMerge
-                    ? 'Resumo (opcional — mensagem padrão do merge)'
-                    : 'Resumo (obrigatório para commit)'
+                    ? t.summaryOptionalMerge
+                    : t.summaryRequired
               }
-              aria-label="Resumo do commit"
+              aria-label={t.commitSummary}
               value={summary}
               onChange={(e) => setSummary(e.target.value.replace(/\r?\n/g, ' '))}
               onKeyDown={(e) => {
@@ -1253,8 +1247,8 @@ function ChangesView(): JSX.Element {
             />
 
             <textarea
-              placeholder="Descrição (opcional)"
-              aria-label="Descrição do commit"
+              placeholder={t.descriptionPlaceholder}
+              aria-label={t.commitDescription}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={generating}
@@ -1325,7 +1319,7 @@ function ChangesView(): JSX.Element {
         <div
           role="separator"
           aria-orientation="vertical"
-          aria-label="Redimensionar painel de alterações"
+          aria-label={t.resizeChangesPanel}
           aria-valuemin={MIN_SIDEBAR_WIDTH}
           aria-valuemax={MAX_SIDEBAR_WIDTH}
           aria-valuenow={sidebarWidth}
@@ -1350,9 +1344,9 @@ function ChangesView(): JSX.Element {
             type="button"
             onClick={() => clearSelectedFile()}
             className="flex h-10 shrink-0 items-center gap-2 border-b border-default-border px-3 text-body text-secondary-text hover:bg-hover-overlay hover:text-primary-text"
-            aria-label="Voltar para a lista de arquivos"
+            aria-label={t.backToFileList}
           >
-            <ArrowLeft size={16} aria-hidden /> Arquivos
+            <ArrowLeft size={16} aria-hidden /> {t.files}
           </button>
         )}
         {selectedFile && diffText && !(selectedFile.conflicted && conflictContent !== null) && (
@@ -1384,10 +1378,8 @@ function ChangesView(): JSX.Element {
               <span className="empty-medallion rise-in mb-1">
                 <FileDiff size={20} aria-hidden />
               </span>
-              <p className="text-body font-medium text-primary-text">Selecione um arquivo à esquerda para revisar o diff.</p>
-              <p className="max-w-sm text-caption text-tertiary-text">
-                Use as setas ↑↓ na lista de arquivos (com foco nela) ou clique em um caminho. Conflitos abrem o resolvedor.
-              </p>
+              <p className="text-body font-medium text-primary-text">{t.selectFileToReview}</p>
+              <p className="max-w-sm text-caption text-tertiary-text">{t.selectFileHint}</p>
             </div>
           ) : (
             <DiffViewer
@@ -1404,9 +1396,9 @@ function ChangesView(): JSX.Element {
 
       <ConfirmDialog
         open={confirm?.type === 'abort'}
-        title="Abortar merge?"
-        message="Isso cancela o merge em andamento e descarta as resoluções de conflito ainda não commitadas. Não pode ser desfeito pelo GitWeb."
-        confirmLabel="Abortar merge"
+        title={t.abortMergeTitle}
+        message={t.abortMergeMessage}
+        confirmLabel={t.abortMerge}
         danger
         onCancel={() => setConfirm(null)}
         onConfirm={() => void runConfirmed()}
@@ -1415,11 +1407,11 @@ function ChangesView(): JSX.Element {
         open={confirm?.type === 'discard'}
         title={
           confirm?.type === 'discard' && confirm.paths.length > 1
-            ? `Descartar ${confirm.paths.length} alterações?`
-            : 'Descartar alterações?'
+            ? t.discardManyTitle(confirm.paths.length)
+            : t.discardTitle
         }
         message={confirm?.type === 'discard' ? discardMessage(confirm.paths) : ''}
-        confirmLabel="Descartar"
+        confirmLabel={t.discard}
         danger
         onCancel={() => setConfirm(null)}
         onConfirm={() => void runConfirmed()}
@@ -1427,26 +1419,18 @@ function ChangesView(): JSX.Element {
 
       <ConfirmDialog
         open={confirm?.type === 'undo'}
-        title="Desfazer o último commit?"
-        message={
-          status?.upstream && status.ahead === 0
-            ? 'Esse commit já está no remoto. Desfazer reescreve o histórico local; um push depois pode exigir force push.'
-            : 'O último commit some e os arquivos voltam para o stage. A mensagem do commit é perdida.'
-        }
-        confirmLabel="Desfazer commit"
+        title={t.undoTitle}
+        message={status?.upstream && status.ahead === 0 ? t.undoPublishedMessage : t.undoMessage}
+        confirmLabel={t.undoConfirm}
         danger={Boolean(status?.upstream && status.ahead === 0)}
         onCancel={() => setConfirm(null)}
         onConfirm={() => void runConfirmed()}
       />
       <ConfirmDialog
         open={confirm?.type === 'amend'}
-        title="Alterar o último commit?"
-        message={
-          status?.upstream && status.ahead === 0
-            ? 'Esse commit já está no remoto. Alterá-lo reescreve o histórico; um push depois pode exigir force push. Arquivos em stage entram no commit; se o resumo estiver vazio, a mensagem atual é mantida.'
-            : 'Arquivos em stage entram no último commit. Se o resumo estiver vazio, a mensagem atual é mantida.'
-        }
-        confirmLabel="Alterar commit"
+        title={t.amendTitle}
+        message={status?.upstream && status.ahead === 0 ? t.amendPublishedMessage : t.amendMessage}
+        confirmLabel={t.amendConfirm}
         danger={Boolean(status?.upstream && status.ahead === 0)}
         onCancel={() => setConfirm(null)}
         onConfirm={() => void runConfirmed()}

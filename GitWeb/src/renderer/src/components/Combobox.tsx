@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 import { useClickOutside } from '../lib/useClickOutside'
+import { useT } from '../lib/i18n'
 
 export interface ComboboxOption {
   value: string
@@ -34,6 +35,7 @@ function Combobox({
   const optionIdPrefix = useId()
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const t = useT().ui
   const [highlighted, setHighlighted] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -108,8 +110,8 @@ function Combobox({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={selected?.label ?? placeholder ?? 'Buscar…'}
-            aria-label={accessibleName ?? 'Buscar opção'}
+            placeholder={selected?.label ?? placeholder ?? t.searchPlaceholder}
+            aria-label={accessibleName ?? t.searchOption}
             aria-describedby={ariaDescribedBy}
             role="combobox"
             aria-expanded="true"
@@ -134,7 +136,7 @@ function Combobox({
           className="field flex h-[34px] w-full items-center justify-between gap-2 py-0 text-left disabled:opacity-40"
         >
           <span className={`truncate ${selected ? 'text-primary-text' : 'text-tertiary-text'}`}>
-            {selected?.label ?? placeholder ?? 'Selecione…'}
+            {selected?.label ?? placeholder ?? t.selectPlaceholder}
           </span>
           <ChevronDown size={14} className="shrink-0 text-tertiary-text" aria-hidden />
         </button>
@@ -148,7 +150,7 @@ function Combobox({
         >
           {filtered.length === 0 && (
             <li className="px-3 py-2 text-caption text-tertiary-text" role="presentation">
-              Nenhum resultado.
+              {t.noResults}
             </li>
           )}
           {filtered.map((option, index) => (

@@ -4,17 +4,18 @@ import type { UiToolCall } from '../store/aiStore'
 import type { ToolRunStep } from '../lib/ai/chatGrouping'
 import { getToolDisplay } from '../lib/ai/toolDisplay'
 import ToolResult from './ToolResult'
+import { useT } from '../lib/i18n'
 
 function basename(path: string): string {
   const parts = path.split(/[\\/]/)
   return parts[parts.length - 1] || path
 }
 
-function stepLabel(uiCall: UiToolCall): string {
+function stepLabel(uiCall: UiToolCall, wholeCommit: string): string {
   const path = uiCall.resolvedArgs.path || uiCall.call.arguments.path
   if (path) return basename(path)
   const commitField = uiCall.preview.fields.find((f) => f.label === 'Commit')
-  return commitField ? 'Commit inteiro' : uiCall.preview.headline
+  return commitField ? wholeCommit : uiCall.preview.headline
 }
 
 function StepIcon({ status }: { status: UiToolCall['status'] }): JSX.Element {
@@ -46,7 +47,8 @@ function ToolRunGroup({
   const [openStep, setOpenStep] = useState<string | null>(null)
   const [manualExpanded, setManualExpanded] = useState<boolean | null>(null)
 
-  const { label, icon: Icon } = getToolDisplay(toolName)
+  const t = useT().tools
+  const { label, icon: Icon } = getToolDisplay(toolName, t.label)
   const active = steps.some((s) => s.uiCall.status === 'running' || s.uiCall.status === 'pending')
   const done = steps.filter((s) => s.uiCall.status === 'completed').length
   const failed = steps.filter((s) => s.uiCall.status === 'failed').length
@@ -59,7 +61,7 @@ function ToolRunGroup({
 
   const summary = active
     ? `${label} · ${done}/${steps.length}`
-    : `${steps.length} ${steps.length === 1 ? 'leitura' : 'leituras'}${failed > 0 ? ` · ${failed} com erro` : ''}`
+    : `${t.readings(steps.length)}${failed > 0 ? ` · ${t.withErrors(failed)}` : ''}`
 
   return (
     <div className="w-full rounded-md border border-default-border bg-coal-raised p-3 text-body">
@@ -75,7 +77,7 @@ function ToolRunGroup({
           <Icon size={13} className="shrink-0 text-secondary-text" aria-hidden />
         )}
         <span className="min-w-0 flex-1 truncate font-medium">
-          {active ? 'Explorando' : summary}
+          {active ? t.exploring : summary}
           {subject && <span className="text-secondary-text"> · {subject}</span>}
         </span>
         {expanded ? (
@@ -105,7 +107,7 @@ function ToolRunGroup({
                 >
                   <StepIcon status={step.uiCall.status} />
                   <span className={`min-w-0 flex-1 truncate text-caption ${statusText(step.uiCall.status)}`}>
-                    {stepLabel(step.uiCall)}
+                    {stepLabel(step.uiCall, t.wholeCommit)}
                   </span>
                 </button>
                 {step.narration && (

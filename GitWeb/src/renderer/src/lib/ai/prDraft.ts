@@ -1,6 +1,8 @@
 import { resolveActiveConfig, type AiSettings } from '../../../../shared/ai'
 import { commitMessageLanguageInstruction } from '../../../../shared/aiPrompts'
 import { sendChatRequest } from './providers'
+import { getLocale } from '../i18n'
+import type { AiLanguage } from '../../../../shared/aiPrompts'
 
 export interface GeneratedPrDraft {
   title: string
@@ -69,13 +71,20 @@ function extractJson(text: string): GeneratedPrDraft {
   return { title: replaceBackticks(result.title), body: replaceBackticks(result.body) }
 }
 
+const KEY_CHANGES_HEADING: Record<AiLanguage, string> = {
+  'pt-BR': 'Principais mudanças',
+  en: 'Key changes',
+  es: 'Cambios principales'
+}
+
 function buildPrompt(
   headBranch: string,
   baseBranch: string,
   diff: string,
-  language: AiSettings['language']
+  language: AiLanguage
 ): string {
   const languageInstruction = commitMessageLanguageInstruction(language)
+  const changesHeading = KEY_CHANGES_HEADING[language]
 
   return `Analyze the Git diff below (between branch "${baseBranch}" and "${headBranch}") and draft a pull request like GitHub Copilot would.
 
@@ -83,10 +92,10 @@ Requirements:
 - Return only valid JSON.
 - JSON shape: {"title":"...","body":"..."}
 - title must be a polished sentence, concise, specific, and at most 72 characters.
-- If the selected language is pt-BR, start the title with a past participle verb form such as "Adicionado", "Atualizado", or "Removido", not an infinitive like "Adicionar".
+- If the selected language is pt-BR, start the title with a past participle verb form such as "Adicionado", "Atualizado", or "Removido", not an infinitive like "Adicionar". If it is Spanish, likewise use "Añadido", "Actualizado", or "Eliminado", not "Añadir".
 - body must be markdown useful for a real PR reviewer, not a terse changelog.
 - Start body with one short paragraph summarizing the change.
-- Then add a blank line and a "## Principais mudanças" heading followed by 3 to 8 bullet points with concrete changes.
+- Then add a blank line and a "## ${changesHeading}" heading followed by 3 to 8 bullet points with concrete changes.
 - Mention important files/classes/settings only when they clarify what changed.
 - Cover all meaningful changes in the diff; avoid generic wording.
 - Prefer behavior and user impact over low-level implementation trivia.
@@ -108,7 +117,7 @@ export async function generatePrDraft(
   { headBranch, baseBranch, diff }: { headBranch: string; baseBranch: string; diff: string }
 ): Promise<GeneratedPrDraft> {
   const truncatedDiff = diff.slice(0, settings.maxDiffChars)
-  const prompt = buildPrompt(headBranch, baseBranch, truncatedDiff, settings.language)
+  const prompt = buildPrompt(headBranch, baseBranch, truncatedDiff, getLocale())
 
   const response = await sendChatRequest(resolveActiveConfig(settings), apiKey, [
     { role: 'system', content: 'You write clear, accurate pull request titles and descriptions.' },

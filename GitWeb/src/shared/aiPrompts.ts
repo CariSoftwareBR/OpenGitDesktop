@@ -1,23 +1,33 @@
 import type { AiSettings } from './ai'
+import type { Locale } from './i18n/locales'
 
-export type AiLanguage = AiSettings['language']
+// The AI speaks the app language; there is no separate AI language setting.
+export type AiLanguage = Locale
+
+function pick<T>(language: AiLanguage, variants: Record<AiLanguage, T>): T {
+  return variants[language]
+}
 
 export function languageInstruction(language: AiLanguage): string {
-  return language === 'pt-BR'
-    ? 'Responda ao usuário em português brasileiro (pt-BR), a menos que ele peça explicitamente outro idioma.'
-    : 'Respond to the user in English, unless they explicitly ask for another language.'
+  return pick(language, {
+    'pt-BR': 'Responda ao usuário em português brasileiro (pt-BR), a menos que ele peça explicitamente outro idioma.',
+    en: 'Respond to the user in English, unless they explicitly ask for another language.',
+    es: 'Responde al usuario en español, a menos que pida explícitamente otro idioma.'
+  })
+}
+
+const LANGUAGE_NAME: Record<AiLanguage, string> = {
+  'pt-BR': 'Brazilian Portuguese (pt-BR)',
+  en: 'English',
+  es: 'Spanish (es)'
 }
 
 export function commitMessageLanguageInstruction(language: AiLanguage): string {
-  return language === 'pt-BR'
-    ? 'Write summary and description in Brazilian Portuguese (pt-BR).'
-    : 'Write summary and description in English.'
+  return `Write summary and description in ${LANGUAGE_NAME[language]}.`
 }
 
 export function conflictSummaryLanguageInstruction(language: AiLanguage): string {
-  return language === 'pt-BR'
-    ? 'Write "summary" in Brazilian Portuguese (pt-BR).'
-    : 'Write "summary" in English.'
+  return `Write "summary" in ${LANGUAGE_NAME[language]}.`
 }
 
 export interface RepoContextInput {
@@ -30,39 +40,58 @@ export interface RepoContextInput {
 
 export function formatRepoContext(language: AiLanguage, repo: RepoContextInput): string {
   if (!repo.repoPath) {
-    return language === 'pt-BR' ? 'Nenhum repositório aberto no momento.' : 'No repository is currently open.'
+    return pick(language, {
+      'pt-BR': 'Nenhum repositório aberto no momento.',
+      en: 'No repository is currently open.',
+      es: 'No hay ningún repositorio abierto en este momento.'
+    })
   }
 
-  const upstreamInfo = repo.upstream
-    ? language === 'pt-BR'
-      ? `${repo.upstream.name} (${repo.upstream.ahead} à frente, ${repo.upstream.behind} atrás)`
-      : `${repo.upstream.name} (ahead ${repo.upstream.ahead}, behind ${repo.upstream.behind})`
-    : language === 'pt-BR'
-      ? '(sem upstream configurado)'
-      : '(no upstream configured)'
+  const upstream = repo.upstream
+  const upstreamInfo = upstream
+    ? pick(language, {
+        'pt-BR': `${upstream.name} (${upstream.ahead} à frente, ${upstream.behind} atrás)`,
+        en: `${upstream.name} (ahead ${upstream.ahead}, behind ${upstream.behind})`,
+        es: `${upstream.name} (${upstream.ahead} por delante, ${upstream.behind} por detrás)`
+      })
+    : pick(language, {
+        'pt-BR': '(sem upstream configurado)',
+        en: '(no upstream configured)',
+        es: '(sin upstream configurado)'
+      })
 
-  const labels =
-    language === 'pt-BR'
-      ? {
-          title: 'Contexto do repositório:',
-          path: 'Caminho',
-          branch: 'Branch atual',
-          upstream: 'Upstream',
-          status: 'Status Git (porcelain):',
-          clean: '(limpo)',
-          commits: 'Commits recentes:',
-          noCommits: '(ainda sem commits)'
-        }
-      : {
-          title: 'Repository context:',
-          path: 'Path',
-          branch: 'Current branch',
-          upstream: 'Upstream',
-          status: 'Git status (porcelain):',
-          clean: '(clean)',
-          commits: 'Recent commits:',
-          noCommits: '(no commits yet)'
-        }
+  const labels = pick(language, {
+    'pt-BR': {
+      title: 'Contexto do repositório:',
+      path: 'Caminho',
+      branch: 'Branch atual',
+      upstream: 'Upstream',
+      status: 'Status Git (porcelain):',
+      clean: '(limpo)',
+      commits: 'Commits recentes:',
+      noCommits: '(ainda sem commits)'
+    },
+    en: {
+      title: 'Repository context:',
+      path: 'Path',
+      branch: 'Current branch',
+      upstream: 'Upstream',
+      status: 'Git status (porcelain):',
+      clean: '(clean)',
+      commits: 'Recent commits:',
+      noCommits: '(no commits yet)'
+    },
+    es: {
+      title: 'Contexto del repositorio:',
+      path: 'Ruta',
+      branch: 'Rama actual',
+      upstream: 'Upstream',
+      status: 'Estado de Git (porcelain):',
+      clean: '(limpio)',
+      commits: 'Commits recientes:',
+      noCommits: '(todavía sin commits)'
+    }
+  })
 
   return [
     labels.title,
@@ -79,37 +108,51 @@ export function formatRepoContext(language: AiLanguage, repo: RepoContextInput):
 }
 
 export function aiNotConfiguredMessage(language: AiLanguage): string {
-  return language === 'pt-BR'
-    ? 'Configure um provedor de IA na aba "IA" antes de usar este recurso.'
-    : 'Configure an AI provider in the "AI" tab before using this feature.'
+  return pick(language, {
+    'pt-BR': 'Configure um provedor de IA na aba "IA" antes de usar este recurso.',
+    en: 'Configure an AI provider in the "AI" tab before using this feature.',
+    es: 'Configura un proveedor de IA en la pestaña "IA" antes de usar esta función.'
+  })
 }
 
 export function openRepoBeforeFixMessage(language: AiLanguage): string {
-  return language === 'pt-BR'
-    ? 'Abra um repositório antes de pedir uma correção.'
-    : 'Open a repository before requesting a fix.'
+  return pick(language, {
+    'pt-BR': 'Abra um repositório antes de pedir uma correção.',
+    en: 'Open a repository before requesting a fix.',
+    es: 'Abre un repositorio antes de pedir una corrección.'
+  })
 }
 
 export function proposeFixNoContentError(language: AiLanguage): string {
-  return language === 'pt-BR'
-    ? 'A IA não devolveu o arquivo corrigido.'
-    : 'The AI did not return the corrected file.'
+  return pick(language, {
+    'pt-BR': 'A IA não devolveu o arquivo corrigido.',
+    en: 'The AI did not return the corrected file.',
+    es: 'La IA no devolvió el archivo corregido.'
+  })
 }
 
 export function proposeFixMissingFileError(language: AiLanguage, path: string): string {
-  return language === 'pt-BR'
-    ? `O arquivo '${path}' não existe na árvore de trabalho. Se o commit explorado foi desfeito, a correção não tem o que editar.`
-    : `The file '${path}' does not exist in the working tree. If the explored commit was undone, there is nothing for the fix to edit.`
+  return pick(language, {
+    'pt-BR': `O arquivo '${path}' não existe na árvore de trabalho. Se o commit explorado foi desfeito, a correção não tem o que editar.`,
+    en: `The file '${path}' does not exist in the working tree. If the explored commit was undone, there is nothing for the fix to edit.`,
+    es: `El archivo '${path}' no existe en el árbol de trabajo. Si el commit explorado se deshizo, la corrección no tiene nada que editar.`
+  })
 }
 
 export function proposeFixStaleFileError(language: AiLanguage, path: string): string {
-  return language === 'pt-BR'
-    ? `${path} mudou desde que a correção foi gerada. Peça a correção novamente.`
-    : `${path} changed since the fix was generated. Request the fix again.`
+  return pick(language, {
+    'pt-BR': `${path} mudou desde que a correção foi gerada. Peça a correção novamente.`,
+    en: `${path} changed since the fix was generated. Request the fix again.`,
+    es: `${path} cambió desde que se generó la corrección. Pide la corrección de nuevo.`
+  })
 }
 
 export function contactProviderFailedMessage(language: AiLanguage): string {
-  return language === 'pt-BR' ? 'Falha ao contatar o provedor de IA.' : 'Failed to contact the AI provider.'
+  return pick(language, {
+    'pt-BR': 'Falha ao contatar o provedor de IA.',
+    en: 'Failed to contact the AI provider.',
+    es: 'Error al contactar con el proveedor de IA.'
+  })
 }
 
 export function proposeFixUserMessage(
@@ -125,22 +168,29 @@ export function proposeFixUserMessage(
   },
   fileContent: string
 ): string {
-  const labels =
-    language === 'pt-BR'
-      ? {
-          file: 'Arquivo',
-          priority: 'Prioridade',
-          bug: 'Bug',
-          example: 'Exemplo',
-          suggestedFix: 'Correção sugerida pelos subagentes'
-        }
-      : {
-          file: 'File',
-          priority: 'Priority',
-          bug: 'Bug',
-          example: 'Example',
-          suggestedFix: 'Suggested fix from subagents'
-        }
+  const labels = pick(language, {
+    'pt-BR': {
+      file: 'Arquivo',
+      priority: 'Prioridade',
+      bug: 'Bug',
+      example: 'Exemplo',
+      suggestedFix: 'Correção sugerida pelos subagentes'
+    },
+    en: {
+      file: 'File',
+      priority: 'Priority',
+      bug: 'Bug',
+      example: 'Example',
+      suggestedFix: 'Suggested fix from subagents'
+    },
+    es: {
+      file: 'Archivo',
+      priority: 'Prioridad',
+      bug: 'Bug',
+      example: 'Ejemplo',
+      suggestedFix: 'Corrección sugerida por los subagentes'
+    }
+  })
 
   return `${labels.file}: ${finding.path}${finding.line ? `:${finding.line}` : ''}
 ${labels.priority}: ${finding.priority}
@@ -165,12 +215,15 @@ const PR_TOOL_NAMES = new Set([
 ])
 
 const PR_INTENT_PATTERN =
-  /\b(pull\s*request|pull-request|\bpr\b|merge\s+(?:the\s+)?pr|review\s+(?:the\s+)?pr|open\s+(?:a\s+)?pr|criar\s+(?:um\s+)?pr|abrir\s+(?:um\s+)?pr|mesclar\s+(?:o\s+)?pr|revisar\s+(?:o\s+)?pr|avaliar\s+(?:o\s+)?pr|pull\s+requests?)\b/i
+  /\b(pull\s*request|pull-request|\bpr\b|merge\s+(?:the\s+)?pr|review\s+(?:the\s+)?pr|open\s+(?:a\s+)?pr|criar\s+(?:um\s+)?pr|abrir\s+(?:um\s+)?pr|mesclar\s+(?:o\s+)?pr|revisar\s+(?:o\s+|el\s+)?pr|avaliar\s+(?:o\s+)?pr|crear\s+(?:un\s+)?pr|fusionar\s+(?:el\s+)?pr|evaluar\s+(?:el\s+)?pr|pull\s+requests?)\b/i
 
 export function appSystemPrompt(language: AiLanguage): string {
-  return language === 'pt-BR'
-    ? 'Você é um assistente dentro de um app desktop de Git. Use sempre o contexto do repositório ao responder. Você pode sugerir e propor ações via ferramentas (commit, push, branches, pull requests), mas cada ação que altera o repositório ou um remoto só executa após aprovação explícita do usuário. Seja conciso e prático; explique o necessário sem enrolar. Se o usuário pedir para limpar a conversa, sugira iniciar uma nova sessão, mas não apague mensagens antigas.'
-    : 'You are an assistant inside a Git desktop app. Always consider repository context when answering. You can suggest and propose actions via tools (commit, push, branches, pull requests), but each action that changes the repository or a remote only runs after the user explicitly approves it. Be concise and practical; explain only what is needed. If the user asks to clear the conversation, suggest starting a new session but do not delete old messages.'
+  return pick(language, {
+    'pt-BR':
+      'Você é um assistente dentro de um app desktop de Git. Use sempre o contexto do repositório ao responder. Você pode sugerir e propor ações via ferramentas (commit, push, branches, pull requests), mas cada ação que altera o repositório ou um remoto só executa após aprovação explícita do usuário. Seja conciso e prático; explique o necessário sem enrolar. Se o usuário pedir para limpar a conversa, sugira iniciar uma nova sessão, mas não apague mensagens antigas.',
+    en: 'You are an assistant inside a Git desktop app. Always consider repository context when answering. You can suggest and propose actions via tools (commit, push, branches, pull requests), but each action that changes the repository or a remote only runs after the user explicitly approves it. Be concise and practical; explain only what is needed. If the user asks to clear the conversation, suggest starting a new session but do not delete old messages.',
+    es: 'Eres un asistente dentro de una app de escritorio de Git. Usa siempre el contexto del repositorio al responder. Puedes sugerir y proponer acciones mediante herramientas (commit, push, ramas, pull requests), pero cada acción que modifica el repositorio o un remoto solo se ejecuta tras la aprobación explícita del usuario. Sé conciso y práctico; explica lo necesario sin rodeos. Si el usuario pide limpiar la conversación, sugiere iniciar una nueva sesión, pero no borres mensajes antiguos.'
+  })
 }
 
 export function reasoningInstruction(
@@ -190,30 +243,45 @@ export function reasoningInstruction(
       medium: 'Reason carefully before answering.',
       high: 'Reason carefully and consider alternatives before answering.',
       xhigh: 'Reason extensively, considering multiple alternatives, before giving your final answer.'
+    },
+    es: {
+      low: 'Piensa brevemente antes de responder.',
+      medium: 'Razona con cuidado antes de responder.',
+      high: 'Razona con cuidado y considera alternativas antes de responder.',
+      xhigh: 'Razona extensamente, considerando varias alternativas, antes de la respuesta final.'
     }
   }
   return labels[language][effort] ?? ''
 }
 
 export function explainBugDescriptionPrompt(language: AiLanguage): string {
-  return language === 'pt-BR'
-    ? 'Explique o texto recebido para uma pessoa desenvolvedora iniciante, em português simples. Diga o que ele significa na prática, sem inventar detalhes que não estejam no texto. Seja breve e didático.'
-    : 'Explain the received text to a junior developer in plain English. Say what it means in practice, without inventing details not present in the text. Be brief and didactic.'
+  return pick(language, {
+    'pt-BR':
+      'Explique o texto recebido para uma pessoa desenvolvedora iniciante, em português simples. Diga o que ele significa na prática, sem inventar detalhes que não estejam no texto. Seja breve e didático.',
+    en: 'Explain the received text to a junior developer in plain English. Say what it means in practice, without inventing details not present in the text. Be brief and didactic.',
+    es: 'Explica el texto recibido a una persona desarrolladora principiante, en español sencillo. Di qué significa en la práctica, sin inventar detalles que no estén en el texto. Sé breve y didáctico.'
+  })
 }
 
 export function explainDiffPrompt(language: AiLanguage): string {
-  return language === 'pt-BR'
-    ? 'Explique o diff recebido em português claro e didático. Fale como para uma pessoa desenvolvedora júnior. Descreva o que mudou, o efeito prático e pontos de atenção, sem inventar detalhes fora do diff. Use Markdown com seções curtas.'
-    : 'Explain the received diff in clear, didactic English. Speak as if to a junior developer. Describe what changed, the practical effect, and points of attention, without inventing details outside the diff. Use Markdown with short sections.'
+  return pick(language, {
+    'pt-BR':
+      'Explique o diff recebido em português claro e didático. Fale como para uma pessoa desenvolvedora júnior. Descreva o que mudou, o efeito prático e pontos de atenção, sem inventar detalhes fora do diff. Use Markdown com seções curtas.',
+    en: 'Explain the received diff in clear, didactic English. Speak as if to a junior developer. Describe what changed, the practical effect, and points of attention, without inventing details outside the diff. Use Markdown with short sections.',
+    es: 'Explica el diff recibido en un español claro y didáctico. Habla como a una persona desarrolladora júnior. Describe qué cambió, el efecto práctico y los puntos de atención, sin inventar detalles fuera del diff. Usa Markdown con secciones cortas.'
+  })
 }
 
 // The banner's "explain" button starts a real agent turn: the error lands in the
 // chat history (so the matching skill is detected) and the agent may attach the
 // first fixing tool right away — the approval card still gates it.
 export function explainBannerErrorInstruction(language: AiLanguage): string {
-  return language === 'pt-BR'
-    ? 'A operação Git abaixo falhou no aplicativo. Explique em 2–3 frases o que o erro significa, sem inventar detalhes que não estejam na mensagem ou no contexto do repositório. Se uma das suas ferramentas resolver o problema, anexe já a chamada do primeiro passo nesta mesma resposta — não pergunte em texto se pode fazer.'
-    : 'The Git operation below failed in the app. Explain in 2–3 sentences what the error means, without inventing details that are not in the message or the repository context. If one of your tools fixes the problem, attach the call for the first step in this same response — do not ask in text whether you may.'
+  return pick(language, {
+    'pt-BR':
+      'A operação Git abaixo falhou no aplicativo. Explique em 2–3 frases o que o erro significa, sem inventar detalhes que não estejam na mensagem ou no contexto do repositório. Se uma das suas ferramentas resolver o problema, anexe já a chamada do primeiro passo nesta mesma resposta — não pergunte em texto se pode fazer.',
+    en: 'The Git operation below failed in the app. Explain in 2–3 sentences what the error means, without inventing details that are not in the message or the repository context. If one of your tools fixes the problem, attach the call for the first step in this same response — do not ask in text whether you may.',
+    es: 'La operación de Git de abajo falló en la aplicación. Explica en 2–3 frases qué significa el error, sin inventar detalles que no estén en el mensaje o en el contexto del repositorio. Si una de tus herramientas resuelve el problema, adjunta ya la llamada del primer paso en esta misma respuesta — no preguntes en texto si puedes hacerlo.'
+  })
 }
 
 // "remote: error: File backup.sql is 520.54 MB; this exceeds GitHub's file size limit"
@@ -223,6 +291,69 @@ const LARGE_FILE_ERROR = /\bFile (.+?) is \d+(?:\.\d+)? MB; this exceeds/g
 export function extractRejectedLargeFiles(text: string): string[] {
   const paths = [...text.matchAll(LARGE_FILE_ERROR)].map((m) => m[1].trim())
   return [...new Set(paths)]
+}
+
+const FILE_LOCATION_FACTS: Record<
+  AiLanguage,
+  {
+    heading: string
+    theRemote: string
+    earlierVersionOnRemote: (path: string, remote: string) => string
+    alreadyIgnored: (path: string) => string
+    alreadyUndone: (path: string, remote: string) => string
+    onlyLocal: (path: string, commits: string, remote: string) => string
+    notOnDisk: (path: string) => string
+    nextStep: (path: string, undoCount: number) => string
+  }
+> = {
+  'pt-BR': {
+    heading: 'Diagnóstico verificado pelo app (fatos — não contradiga):',
+    theRemote: 'o remoto',
+    earlierVersionOnRemote: (path, remote) =>
+      `- Uma versão anterior de ${path} já existe em ${remote} e continua no histórico antigo; a versão recusada não chegou lá.`,
+    alreadyIgnored: (path) =>
+      `- ${path} já está fora dos commits locais e no .gitignore. Próximo passo: commit (se houver mudanças no stage) e push.`,
+    alreadyUndone: (path, remote) =>
+      `- ${path} não está em nenhum commit à frente de ${remote} — o commit com ele já foi desfeito. Próximo passo: ignore_files com "${path}", depois commit e push.`,
+    onlyLocal: (path, commits, remote) =>
+      `- A versão de ${path} que foi recusada está SOMENTE em commit(s) local(is) ainda não enviado(s): ${commits}. Ela NÃO está em ${remote}; não há histórico remoto para reescrever.`,
+    notOnDisk: (path) =>
+      `- ${path} não existe mais no disco: a única cópia está nesse commit. Avise o usuário disso em uma frase antes de desfazer.`,
+    nextStep: (path, undoCount) =>
+      `- Próximo passo: undo_last_commit (${undoCount} vez(es) no total), depois ignore_files com "${path}", commit e push.`
+  },
+  en: {
+    heading: 'Diagnosis verified by the app (facts — do not contradict):',
+    theRemote: 'the remote',
+    earlierVersionOnRemote: (path, remote) =>
+      `- An earlier version of ${path} already exists on ${remote} and stays in the old history; the rejected version never got there.`,
+    alreadyIgnored: (path) =>
+      `- ${path} is already out of the local commits and in .gitignore. Next step: commit (if anything is staged) and push.`,
+    alreadyUndone: (path, remote) =>
+      `- ${path} is in no commit ahead of ${remote} — the commit with it was already undone. Next step: ignore_files with "${path}", then commit and push.`,
+    onlyLocal: (path, commits, remote) =>
+      `- The rejected version of ${path} is ONLY in local commit(s) not pushed yet: ${commits}. It is NOT on ${remote}; there is no remote history to rewrite.`,
+    notOnDisk: (path) =>
+      `- ${path} no longer exists on disk: the only copy lives in that commit. Tell the user so in one sentence before undoing.`,
+    nextStep: (path, undoCount) =>
+      `- Next step: undo_last_commit (${undoCount} time(s) in total), then ignore_files with "${path}", commit and push.`
+  },
+  es: {
+    heading: 'Diagnóstico verificado por la app (hechos — no los contradigas):',
+    theRemote: 'el remoto',
+    earlierVersionOnRemote: (path, remote) =>
+      `- Una versión anterior de ${path} ya existe en ${remote} y sigue en el historial antiguo; la versión rechazada nunca llegó allí.`,
+    alreadyIgnored: (path) =>
+      `- ${path} ya está fuera de los commits locales y en .gitignore. Siguiente paso: commit (si hay cambios en el stage) y push.`,
+    alreadyUndone: (path, remote) =>
+      `- ${path} no está en ningún commit por delante de ${remote} — el commit que lo contenía ya se deshizo. Siguiente paso: ignore_files con "${path}", luego commit y push.`,
+    onlyLocal: (path, commits, remote) =>
+      `- La versión rechazada de ${path} está SOLO en commit(s) local(es) aún no enviado(s): ${commits}. NO está en ${remote}; no hay historial remoto que reescribir.`,
+    notOnDisk: (path) =>
+      `- ${path} ya no existe en el disco: la única copia está en ese commit. Avísale al usuario en una frase antes de deshacer.`,
+    nextStep: (path, undoCount) =>
+      `- Siguiente paso: undo_last_commit (${undoCount} vez/veces en total), luego ignore_files con "${path}", commit y push.`
+  }
 }
 
 interface FileLocationFacts {
@@ -239,140 +370,211 @@ interface FileLocationFacts {
 // to "it's already on the remote": the diagnosis and the next tool to call.
 export function formatFileLocationFacts(language: AiLanguage, facts: FileLocationFacts[]): string {
   if (facts.length === 0) return ''
-  const pt = language === 'pt-BR'
-  const lines = [pt ? 'Diagnóstico verificado pelo app (fatos — não contradiga):' : 'Diagnosis verified by the app (facts — do not contradict):']
+  const t = FILE_LOCATION_FACTS[language]
+  const lines = [t.heading]
 
   for (const f of facts) {
-    const remote = f.upstream ?? (pt ? 'o remoto' : 'the remote')
+    const remote = f.upstream ?? t.theRemote
     const commits = f.localCommits.map((c) => `${c.shortHash} "${c.summary}"`).join(', ')
 
     // These paths come from a rejected push, so the rejected content is never on
     // the remote — at most an older version of the same path is. That must not
     // steer the model away from undoing the local commits.
-    if (f.onRemote) {
-      lines.push(
-        pt
-          ? `- Uma versão anterior de ${f.path} já existe em ${remote} e continua no histórico antigo; a versão recusada não chegou lá.`
-          : `- An earlier version of ${f.path} already exists on ${remote} and stays in the old history; the rejected version never got there.`
-      )
-    }
+    if (f.onRemote) lines.push(t.earlierVersionOnRemote(f.path, remote))
     if (f.localCommits.length === 0 && f.ignored) {
-      lines.push(
-        pt
-          ? `- ${f.path} já está fora dos commits locais e no .gitignore. Próximo passo: commit (se houver mudanças no stage) e push.`
-          : `- ${f.path} is already out of the local commits and in .gitignore. Next step: commit (if anything is staged) and push.`
-      )
+      lines.push(t.alreadyIgnored(f.path))
       continue
     }
     if (f.localCommits.length === 0) {
-      lines.push(
-        pt
-          ? `- ${f.path} não está em nenhum commit à frente de ${remote} — o commit com ele já foi desfeito. Próximo passo: ignore_files com "${f.path}", depois commit e push.`
-          : `- ${f.path} is in no commit ahead of ${remote} — the commit with it was already undone. Next step: ignore_files with "${f.path}", then commit and push.`
-      )
+      lines.push(t.alreadyUndone(f.path, remote))
       continue
     }
 
-    lines.push(
-      pt
-        ? `- A versão de ${f.path} que foi recusada está SOMENTE em commit(s) local(is) ainda não enviado(s): ${commits}. Ela NÃO está em ${remote}; não há histórico remoto para reescrever.`
-        : `- The rejected version of ${f.path} is ONLY in local commit(s) not pushed yet: ${commits}. It is NOT on ${remote}; there is no remote history to rewrite.`
-    )
-    if (!f.existsOnDisk) {
-      lines.push(
-        pt
-          ? `- ${f.path} não existe mais no disco: a única cópia está nesse commit. Avise o usuário disso em uma frase antes de desfazer.`
-          : `- ${f.path} no longer exists on disk: the only copy lives in that commit. Tell the user so in one sentence before undoing.`
-      )
-    }
-    lines.push(
-      pt
-        ? `- Próximo passo: undo_last_commit (${f.undoCount} vez(es) no total), depois ignore_files com "${f.path}", commit e push.`
-        : `- Next step: undo_last_commit (${f.undoCount} time(s) in total), then ignore_files with "${f.path}", commit and push.`
-    )
+    lines.push(t.onlyLocal(f.path, commits, remote))
+    if (!f.existsOnDisk) lines.push(t.notOnDisk(f.path))
+    lines.push(t.nextStep(f.path, f.undoCount))
   }
 
   return lines.join('\n')
 }
 
 export function askAsTeacherInstruction(language: AiLanguage, subject: string): string {
-  return language === 'pt-BR'
-    ? `Você é um professor que está explicando sobre git. O aluno tem dúvidas sobre "${subject}". Seja educado, calmo e sem exageros. Explique em português, com exemplos curtos se ajudar. Não execute nenhuma ação no repositório — só ensine.`
-    : `You are a teacher explaining Git. The student has questions about "${subject}". Be polite, calm, and measured. Explain in English, with short examples if helpful. Do not perform any repository actions — only teach.`
+  return pick(language, {
+    'pt-BR': `Você é um professor que está explicando sobre git. O aluno tem dúvidas sobre "${subject}". Seja educado, calmo e sem exageros. Explique em português, com exemplos curtos se ajudar. Não execute nenhuma ação no repositório — só ensine.`,
+    en: `You are a teacher explaining Git. The student has questions about "${subject}". Be polite, calm, and measured. Explain in English, with short examples if helpful. Do not perform any repository actions — only teach.`,
+    es: `Eres un profesor que explica Git. El alumno tiene dudas sobre "${subject}". Sé educado, tranquilo y mesurado. Explica en español, con ejemplos cortos si ayuda. No ejecutes ninguna acción en el repositorio — solo enseña.`
+  })
 }
 
 export function askAsTeacherUserMessage(language: AiLanguage, subject: string): string {
-  return language === 'pt-BR' ? `O que é ${subject}?` : `What is ${subject}?`
+  return pick(language, { 'pt-BR': `O que é ${subject}?`, en: `What is ${subject}?`, es: `¿Qué es ${subject}?` })
 }
 
 export function userRequestLabel(language: AiLanguage): string {
-  return language === 'pt-BR' ? 'Pedido do usuário' : 'User request'
+  return pick(language, { 'pt-BR': 'Pedido do usuário', en: 'User request', es: 'Solicitud del usuario' })
 }
 
 export function explainBugFallback(language: AiLanguage): string {
-  return language === 'pt-BR' ? 'Não foi possível gerar uma explicação.' : 'Could not generate an explanation.'
+  return pick(language, {
+    'pt-BR': 'Não foi possível gerar uma explicação.',
+    en: 'Could not generate an explanation.',
+    es: 'No se pudo generar una explicación.'
+  })
 }
 
 export function explainDiffFallback(language: AiLanguage): string {
-  return language === 'pt-BR'
-    ? 'Não foi possível gerar uma explicação para este diff.'
-    : 'Could not generate an explanation for this diff.'
+  return pick(language, {
+    'pt-BR': 'Não foi possível gerar uma explicação para este diff.',
+    en: 'Could not generate an explanation for this diff.',
+    es: 'No se pudo generar una explicación para este diff.'
+  })
 }
 
 export function diffTruncationNote(language: AiLanguage): string {
-  return language === 'pt-BR'
-    ? '\n\n> Observação: a explicação considera apenas a parte inicial do diff, devido ao limite configurado.'
-    : '\n\n> Note: the explanation covers only the beginning of the diff, due to the configured limit.'
+  return pick(language, {
+    'pt-BR': '\n\n> Observação: a explicação considera apenas a parte inicial do diff, devido ao limite configurado.',
+    en: '\n\n> Note: the explanation covers only the beginning of the diff, due to the configured limit.',
+    es: '\n\n> Nota: la explicación solo considera la parte inicial del diff, debido al límite configurado.'
+  })
 }
 
 export function diffExplanationHeader(language: AiLanguage, path: string): string {
-  const title = language === 'pt-BR' ? 'Explicação do diff' : 'Diff explanation'
-  const fileLabel = language === 'pt-BR' ? 'Arquivo' : 'File'
+  const { title, fileLabel } = pick(language, {
+    'pt-BR': { title: 'Explicação do diff', fileLabel: 'Arquivo' },
+    en: { title: 'Diff explanation', fileLabel: 'File' },
+    es: { title: 'Explicación del diff', fileLabel: 'Archivo' }
+  })
   return `## ${title}\n\n**${fileLabel}:** \`${path}\`\n\n`
 }
 
 export function investigationFailedMessage(language: AiLanguage, error: string): string {
-  const prefix =
-    language === 'pt-BR'
-      ? 'Não foi possível concluir a investigação deste commit.'
-      : 'Could not complete the investigation of this commit.'
+  const prefix = pick(language, {
+    'pt-BR': 'Não foi possível concluir a investigação deste commit.',
+    en: 'Could not complete the investigation of this commit.',
+    es: 'No se pudo completar la investigación de este commit.'
+  })
   return `${prefix}\n\n${error}`
 }
 
+// The investigation markdown starts with a localized "Findings" heading; the
+// chat recognises it (and the empty result) in every language, since a stored
+// conversation may predate a language switch.
+const FINDINGS_HEADING: Record<AiLanguage, string> = {
+  'pt-BR': '### Achados',
+  en: '### Findings',
+  es: '### Hallazgos'
+}
+
+const NO_CLEAR_ERRORS: Record<AiLanguage, string> = {
+  'pt-BR': 'Nenhum erro claro neste commit.',
+  en: 'No clear errors in this commit.',
+  es: 'Ningún error claro en este commit.'
+}
+
 export function investigationConsolidationFallback(language: AiLanguage): string {
-  return language === 'pt-BR'
-    ? '### Achados\n\nNão foi possível consolidar os resultados da investigação.'
-    : '### Findings\n\nCould not consolidate the investigation results.'
+  const body = pick(language, {
+    'pt-BR': 'Não foi possível consolidar os resultados da investigação.',
+    en: 'Could not consolidate the investigation results.',
+    es: 'No se pudieron consolidar los resultados de la investigación.'
+  })
+  return `${FINDINGS_HEADING[language]}\n\n${body}`
 }
 
 export function proposeFixPrompt(language: AiLanguage): string {
-  return language === 'pt-BR'
-    ? `Você aplica UMA correção pontual no arquivo. Não refatore, não reformate o que não precisa, não invente outros bugs. Não altere linhas fora do trecho necessário para corrigir o bug descrito.
+  return pick(language, {
+    'pt-BR': `Você aplica UMA correção pontual no arquivo. Não refatore, não reformate o que não precisa, não invente outros bugs. Não altere linhas fora do trecho necessário para corrigir o bug descrito.
 
 Responda APENAS JSON válido, sem markdown:
 {"content":"arquivo completo já corrigido"}
 
-O campo content deve ser o arquivo inteiro, com a correção aplicada e o restante idêntico.`
-    : `You apply ONE targeted fix in the file. Do not refactor, do not reformat what does not need it, do not invent other bugs. Do not change lines outside the section needed to fix the described bug.
+O campo content deve ser o arquivo inteiro, com a correção aplicada e o restante idêntico.`,
+    en: `You apply ONE targeted fix in the file. Do not refactor, do not reformat what does not need it, do not invent other bugs. Do not change lines outside the section needed to fix the described bug.
 
 Respond with ONLY valid JSON, no markdown:
 {"content":"full corrected file"}
 
-The content field must be the entire file, with the fix applied and everything else identical.`
+The content field must be the entire file, with the fix applied and everything else identical.`,
+    es: `Aplicas UNA corrección puntual en el archivo. No refactorices, no reformatees lo que no lo necesita, no inventes otros bugs. No cambies líneas fuera del tramo necesario para corregir el bug descrito.
+
+Responde SOLO JSON válido, sin markdown:
+{"content":"archivo completo ya corregido"}
+
+El campo content debe ser el archivo entero, con la corrección aplicada y el resto idéntico.`
+  })
 }
 
 export function emptyInvestigationMarkdown(language: AiLanguage): string {
-  return language === 'pt-BR'
-    ? '### Achados\n\nNenhum erro claro neste commit.'
-    : '### Findings\n\nNo clear errors in this commit.'
+  return `${FINDINGS_HEADING[language]}\n\n${NO_CLEAR_ERRORS[language]}`
 }
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+const EMPTY_INVESTIGATION_PATTERNS = (Object.keys(FINDINGS_HEADING) as AiLanguage[]).map((language) => {
+  const heading = escapeRegExp(FINDINGS_HEADING[language].replace(/^###\s*/, ''))
+  const body = escapeRegExp(NO_CLEAR_ERRORS[language].replace(/\.$/, ''))
+  return new RegExp(`^###\\s*${heading}\\s+${body}\\.?\\s*$`, 'i')
+})
 
 export function isEmptyInvestigationMarkdown(text: string): boolean {
   const normalized = text.trim().replace(/\r\n/g, '\n').replace(/\n+/g, ' ')
-  return (
-    /^###\s*Achados\s+Nenhum erro claro neste commit\.?\s*$/i.test(normalized) ||
-    /^###\s*Findings\s+No clear errors in this commit\.?\s*$/i.test(normalized)
-  )
+  return EMPTY_INVESTIGATION_PATTERNS.some((pattern) => pattern.test(normalized))
+}
+
+export interface InvestigationLabels {
+  subject: string
+  message: string
+  filesInCommit: string
+  moreFiles: (count: number) => string
+  findingFile: string
+  finding: string
+  diffFor: (path: string) => string
+  relatedDiff: (path: string) => string
+  file: string
+  batch: string
+}
+
+/** Scaffolding around the diffs the investigation subagents receive. */
+export function investigationLabels(language: AiLanguage): InvestigationLabels {
+  return pick<InvestigationLabels>(language, {
+    'pt-BR': {
+      subject: 'Assunto',
+      message: 'Mensagem',
+      filesInCommit: 'Arquivos deste commit:',
+      moreFiles: (count) => `e mais ${count} arquivo(s)`,
+      findingFile: 'Arquivo do achado',
+      finding: 'Achado',
+      diffFor: (path) => `Diff de ${path}:`,
+      relatedDiff: (path) => `Diff relacionado (${path}):`,
+      file: 'Arquivo',
+      batch: 'Lote'
+    },
+    en: {
+      subject: 'Subject',
+      message: 'Message',
+      filesInCommit: 'Files in this commit:',
+      moreFiles: (count) => `and ${count} more file(s)`,
+      findingFile: 'Finding file',
+      finding: 'Finding',
+      diffFor: (path) => `Diff for ${path}:`,
+      relatedDiff: (path) => `Related diff (${path}):`,
+      file: 'File',
+      batch: 'Batch'
+    },
+    es: {
+      subject: 'Asunto',
+      message: 'Mensaje',
+      filesInCommit: 'Archivos de este commit:',
+      moreFiles: (count) => `y ${count} archivo(s) más`,
+      findingFile: 'Archivo del hallazgo',
+      finding: 'Hallazgo',
+      diffFor: (path) => `Diff de ${path}:`,
+      relatedDiff: (path) => `Diff relacionado (${path}):`,
+      file: 'Archivo',
+      batch: 'Lote'
+    }
+  })
 }
 
 export function investigationWorkerPrompt(language: AiLanguage): string {
@@ -413,6 +615,45 @@ Respond with ONLY valid JSON, no markdown:
 {"findings":[{"priority":"P1|P2|P3","line":123,"claim":"up to 15 words","description":"when it triggers and what goes wrong, up to 25 words","example":"input → wrong output","fix":"short code or fix"}]}
 
 If there is no clear finding, respond {"findings":[]}.`
+  }
+
+  if (language === 'es') {
+    return `Eres un subagente de investigación de bugs. Analiza solo el diff recibido de UN archivo. Una lista vacía es el resultado correcto y esperado — inventar un problema para parecer útil es el peor resultado posible.
+
+También recibes un índice corto del commit (mensaje y archivos). Eso NO es el diff de los otros archivos: no inventes bugs en ellos.
+
+El mensaje del commit NO es la especificación de la corrección: los mensajes generados a partir del diff suelen copiar el código erróneo. Prevalece el contrato del propio archivo (doc/comentario, nombre de constante, fórmula escrita). Si el código nuevo contradice ese contrato y tienes un example concreto, repórtalo — aunque el mensaje describa el if/retorno tal como está.
+
+Usa el mensaje solo para no reportar una eliminación/sustitución que declara como objetivo (campo opcional, prop eliminada porque el callee también la eliminó, validación que el commit dice haber relajado a propósito).
+
+Solo reporta un hallazgo si TODO esto es cierto:
+- El defecto lo introdujeron las líneas + de este commit (no existía en el lado - ni solo en el contexto).
+- Puedes dar un ejemplo con el formato \`entrada concreta → salida errónea\` con valores, no narrativa.
+- Con esa entrada, el código nuevo produce un resultado objetivamente erróneo: valor guardado/enviado/devuelto incorrecto, excepción en el camino que creó este commit, o recurso filtrado en ese camino.
+- La evidencia está en este diff. Las funciones, tipos y archivos fuera del diff funcionan.
+
+No reportes:
+- Nulo/vacío "no tratado" sin que el diff muestre que null llega a ese camino.
+- Validación, try/catch, campo, parámetro o contrato eliminado cuando el mensaje del commit o el índice indican que pasó a ser opcional/sustituido.
+- Validación, try/catch o test ausente cuando el resto del archivo tampoco lo hace — una función nueva con la misma forma que sus vecinas no es un bug.
+- try/catch local alrededor de un helper/wrapper que el archivo ya usa para el mismo tipo de fallo: asume que el wrapper lo trata. "Dependencia caída → error genérico de infraestructura" no es un hallazgo.
+- Inyección, XSS o bypass de filtro si, al aplicar el allowlist/encoder/sanitizador de las líneas +, el example no sobrevive como salida peligrosa.
+- Validación nueva que rechaza la entrada tras sanitizar, quitar markup o medir el texto visible, cuando el commit describe exactamente esa regla (mínimo, máximo, contenido vacío). Rechazar solo markup o texto visible corto es el objetivo, no un fallo en el camino común.
+- Código solo de contexto o del lado -: el defecto tiene que nacer en las líneas +.
+- "Puede", "quizás", "considera", "debería verificar", estilo, nombres, arquitectura, rendimiento, duplicación.
+- Un bug que ya estaba en las líneas de contexto o en el lado antiguo.
+
+Prioridad (si no encaja, descártalo — P3 no es un cajón de suposiciones):
+- P1: se rompe en el uso normal — dato erróneo guardado/enviado, excepción en el camino común.
+- P2: solo se rompe con una entrada poco común que el propio diff hace posible.
+- P3: defecto real y demostrable, de impacto pequeño.
+
+Línea: en el hunk \`@@ -a,b +c,d @@\`, la primera línea de contexto o + es \`c\`. Cada línea de contexto o + avanza 1; las líneas - no cuentan. Si no estás seguro, omite \`line\`.
+
+Responde SOLO JSON válido, sin markdown:
+{"findings":[{"priority":"P1|P2|P3","line":123,"claim":"hasta 15 palabras","description":"cuándo ocurre y qué sale mal, hasta 25 palabras","example":"entrada → salida errónea","fix":"código o corrección corta"}]}
+
+Si no hay un hallazgo claro, responde {"findings":[]}.`
   }
 
   return `Você é um subagente de investigação de bugs. Analise somente o diff recebido de UM arquivo. Lista vazia é o resultado correto e esperado — inventar um problema para parecer útil é o pior resultado possível.
@@ -481,6 +722,33 @@ Respond with ONLY valid JSON, no markdown:
 {"verdict":"confirm"|"reject"}`
   }
 
+  if (language === 'es') {
+    return `Eres un subagente escéptico. Prefiere reject. Ante la duda, reject.
+
+Confirma SOLO si el example reproduce un resultado objetivamente erróneo introducido por las líneas +, y los diffs relacionados NO muestran que el commit sustituyó ese comportamiento a propósito.
+
+Confirma si el example viola el contrato escrito en el mismo archivo (doc, comentario, nombre de constante como umbral/mínimo), aunque el mensaje del commit parafrasee el código erróneo.
+
+Rechaza si:
+- el mensaje describe un cambio de producto (quitar validación, hacer un campo opcional, cambiar de API) y el diff hace exactamente eso — no rechaces solo porque el mensaje copia un if/fórmula nuevos
+- se eliminó una validación, campo, parámetro o contrato y otro hunk/archivo del commit trata el nuevo caso
+- nulo hipotético, suposición ("puede", "quizás", "considera"), bug ya presente en el lado -, estilo, tests o arquitectura
+- la línea citada no es una línea + (ni el efecto nuevo de una línea modificada): el contexto y el código que el commit no cambió no son hallazgos
+
+Rechaza tratamiento de errores / validación "ausente" (no es un bug, es revisión):
+- falta un try/catch o validación local cuando otra función del mismo archivo tiene la misma forma
+- la línea nueva ya está dentro de un helper/wrapper que el archivo ya usa para el mismo tipo de fallo
+- el example es "dependencia caída / excepción → error genérico de infraestructura" sin que el diff muestre un throw fuera de cualquier tratamiento existente
+- los símbolos fuera de este archivo funcionan, incluidos los que traducen errores: no exijas try/catch alrededor de la llamada si el resto del archivo tampoco envuelve esa llamada
+
+Rechaza inyección / bypass de sanitización / encoding / allowlist a menos que puedas recorrer el example por las reglas de las líneas + y aun así obtener una salida peligrosa. Si el filtro no coincide con el payload, es texto inofensivo — reject.
+
+Rechaza validación que rechaza: si el commit pasó a medir el valor sanitizado/visible y el example es "solo markup, espacios o texto corto → la regla lo rechaza", ese es el objetivo del cambio. Rechazar no es un defecto.
+
+Responde SOLO JSON válido, sin markdown:
+{"verdict":"confirm"|"reject"}`
+  }
+
   return `Você é um subagente cético. Prefira reject. Em dúvida, reject.
 
 Confirme SOMENTE se o example reproduz um resultado objetivamente errado introduzido pelas linhas + , e os diffs relacionados NÃO mostram que o commit substituiu esse comportamento de propósito.
@@ -528,6 +796,28 @@ Omit Example if not provided. Remove duplicates. If there are no findings and al
 No clear errors in this commit.
 
 If any file failed or is partial, state that concisely instead of claiming there are no errors.`
+  }
+
+  if (language === 'es') {
+    return `Consolidas los resultados de subagentes que analizaron un commit. NO recibiste el diff: no inventes hallazgos y usa solo los hallazgos concretos informados. No bajes el listón de evidencia ni conviertas suposiciones en P3.
+
+Responde en español. Los primeros caracteres deben ser "### Hallazgos". Un bloque por hallazgo, en prioridad decreciente:
+
+**[P1]** \`archivo:línea\` — afirmación corta
+
+**Descripción del bug:** explica en una o dos frases sencillas, como para una persona desarrolladora júnior: qué ocurre, cuándo ocurre y por qué el resultado es erróneo.
+
+**Ejemplo:** entrada → salida errónea
+
+**Corrección sugerida:** \`código\`
+
+Omite Ejemplo si no se proporcionó. Elimina duplicados. Si no hay hallazgos y toda la cobertura está completa, responde exactamente:
+
+### Hallazgos
+
+Ningún error claro en este commit.
+
+Si algún archivo falló o quedó parcial, infórmalo de forma concisa en lugar de afirmar que no hay errores.`
   }
 
   return `Você consolida resultados de subagentes que analisaram um commit. Você NÃO recebeu o diff: não invente achados e use somente os achados concretos informados. Não rebaixe a barra de evidência nem transforme palpite em P3.
@@ -615,23 +905,25 @@ const SCM_SKILL_TRIGGERS: { id: ScmSkillId; tools: Set<string>; pattern: RegExp;
       'set_git_identity'
     ]),
     // "pull request" belongs to the PR skills, not to pull.
-    pattern: /\b(commit\w*|comitar|push\w*|pull\w*(?!\s*-?\s*requests?)|branch(?:es)?|stash\w*|identidade|identity)\b/i
+    pattern:
+      /\b(commit\w*|comitar|comitear|push\w*|pull\w*(?!\s*-?\s*requests?)|branch(?:es)?|ramas?|stash\w*|identidade|identidad|identity)\b/i
   },
   {
     id: 'merge-branch',
     tools: new Set(['merge_branch', 'merge_abort', 'resolve_conflict']),
-    pattern: /\b(merge\w*|mescl\w*|conflit\w*|conflict\w*)\b/i
+    pattern: /\b(merge\w*|mescl\w*|fusion\w*|fusi[oó]n|conflit\w*|conflict\w*)\b/i
   },
   {
     id: 'codeowners',
     tools: new Set(),
-    pattern: /\b(code\s*owners?|codeowners|donos?\s+d[oe]\s+c[oó]digo|ownership)\b/i
+    pattern:
+      /\b(code\s*owners?|codeowners|donos?\s+d[oe]\s+c[oó]digo|(?:due[nñ]os?|propietarios?)\s+del\s+c[oó]digo|ownership)\b/i
   },
   {
     id: 'repository-risk',
     tools: new Set(),
     pattern:
-      /\b(riscos?|risks?|risky|hotspots?|bus\s*factor|sa[uú]de\s+do\s+(?:reposit[oó]rio|projeto)|(?:repo|repository|project)\s+health|onboarding)\b/i
+      /\b(riscos?|riesgos?|risks?|risky|hotspots?|bus\s*factor|sa[uú]de\s+do\s+(?:reposit[oó]rio|projeto)|salud\s+del\s+(?:repositorio|proyecto)|(?:repo|repository|project)\s+health|onboarding)\b/i
   },
   {
     // A file that should never have been committed (GH001 large file, backup,
@@ -640,7 +932,7 @@ const SCM_SKILL_TRIGGERS: { id: ScmSkillId; tools: Set<string>; pattern: RegExp;
     id: 'unwanted-file',
     tools: new Set(['undo_last_commit', 'ignore_files']),
     pattern:
-      /\bGH001\b|large files? detected|file size limit|\barquivos?\s+(?:muito\s+)?grandes?\b|\bgit\s+lfs\b|n[aã]o\s+(?:deveria|devia)\s+(?:ter\s+)?(?:sido\s+)?(?:commitad|comitad|subid|enviad|versionad)|\b(?:commitei|comitei|subi)\s+(?:sem\s+querer|errado|por\s+engano)/i,
+      /\bGH001\b|large files? detected|file size limit|\barquivos?\s+(?:muito\s+)?grandes?\b|\barchivos?\s+(?:muy\s+)?grandes?\b|\bgit\s+lfs\b|n[aã]o\s+(?:deveria|devia)\s+(?:ter\s+)?(?:sido\s+)?(?:commitad|comitad|subid|enviad|versionad)|\bno\s+(?:deber[ií]a|deb[ií]a)\s+(?:haber\s+)?(?:sido\s+)?(?:commitead|comitead|subid|enviad|versionad)|\b(?:commitei|comitei|subi)\s+(?:sem\s+querer|errado|por\s+engano)|\b(?:commite[eé]|comite[eé]|sub[ií])\s+(?:sin\s+querer|por\s+error|mal)/i,
     supersedes: ['git-workflow']
   }
 ]
@@ -661,11 +953,15 @@ export function selectScmSkills(messages: PrSkillMessage[]): ScmSkillId[] {
 
 export function isInvestigationMarkdown(text: string): boolean {
   const trimmed = text.trimStart()
-  return trimmed.startsWith('### Achados') || trimmed.startsWith('### Findings')
+  return Object.values(FINDINGS_HEADING).some((heading) => trimmed.startsWith(heading))
 }
 
 export function bugDescriptionHeading(language: AiLanguage): string {
-  return language === 'pt-BR' ? 'Descrição do bug:' : 'Bug description:'
+  return pick(language, {
+    'pt-BR': 'Descrição do bug:',
+    en: 'Bug description:',
+    es: 'Descripción del bug:'
+  })
 }
 
 export interface AiUiStrings {
@@ -822,6 +1118,89 @@ export function aiUiStrings(language: AiLanguage): AiUiStrings {
       toolCancel: 'Cancel',
       toolExecuting: 'Running…',
       toolRetry: 'Try again'
+    }
+  }
+
+  if (language === 'es') {
+    return {
+      emptyInvestigation: 'Ningún error claro en este commit.',
+      bugDescriptionHeading: 'Descripción del bug:',
+      explainDescriptionAria: 'Explicar esta descripción para principiantes',
+      explainDescriptionTitle: 'Generar explicación detallada',
+      explainDescriptionDoneTitle: 'Explicación ya generada',
+      detailedExplanation: 'Explicación detallada',
+      explainError: 'Explicar este error',
+      explainErrorConfigure: 'Configura la IA para explicar el error',
+      investigationSubagent: 'Subagente',
+      investigationAnalyzing: (file) => `Analizando ${file}`,
+      investigationFinished: 'Exploración finalizada',
+      investigationExploring: (completed, total) => `Explorando · ${completed}/${total}`,
+      investigationCancelled: 'Exploración interrumpida',
+      investigationFilesAnalyzed: (total, failed) =>
+        `${total} archivo(s) analizado(s)${failed > 0 ? ` · ${failed} con error` : ''}`,
+      investigationConsolidating: 'Consolidando resultados',
+      investigationConsolidatingAria: 'Consolidando resultados',
+      investigationSubagents: (count) => ` · ${count} subagentes`,
+      investigationInterrupted: 'La exploración se interrumpió.',
+      investigationPartialFailure: 'La investigación terminó con archivos que no se pudieron analizar.',
+      proposeFix: 'Proponer corrección',
+      preparingFix: 'Preparando corrección…',
+      openAiChat: 'Abrir chat de IA',
+      closeAiChat: 'Cerrar chat de IA',
+      generateCommitTitle: 'Generar el mensaje con el agente a partir del diff en stage',
+      generateCommit: 'Generar con Agente',
+      generatingCommit: 'Generando…',
+      explainDiff: 'Explicar diff',
+      explainDiffAria: (path) => `Explicar el diff de ${path}`,
+      exploreBug: 'Explorar bug',
+      exploreBugTitle: 'Explorar bug — la IA analiza este commit buscando solo errores claros',
+      exploreBugAria: (hash) => `Explorar bug en el commit ${hash}`,
+      examplePrompts: [
+        '¿Qué archivos están modificados?',
+        'Crea una rama llamada feature/x',
+        'Haz commit de los cambios en stage'
+      ],
+      chatSettings: 'Abrir configuración de IA',
+      chatSettingsLabel: 'Configuración',
+      chatEffort: 'Esfuerzo de razonamiento',
+      chatEffortLevels: { off: 'Desactivado', low: 'Bajo', medium: 'Medio', high: 'Alto', xhigh: 'Muy alto' },
+      chatEffortHint: 'Los niveles más altos examinan con más detalle y pueden tardar más.',
+      chatEffortReset: 'Volver al predeterminado (bajo)',
+      chatClear: 'Limpiar conversación',
+      chatClearPending: 'Hay acciones pendientes de aprobación',
+      chatDock: 'Acoplar chat de IA',
+      chatFloat: 'Separar el chat de IA en una ventana flotante',
+      chatDockBack: 'Volver a acoplar',
+      chatFloatResize: 'Redimensionar chat flotante',
+      chatCollapse: 'Contraer chat de IA',
+      chatCloseFloat: 'Cerrar chat flotante',
+      chatRetry: 'Reintentar',
+      chatCloseError: 'Cerrar aviso de error',
+      chatThinking: 'Pensando…',
+      chatPlaceholder: 'Escribe un mensaje…',
+      chatSend: 'Enviar (Enter)',
+      chatStop: 'Detener',
+      chatStopAria: 'Detener generación',
+      chatEmptyTitle: 'Asistente supervisado',
+      chatEmptyBody:
+        'La IA propone acciones en el repo — nada se ejecuta sin tu aprobación. Sigue navegando por Cambios/Historial mientras conversas.',
+      chatConfigure: 'Configurar IA',
+      chatComposerNotConfigured: 'Configura un modelo y una clave de API en Configuración para enviar mensajes.',
+      chatComposerBusy: 'Espera la respuesta actual o usa Detener.',
+      chatClearTitle: '¿Limpiar conversación?',
+      chatClearPendingMessage: (count) =>
+        `Hay ${count} acción(es) pendiente(s) de aprobación. Limpiar la conversación cancela esas aprobaciones y no se puede deshacer.`,
+      chatClearMessage: 'Se borrará toda la conversación. Esto no se puede deshacer.',
+      chatClearConfirm: 'Limpiar conversación',
+      patchPreviewTitle: 'Aplicar corrección propuesta',
+      patchPreviewMessage: (claim) =>
+        `${claim} — no se escribe nada en el repositorio hasta que confirmes.`,
+      patchPreviewConfirm: 'Aplicar al archivo',
+      toolApprove: 'Aprobar',
+      toolApproveDanger: 'Aprobar acción irreversible',
+      toolCancel: 'Cancelar',
+      toolExecuting: 'Ejecutando…',
+      toolRetry: 'Reintentar'
     }
   }
 

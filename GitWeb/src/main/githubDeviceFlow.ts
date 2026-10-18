@@ -4,6 +4,7 @@ import { fetchUser } from './githubApi'
 import { saveSecret } from './credentials'
 import { credentialKey } from '../shared/githubRemote'
 import { httpFetch } from './httpFetch'
+import { tMain } from './i18n'
 
 // GitHub OAuth Apps don't need a client secret for the Device Flow, so the
 // client_id is not sensitive and can live in source. Device Flow only works
@@ -60,7 +61,7 @@ const pendingFlows = new Map<string, PendingFlow>()
 
 export async function startDeviceFlow(host: string): Promise<DeviceFlowStart> {
   if (host !== 'github.com') {
-    throw new Error('OAuth Device Flow só é suportado em github.com. Para GitHub Enterprise, use um Personal Access Token.')
+    throw new Error(tMain().github.deviceFlowGithubOnly)
   }
 
   const response = await httpFetch('https://github.com/login/device/code', {
@@ -69,7 +70,7 @@ export async function startDeviceFlow(host: string): Promise<DeviceFlowStart> {
     body: JSON.stringify({ client_id: GITHUB_OAUTH_CLIENT_ID, scope: DEVICE_FLOW_SCOPE })
   })
   if (!response.ok) {
-    throw new Error(`GitHub respondeu ${response.status} ao iniciar o login por OAuth.`)
+    throw new Error(tMain().github.deviceFlowStartFailed(response.status))
   }
 
   const json = (await response.json()) as DeviceCodeApiResponse
@@ -117,7 +118,7 @@ async function pollOnce(deviceCode: string, signal: AbortSignal): Promise<Access
   })
   if (!response.ok) {
     const text = await response.text().catch(() => '')
-    throw new Error(`GitHub respondeu ${response.status} ao consultar o token${text ? `: ${text.slice(0, 200)}` : ''}.`)
+    throw new Error(tMain().github.deviceFlowPollFailed(response.status, text.slice(0, 200)))
   }
   return response.json() as Promise<AccessTokenApiResponse>
 }
@@ -128,7 +129,7 @@ async function pollOnce(deviceCode: string, signal: AbortSignal): Promise<Access
 // is stored here and only the resulting user is returned.
 export async function pollDeviceFlow(flowId: string): Promise<DeviceFlowPollResult> {
   const flow = pendingFlows.get(flowId)
-  if (!flow) return { status: 'error', errorMessage: 'Login expirado. Comece de novo.' }
+  if (!flow) return { status: 'error', errorMessage: tMain().github.loginExpired }
 
   let interval = flow.interval
 
@@ -153,7 +154,7 @@ export async function pollDeviceFlow(flowId: string): Promise<DeviceFlowPollResu
         case 'access_denied':
           return { status: 'denied' }
         default:
-          return { status: 'error', errorMessage: result.error_description || result.error || 'Erro desconhecido do GitHub.' }
+          return { status: 'error', errorMessage: result.error_description || result.error || tMain().github.unknownError }
       }
     }
     return { status: 'expired' }

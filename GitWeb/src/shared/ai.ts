@@ -94,7 +94,6 @@ export interface AiSettings {
   investigationConcurrency: number
   /** Prompt budget per investigation worker. This does not change the model's actual context window. */
   investigationContextTokens: number
-  language: 'pt-BR' | 'en'
   reasoningEffort: ReasoningEffort
   providers: Record<AiProvider, AiProviderConfig>
 }

@@ -1,6 +1,8 @@
 import { resolveActiveConfig, type AiSettings } from '../../../../shared/ai'
 import { commitMessageLanguageInstruction } from '../../../../shared/aiPrompts'
 import { sendChatRequest } from './providers'
+import { getLocale } from '../i18n'
+import type { AiLanguage } from '../../../../shared/aiPrompts'
 
 export interface GeneratedCommitMessage {
   summary: string
@@ -93,7 +95,7 @@ function extractJson(text: string): GeneratedCommitMessage {
 // in the original WinUI app — this exact structure (short summary + blank
 // line + 3-8 concrete bullets + optional impact sentence) is what produces
 // commit messages worth reading, as opposed to a generic one-liner.
-function buildPrompt(branch: string, status: string, diff: string, language: AiSettings['language']): string {
+function buildPrompt(branch: string, status: string, diff: string, language: AiLanguage): string {
   const languageInstruction = commitMessageLanguageInstruction(language)
 
   return `Analyze the Git changes below and generate a commit message like GitHub Copilot would.
@@ -102,7 +104,7 @@ Requirements:
 - Return only valid JSON.
 - JSON shape: {"summary":"...","description":"..."}
 - summary must be a polished sentence, concise, specific, and at most 72 characters.
-- If the selected language is pt-BR, start the summary with a past participle verb form such as "Adicionado", "Atualizado", or "Removido", not an infinitive like "Adicionar".
+- If the selected language is pt-BR, start the summary with a past participle verb form such as "Adicionado", "Atualizado", or "Removido", not an infinitive like "Adicionar". If it is Spanish, likewise use "Añadido", "Actualizado", or "Eliminado", not "Añadir".
 - description must be useful for a real commit review, not a terse changelog.
 - Start description with one short sentence that expands the summary.
 - Then add a blank line and 3 to 8 bullet lines with concrete changes.
@@ -134,7 +136,7 @@ export async function generateCommitMessage(
   diff: string
 ): Promise<GeneratedCommitMessage> {
   const truncatedDiff = diff.slice(0, settings.maxDiffChars)
-  const prompt = buildPrompt(branch, status, truncatedDiff, settings.language)
+  const prompt = buildPrompt(branch, status, truncatedDiff, getLocale())
 
   const response = await sendChatRequest(resolveActiveConfig(settings), apiKey, [
     { role: 'system', content: 'You write accurate Git commit messages.' },

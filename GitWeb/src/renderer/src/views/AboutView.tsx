@@ -3,11 +3,15 @@ import { AlertCircle, ArrowLeft, CheckCircle2, Download, FolderGit2, Loader2, Re
 import { useRepoStore } from '../store/repoStore'
 import Markdown from '../components/Markdown'
 import type { UpdateStatus } from '../../../shared/updates'
+import { allTranslations, type Locale, type Messages } from '../../../shared/i18n'
+import { useLocale, useT } from '../lib/i18n'
 
-function formatBuildTime(iso: string): string {
+type AboutMessages = Messages['about']
+
+function formatBuildTime(locale: Locale, iso: string): string {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return iso
-  return new Intl.DateTimeFormat('pt-BR', {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: 'long',
     timeStyle: 'short'
   }).format(date)
@@ -26,43 +30,46 @@ function formatBytes(bytes: number): string {
  * whole download and the number lives in its own tabular slot, so the line
  * doesn't reflow on every progress tick.
  */
-function updateMessage(status: UpdateStatus, targetVersion: string | null): string {
+function updateMessage(t: Messages, status: UpdateStatus, targetVersion: string | null): string {
   switch (status.state) {
     case 'idle':
-      return 'Verifique se há uma nova versão disponível.'
+      return t.about.idle
     case 'disabled':
-      return status.reason
+      // Main fixes this reason at startup; follow a later language switch.
+      return allTranslations((m) => m.main.updater.onlyInstalled).includes(status.reason)
+        ? t.main.updater.onlyInstalled
+        : status.reason
     case 'checking':
-      return 'Procurando atualizações…'
+      return t.about.checking
     case 'available':
     case 'downloading':
-      return targetVersion ? `Baixando a versão ${targetVersion}…` : 'Baixando atualização…'
+      return targetVersion ? t.about.downloadingVersion(targetVersion) : t.about.downloadingUpdate
     case 'not-available':
-      return 'Você já está na versão mais recente.'
+      return t.about.upToDate
     case 'downloaded':
-      return `Versão ${status.version} pronta. Reinicie para instalar.`
+      return t.about.readyToRestart(status.version)
     case 'error':
       return status.message
   }
 }
 
-function StateChip({ status }: { status: UpdateStatus }): JSX.Element | null {
+function StateChip({ t, status }: { t: AboutMessages; status: UpdateStatus }): JSX.Element | null {
   switch (status.state) {
     case 'checking':
-      return <span className="chip-command">Verificando</span>
+      return <span className="chip-command">{t.chipChecking}</span>
     case 'available':
     case 'downloading':
-      return <span className="chip-command">Baixando</span>
+      return <span className="chip-command">{t.chipDownloading}</span>
     case 'downloaded':
-      return <span className="chip-success">Pronta</span>
+      return <span className="chip-success">{t.chipReady}</span>
     case 'not-available':
-      return <span className="chip-success">Em dia</span>
+      return <span className="chip-success">{t.chipUpToDate}</span>
     case 'error':
-      return <span className="chip-danger">Erro</span>
+      return <span className="chip-danger">{t.chipError}</span>
     case 'disabled':
       return (
         <span className="inline-flex items-center rounded-pill border border-default-border bg-hover-overlay px-2.5 py-0.5 text-label uppercase text-secondary-text">
-          Desativadas
+          {t.chipDisabled}
         </span>
       )
     default:
@@ -95,6 +102,9 @@ function stagger(step: number): CSSProperties {
 function AboutView(): JSX.Element {
   const currentRepoPath = useRepoStore((s) => s.currentRepoPath)
   const setView = useRepoStore((s) => s.setView)
+  const messages = useT()
+  const t = messages.about
+  const locale = useLocale()
   const [version, setVersion] = useState<string | null>(null)
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ state: 'idle' })
   const [checking, setChecking] = useState(false)
@@ -138,7 +148,7 @@ function AboutView(): JSX.Element {
     await window.api.app.quitAndInstall()
   }
 
-  const buildLabel = formatBuildTime(__BUILD_TIME__)
+  const buildLabel = formatBuildTime(locale, __BUILD_TIME__)
   const state = updateStatus.state
   const inFlow = state === 'available' || state === 'downloading' || state === 'downloaded'
   const downloading = state === 'available' || state === 'downloading'
@@ -158,10 +168,10 @@ function AboutView(): JSX.Element {
           type="button"
           onClick={handleBack}
           className="flex h-[42px] items-center gap-2 rounded-md border border-default-border bg-coal-raised px-3 text-body text-secondary-text transition-[background-color,color,transform] duration-100 hover:bg-hover-overlay hover:text-primary-text active:scale-[0.98]"
-          aria-label="Voltar"
+          aria-label={t.back}
         >
           <ArrowLeft size={16} />
-          Voltar
+          {t.back}
         </button>
       </header>
 
@@ -179,24 +189,24 @@ function AboutView(): JSX.Element {
             GitWeb
           </h1>
           <p className="rise-in mt-3 text-center text-body text-secondary-text" style={stagger(1)}>
-            Git com clareza. IA com aprovação.
+            {t.tagline}
           </p>
 
           <div className="rise-in mt-5 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1.5" style={stagger(2)}>
             <span className="chip-command min-w-[5.5ch] justify-center tabular-nums normal-case tracking-normal">
               {version ? `v${version}` : '…'}
             </span>
-            <span className="text-caption tabular-nums text-tertiary-text">Build de {buildLabel}</span>
+            <span className="text-caption tabular-nums text-tertiary-text">{t.buildOf(buildLabel)}</span>
           </div>
 
           <section
-            aria-label="Atualizações"
+            aria-label={t.updates}
             className="rise-in card mt-10 w-full overflow-hidden p-0"
             style={stagger(3)}
           >
             <div className="flex items-center justify-between gap-3 px-5 pt-4">
-              <h2 className="text-label uppercase text-tertiary-text">Atualizações</h2>
-              <StateChip status={updateStatus} />
+              <h2 className="text-label uppercase text-tertiary-text">{t.updates}</h2>
+              <StateChip t={t} status={updateStatus} />
             </div>
 
             <div className="flex flex-col gap-4 px-5 pt-3 pb-5">
@@ -215,7 +225,7 @@ function AboutView(): JSX.Element {
                   role="status"
                   aria-live="polite"
                 >
-                  {updateMessage(updateStatus, target?.version ?? null)}
+                  {updateMessage(messages, updateStatus, target?.version ?? null)}
                 </p>
                 {inFlow && (
                   <span className="shrink-0 text-metric tabular-nums text-primary-text">
@@ -232,7 +242,7 @@ function AboutView(): JSX.Element {
                   <div
                     className="update-track"
                     role="progressbar"
-                    aria-label="Progresso do download"
+                    aria-label={t.downloadProgress}
                     aria-valuemin={0}
                     aria-valuemax={100}
                     aria-valuenow={percent}
@@ -246,10 +256,10 @@ function AboutView(): JSX.Element {
                   <div className="mt-2 flex items-center justify-between gap-3 text-caption tabular-nums text-tertiary-text">
                     <span>
                       {state === 'downloading'
-                        ? `${formatBytes(updateStatus.transferred)} de ${formatBytes(updateStatus.total)}`
+                        ? t.transferred(formatBytes(updateStatus.transferred), formatBytes(updateStatus.total))
                         : state === 'downloaded'
-                          ? 'Download concluído'
-                          : 'Preparando download…'}
+                          ? t.downloadDone
+                          : t.preparingDownload}
                     </span>
                     {state === 'downloading' && <span>{formatBytes(updateStatus.bytesPerSecond)}/s</span>}
                   </div>
@@ -261,14 +271,14 @@ function AboutView(): JSX.Element {
                   {state === 'downloaded' ? (
                     <button type="button" className="btn-primary" onClick={() => void handleInstall()}>
                       <RotateCcw size={14} aria-hidden />
-                      Reiniciar e instalar
+                      {t.restartAndInstall}
                     </button>
                   ) : downloading ? (
                     // Kept in place (disabled) rather than removed, so the
                     // panel holds its height while the download runs.
                     <button type="button" className="btn-secondary" disabled>
                       <Loader2 size={14} className="animate-spin" aria-hidden />
-                      Baixando…
+                      {t.downloadingButton}
                     </button>
                   ) : (
                     <button
@@ -278,7 +288,7 @@ function AboutView(): JSX.Element {
                       onClick={() => void handleCheckForUpdates()}
                     >
                       <RefreshCw size={14} className={checkingNow ? 'animate-spin' : undefined} aria-hidden />
-                      Verificar atualizações
+                      {t.checkForUpdates}
                     </button>
                   )}
                 </div>

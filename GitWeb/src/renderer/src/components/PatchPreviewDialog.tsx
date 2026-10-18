@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom'
 import { useId, useRef } from 'react'
 import { useFocusTrap } from '../lib/useFocusTrap'
+import { useT } from '../lib/i18n'
 import DiffViewer from './DiffViewer'
 
 interface PatchPreviewDialogProps {
@@ -25,6 +26,7 @@ function PatchPreviewDialog({
   onCancel
 }: PatchPreviewDialogProps): JSX.Element | null {
   const titleId = useId()
+  const messages = useT()
   const descId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
   useFocusTrap(panelRef, open, { onEscape: onCancel })
@@ -53,10 +55,10 @@ function PatchPreviewDialog({
         </div>
         <div className="mt-4 flex shrink-0 justify-end gap-2">
           <button type="button" onClick={onCancel} className="btn-secondary" disabled={busy}>
-            Cancelar
+            {messages.common.cancel}
           </button>
           <button type="button" onClick={onConfirm} className="btn-primary" disabled={busy || !diffText}>
-            {busy ? 'Aplicando…' : confirmLabel}
+            {busy ? messages.ui.applying : confirmLabel}
           </button>
         </div>
       </div>

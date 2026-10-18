@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { FileDiff, Plus } from 'lucide-react'
 import { annotateDiff, parseFileDiff, type AnnotatedDiffLine } from '../../../shared/patch'
+import { useT } from '../lib/i18n'
 
 interface DiffViewerProps {
   diffText: string
@@ -44,6 +45,7 @@ function DiffLine({
   line: AnnotatedDiffLine
   onComment?: (line: number) => void
 }): JSX.Element {
+  const t = useT().ui
   const commentable = onComment && line.newLine != null && line.kind !== 'remove' && line.kind !== 'hunk' && line.kind !== 'meta'
   return (
     <div className={`group flex min-w-0 items-stretch ${LINE_STYLES[line.kind]}`}>
@@ -61,8 +63,8 @@ function DiffLine({
           type="button"
           onClick={() => onComment(line.newLine!)}
           className="w-6 shrink-0 text-center text-[11px] text-tertiary-text opacity-0 hover:text-command-blue group-hover:opacity-100 focus-visible:opacity-100"
-          aria-label={`Comentar na linha ${line.newLine}`}
-          title={`Comentar na linha ${line.newLine}`}
+          aria-label={t.commentLine(line.newLine!)}
+          title={t.commentLine(line.newLine!)}
         >
           <Plus size={11} aria-hidden />
         </button>
@@ -87,6 +89,7 @@ function HunkToolbar({
   onUnstageHunk?: (hunkIndex: number) => void
   onDiscardHunk?: (hunkIndex: number) => void
 }): JSX.Element {
+  const t = useT().ui
   const action =
     'rounded-pill px-2 py-0.5 text-caption font-medium transition-[background-color,transform] duration-100 hover:bg-hover-overlay active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50'
   return (
@@ -94,15 +97,15 @@ function HunkToolbar({
       {hunkMode === 'stage' ? (
         <>
           <button type="button" disabled={disabled} onClick={() => onStageHunk?.(hunkIndex)} className={`${action} text-command-blue`}>
-            Incluir hunk
+            {t.stageHunk}
           </button>
           <button type="button" disabled={disabled} onClick={() => onDiscardHunk?.(hunkIndex)} className={`${action} text-danger-red`}>
-            Descartar hunk
+            {t.discardHunk}
           </button>
         </>
       ) : (
         <button type="button" disabled={disabled} onClick={() => onUnstageHunk?.(hunkIndex)} className={`${action} text-command-blue`}>
-          Tirar hunk do stage
+          {t.unstageHunk}
         </button>
       )}
     </div>
@@ -160,6 +163,8 @@ function DiffViewer({
   onCommentLine
 }: DiffViewerProps): JSX.Element {
   const [confirmDiscard, setConfirmDiscard] = useState<number | null>(null)
+  const messages = useT()
+  const t = messages.ui
 
   // The viewer keeps its place in the tree when another file is selected, so the
   // confirmation bar has to be dropped with the diff it belonged to — otherwise
@@ -195,10 +200,8 @@ function DiffViewer({
         <span className="empty-medallion rise-in mb-1">
           <FileDiff size={20} aria-hidden />
         </span>
-        <p className="text-body font-medium text-primary-text">Selecione um arquivo para ver o diff.</p>
-        <p className="max-w-sm text-caption text-tertiary-text">
-          Clique em um arquivo na lista ao lado, ou use ↑↓ com a lista em foco.
-        </p>
+        <p className="text-body font-medium text-primary-text">{t.selectFileForDiff}</p>
+        <p className="max-w-sm text-caption text-tertiary-text">{t.selectFileForDiffHint}</p>
       </div>
     )
   }
@@ -222,7 +225,7 @@ function DiffViewer({
           />
           {confirmDiscard === row.hunkIndex && (
             <div className="flex items-center gap-2 bg-danger-red-soft px-3 py-1.5 text-caption text-danger-red">
-              Descartar este hunk da árvore de trabalho?
+              {t.discardHunkConfirm}
               <button
                 type="button"
                 className="underline"
@@ -231,10 +234,10 @@ function DiffViewer({
                   setConfirmDiscard(null)
                 }}
               >
-                Descartar
+                {t.discard}
               </button>
               <button type="button" className="text-secondary-text underline" onClick={() => setConfirmDiscard(null)}>
-                Cancelar
+                {messages.common.cancel}
               </button>
             </div>
           )}

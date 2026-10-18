@@ -3,6 +3,7 @@ import { autoUpdater } from 'electron-updater'
 import { getSecret } from './credentials'
 import { credentialKey } from '../shared/githubRemote'
 import type { UpdateStatus } from '../shared/updates'
+import { tMain } from './i18n'
 
 const UPDATE_OWNER = 'CariSoftwareBR'
 const UPDATE_REPO = 'OpenGitDesktop'
@@ -119,11 +120,7 @@ function normalizeReleaseNotes(notes: string | { note?: string | null }[] | null
 function formatError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err)
   if (/authentication token|404|Unable to find latest version/i.test(raw)) {
-    return (
-      'Não foi possível acessar as releases do repositório privado. ' +
-      'Confirme que você está logado no GitHub no GitWeb com uma conta que tenha acesso a ' +
-      `${UPDATE_OWNER}/${UPDATE_REPO}, e tente de novo.`
-    )
+    return tMain().updater.privateReleasesUnavailable(`${UPDATE_OWNER}/${UPDATE_REPO}`)
   }
   return raw
 }
@@ -139,9 +136,7 @@ async function configurePrivateFeed(): Promise<{ ok: true } | { ok: false; messa
   if (!token) {
     return {
       ok: false,
-      message:
-        'O repositório de releases é privado. Entre no GitHub pelo GitWeb ' +
-        '(botão na barra superior ou na tela inicial) e tente de novo.'
+      message: tMain().updater.privateFeedLoginRequired
     }
   }
 
@@ -168,7 +163,7 @@ export function initAutoUpdater(): void {
   if (!app.isPackaged) {
     currentStatus = {
       state: 'disabled',
-      reason: 'Atualizações automáticas só funcionam na versão instalada.'
+      reason: tMain().updater.onlyInstalled
     }
     return
   }
@@ -237,7 +232,7 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
   if (!app.isPackaged) {
     const status: UpdateStatus = {
       state: 'disabled',
-      reason: 'Atualizações automáticas só funcionam na versão instalada.'
+      reason: tMain().updater.onlyInstalled
     }
     broadcast(status)
     return status
@@ -260,7 +255,7 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
     if (!result) {
       const status: UpdateStatus = {
         state: 'error',
-        message: 'Não foi possível consultar atualizações.'
+        message: tMain().updater.checkFailed
       }
       broadcast(status)
       return status

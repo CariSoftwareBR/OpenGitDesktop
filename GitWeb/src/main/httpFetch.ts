@@ -1,4 +1,5 @@
 import { net } from 'electron'
+import { tMain } from './i18n'
 import http from 'node:http'
 import https from 'node:https'
 import type { RequestOptions as HttpRequestOptions } from 'node:http'
@@ -66,33 +67,31 @@ function isPrivateOrLocalUrl(url: string): boolean {
 }
 
 export function describeNetworkError(err: unknown, url?: string): string {
-  if (err instanceof Error && err.name === 'AbortError') return 'Requisição cancelada.'
+  const t = tMain().network
+  if (err instanceof Error && err.name === 'AbortError') return t.cancelled
 
-  const where = url ? ` em ${originLabel(url)}` : ''
+  const where = url ? t.where(originLabel(url)) : ''
   const code = networkErrorCode(err)
-  const localHint =
-    url && isPrivateOrLocalUrl(url)
-      ? ' A porta pode estar aberta e o processo de IA mesmo assim não responder HTTP — reinicie o servidor local e confira a URL nas configurações.'
-      : ' Verifique a internet, um proxy ou um antivírus que inspecione HTTPS.'
+  const localHint = url && isPrivateOrLocalUrl(url) ? t.localHint : t.remoteHint
 
   switch (code) {
     case 'ECONNRESET':
     case 'ERR_CONNECTION_RESET':
-      return `A conexão${where} foi encerrada (conexão resetada).${localHint}`
+      return t.connectionReset(where, localHint)
     case 'ENOTFOUND':
     case 'EAI_AGAIN':
-      return `Não foi possível resolver o endereço${where}. Verifique a internet e o DNS.`
+      return t.dnsFailed(where)
     case 'ETIMEDOUT':
     case 'UND_ERR_CONNECT_TIMEOUT':
     case 'ERR_CONNECTION_TIMED_OUT':
-      return `A conexão${where} esgotou o tempo. Tente de novo.`
+      return t.timedOut(where)
     case 'ECONNREFUSED':
     case 'ERR_CONNECTION_REFUSED':
-      return `O servidor${where} recusou a conexão. Confira se o serviço está no ar e a URL nas configurações.`
+      return t.refused(where)
     case 'CERT_HAS_EXPIRED':
     case 'UNABLE_TO_VERIFY_LEAF_SIGNATURE':
     case 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY':
-      return `Falha na verificação do certificado HTTPS${where}. Um proxy ou antivírus pode estar interceptando a conexão.`
+      return t.certificate(where)
     default:
       break
   }
@@ -100,9 +99,7 @@ export function describeNetworkError(err: unknown, url?: string): string {
   if (err instanceof Error) {
     const cause = 'cause' in err && err.cause instanceof Error ? err.cause.message : ''
     if (err.message.includes('fetch failed') || err.message.includes('ERR_CONNECTION_RESET')) {
-      return cause
-        ? `Falha de rede${where} (${cause}).${localHint}`
-        : `Falha de rede${where}.${localHint}`
+      return cause ? t.failedWithCause(where, cause, localHint) : t.failed(where, localHint)
     }
     return where ? `${err.message} (${originLabel(url ?? '')})` : err.message
   }
@@ -227,7 +224,7 @@ export async function httpFetch(
       // Checked on the signal itself: net.fetch reports both a timeout and a
       // user cancel as a plain AbortError, and only the latter is "cancelled".
       if (timeoutSignal.aborted && !init?.signal?.aborted) {
-        throw new Error(`A requisição para ${originLabel(url)} excedeu o tempo limite de ${timeoutMs / 1000}s.`)
+        throw new Error(tMain().network.requestTimedOut(originLabel(url), timeoutMs / 1000))
       }
       if (err instanceof Error && err.name === 'AbortError') throw err
       lastError = err

@@ -18,6 +18,7 @@ import type {
 import type { AiSettings, ResolvedAiConfig } from '../shared/ai'
 import type { ChatMessage, ChatRequestOutcome, ChatResponse, ToolDefinition } from '../shared/aiChat'
 import type { AppSettings } from '../shared/settings'
+import type { Locale } from '../shared/i18n/locales'
 import type { DeviceFlowPollResult, DeviceFlowStart, OAuthAppInfo } from '../shared/githubAuth'
 import type {
   CreatePullRequestInput,
@@ -297,7 +298,8 @@ const api = {
     setLastRepositoryPath: (path: string | null): Promise<void> =>
       invoke('settings:setLastRepositoryPath', path),
     setAppSettings: (partial: Partial<AppSettings>): Promise<AppSettings> =>
-      invoke('settings:setAppSettings', partial)
+      invoke('settings:setAppSettings', partial),
+    getSystemLocale: (): Promise<Locale> => invoke('settings:getSystemLocale')
   },
   ai: {
     getSettings: (): Promise<AiSettings> => invoke('ai:getSettings'),

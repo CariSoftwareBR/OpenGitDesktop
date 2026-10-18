@@ -1,6 +1,7 @@
 import { apiBaseForHost, credentialKey, nextPageUrl } from '../shared/githubRemote'
 import { getSecret, saveSecret, deleteSecret } from './credentials'
 import { httpFetch } from './httpFetch'
+import { tMain } from './i18n'
 import type {
   CreatePullRequestInput,
   GitHubRepoSummary,
@@ -34,7 +35,7 @@ class GitHubApiError extends Error {
 async function requireToken(host: string): Promise<string> {
   const token = await getSecret(credentialKey(host))
   if (!token) {
-    throw new Error(`Você não está autenticado em ${host}. Entre com o GitHub e tente de novo.`)
+    throw new Error(tMain().github.notAuthenticated(host))
   }
   return token
 }
@@ -64,7 +65,7 @@ async function send<T>(url: string, token: string, init?: RequestInit): Promise<
   })
 
   if (!response.ok) {
-    let message = `GitHub recusou a solicitação (${response.status}).`
+    let message = tMain().github.requestRejected(response.status)
     try {
       // `errors` comes as objects ({ message }) from most endpoints but as bare
       // strings from others (reviews: "Review Can not request changes on your
@@ -183,7 +184,7 @@ export async function fetchUser(host: string, token: string): Promise<GitHubUser
 /** Persists a token only after it proves valid, so a typo never gets stored. */
 export async function saveToken(host: string, token: string): Promise<GitHubUser> {
   const trimmed = token.trim()
-  if (!trimmed) throw new Error('Informe um token.')
+  if (!trimmed) throw new Error(tMain().github.tokenRequired)
   const user = await fetchUser(host, trimmed)
   await saveSecret(credentialKey(host), trimmed)
   return user

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChevronRight, ExternalLink, FolderOpen, Trash2 } from 'lucide-react'
+import { useT } from '../lib/i18n'
 
 export interface FileContextMenuTarget {
   path: string
@@ -77,6 +78,7 @@ function FileContextMenu({
 }: FileContextMenuProps): JSX.Element | null {
   const ref = useRef<HTMLDivElement>(null)
   const folderRowRef = useRef<HTMLDivElement>(null)
+  const t = useT().ui
   const [folderOpen, setFolderOpen] = useState(false)
   const [submenuLeft, setSubmenuLeft] = useState(true)
   const [pos, setPos] = useState({ left: x, top: y })
@@ -212,7 +214,7 @@ function FileContextMenu({
         onClick={() => run(() => onDiscard(target.path))}
       >
         <Trash2 size={14} className="shrink-0 opacity-90" aria-hidden />
-        <span>Descartar alterações</span>
+        <span>{t.discardChanges}</span>
       </button>
 
       {canIgnore && (
@@ -226,7 +228,7 @@ function FileContextMenu({
               run(() => onIgnore([toIgnorePattern(target.path)], [target.path], !target.untracked))
             }
           >
-            {isDirectory ? 'Ignorar pasta (adicionar ao .gitignore)' : 'Ignorar arquivo (adicionar ao .gitignore)'}
+            {isDirectory ? t.ignoreFolder : t.ignoreFile}
           </button>
 
           {folders.length > 0 && (
@@ -244,7 +246,7 @@ function FileContextMenu({
                 className={`${ITEM} ${folderOpen ? 'bg-hover-overlay' : ''}`}
                 onClick={() => setFolderOpen((v) => !v)}
               >
-                <span className="min-w-0 flex-1 truncate">Ignorar pasta (adicionar ao .gitignore)</span>
+                <span className="min-w-0 flex-1 truncate">{t.ignoreFolder}</span>
                 <ChevronRight size={14} className="shrink-0 text-tertiary-text" aria-hidden />
               </button>
 
@@ -282,7 +284,7 @@ function FileContextMenu({
               className={ITEM}
               onClick={() => run(() => onIgnore([`*${ext}`], [target.path], !target.untracked))}
             >
-              Ignorar todos os arquivos {ext} (adicionar ao .gitignore)
+              {t.ignoreExtension(ext)}
             </button>
           )}
         </>
@@ -290,10 +292,10 @@ function FileContextMenu({
 
       <Separator />
       <button type="button" role="menuitem" className={ITEM} onClick={() => run(() => onCopy(fullPath ?? target.path))}>
-        Copiar caminho do arquivo
+        {t.copyFullPath}
       </button>
       <button type="button" role="menuitem" className={ITEM} onClick={() => run(() => onCopy(relativeNative))}>
-        Copiar caminho relativo
+        {t.copyRelativePath}
       </button>
 
       {fileExists && (
@@ -306,7 +308,7 @@ function FileContextMenu({
             onClick={() => run(() => onShowInExplorer(target.path))}
           >
             <FolderOpen size={14} className="shrink-0 text-secondary-text" aria-hidden />
-            <span>Mostrar no Explorer</span>
+            <span>{t.showInExplorer}</span>
           </button>
           <button
             type="button"
@@ -315,7 +317,7 @@ function FileContextMenu({
             onClick={() => run(() => onOpenDefault(target.path))}
           >
             <ExternalLink size={14} className="shrink-0 text-secondary-text" aria-hidden />
-            <span>Abrir com o programa padrão</span>
+            <span>{t.openDefault}</span>
           </button>
         </>
       )}

@@ -2,6 +2,8 @@ import { resolveActiveConfig, type AiSettings } from '../../../../shared/ai'
 import { conflictSummaryLanguageInstruction } from '../../../../shared/aiPrompts'
 import { sendChatRequest } from './providers'
 import type { ConflictBlock, FileBlock } from '../conflicts'
+import { getLocale, getT } from '../i18n'
+import type { AiLanguage } from '../../../../shared/aiPrompts'
 
 export interface ConflictBlockDecision {
   id: number
@@ -80,7 +82,7 @@ function parseResponse(text: string): GeneratedConflictResolution {
   }
 }
 
-function buildPrompt(path: string, blocks: FileBlock[], language: AiSettings['language']): string {
+function buildPrompt(path: string, blocks: FileBlock[], language: AiLanguage): string {
   const languageInstruction = conflictSummaryLanguageInstruction(language)
 
   const blockDescriptions: string[] = []
@@ -129,7 +131,7 @@ export async function generateConflictResolution(
   blocks: FileBlock[]
 ): Promise<GeneratedConflictResolution> {
   const conflictBlocks = blocks.filter((b): b is ConflictBlock => b.type === 'conflict')
-  const prompt = buildPrompt(path, blocks, settings.language)
+  const prompt = buildPrompt(path, blocks, getLocale())
 
   const response = await sendChatRequest(resolveActiveConfig(settings), apiKey, [
     { role: 'system', content: 'You resolve Git merge conflicts precisely and conservatively.' },
@@ -137,24 +139,24 @@ export async function generateConflictResolution(
   ])
 
   const result = parseResponse(response.content)
-  if (result.decisions.length === 0) throw new Error('A IA não retornou uma resolução de conflito válida.')
+  if (result.decisions.length === 0) throw new Error(getT().stores.aiNoResolution)
 
   const seenIds = new Set(result.decisions.map((d) => d.id))
   const missing = conflictBlocks.filter((b) => !seenIds.has(b.id))
-  if (missing.length > 0) throw new Error('A IA não resolveu todos os blocos de conflito.')
+  if (missing.length > 0) throw new Error(getT().stores.aiMissingBlocks)
 
   for (const decision of result.decisions) {
     if (decision.choice !== 'custom') continue
     if (!decision.text || decision.text.length === 0) {
-      throw new Error(`A IA indicou uma resolução "custom" sem conteúdo para o bloco #${decision.id}.`)
+      throw new Error(getT().stores.aiCustomEmpty(decision.id))
     }
     if (decision.text.some((line) => MARKER_LINE.test(line))) {
-      throw new Error(`A resolução da IA para o bloco #${decision.id} ainda contém marcadores de conflito.`)
+      throw new Error(getT().stores.aiStillHasMarkers(decision.id))
     }
   }
 
   return {
-    summary: result.summary || `Resolução de conflito em ${path}`,
+    summary: result.summary || getT().stores.conflictSummary(path),
     decisions: result.decisions
   }
 }

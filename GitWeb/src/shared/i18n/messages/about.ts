@@ -1,0 +1,92 @@
+// AboutView plus the update indicators (UpdateBadge, TopBar icon).
+
+const ptBR = {
+  back: 'Voltar',
+  tagline: 'Git com clareza. IA com aprovação.',
+  buildOf: (date: string) => `Build de ${date}`,
+  updates: 'Atualizações',
+  idle: 'Verifique se há uma nova versão disponível.',
+  checking: 'Procurando atualizações…',
+  downloadingVersion: (version: string) => `Baixando a versão ${version}…`,
+  downloadingUpdate: 'Baixando atualização…',
+  upToDate: 'Você já está na versão mais recente.',
+  readyToRestart: (version: string) => `Versão ${version} pronta. Reinicie para instalar.`,
+  chipChecking: 'Verificando',
+  chipDownloading: 'Baixando',
+  chipReady: 'Pronta',
+  chipUpToDate: 'Em dia',
+  chipError: 'Erro',
+  chipDisabled: 'Desativadas',
+  downloadProgress: 'Progresso do download',
+  transferred: (done: string, total: string) => `${done} de ${total}`,
+  downloadDone: 'Download concluído',
+  preparingDownload: 'Preparando download…',
+  restartAndInstall: 'Reiniciar e instalar',
+  downloadingButton: 'Baixando…',
+  checkForUpdates: 'Verificar atualizações',
+  badgeAvailable: (version: string) => `Nova versão ${version} disponível`,
+  badgeDownloading: (percent: number) => `Baixando atualização… ${percent}%`,
+  badgeReady: (version: string) => `Versão ${version} pronta para instalar`
+}
+
+type M = typeof ptBR
+
+const en: M = {
+  back: 'Back',
+  tagline: 'Git with clarity. AI with approval.',
+  buildOf: (date) => `Built on ${date}`,
+  updates: 'Updates',
+  idle: 'Check whether a new version is available.',
+  checking: 'Checking for updates…',
+  downloadingVersion: (version) => `Downloading version ${version}…`,
+  downloadingUpdate: 'Downloading update…',
+  upToDate: 'You are already on the latest version.',
+  readyToRestart: (version) => `Version ${version} is ready. Restart to install.`,
+  chipChecking: 'Checking',
+  chipDownloading: 'Downloading',
+  chipReady: 'Ready',
+  chipUpToDate: 'Up to date',
+  chipError: 'Error',
+  chipDisabled: 'Disabled',
+  downloadProgress: 'Download progress',
+  transferred: (done, total) => `${done} of ${total}`,
+  downloadDone: 'Download complete',
+  preparingDownload: 'Preparing download…',
+  restartAndInstall: 'Restart and install',
+  downloadingButton: 'Downloading…',
+  checkForUpdates: 'Check for updates',
+  badgeAvailable: (version) => `New version ${version} available`,
+  badgeDownloading: (percent) => `Downloading update… ${percent}%`,
+  badgeReady: (version) => `Version ${version} ready to install`
+}
+
+const es: M = {
+  back: 'Volver',
+  tagline: 'Git con claridad. IA con aprobación.',
+  buildOf: (date) => `Build del ${date}`,
+  updates: 'Actualizaciones',
+  idle: 'Comprueba si hay una nueva versión disponible.',
+  checking: 'Buscando actualizaciones…',
+  downloadingVersion: (version) => `Descargando la versión ${version}…`,
+  downloadingUpdate: 'Descargando actualización…',
+  upToDate: 'Ya tienes la versión más reciente.',
+  readyToRestart: (version) => `Versión ${version} lista. Reinicia para instalar.`,
+  chipChecking: 'Verificando',
+  chipDownloading: 'Descargando',
+  chipReady: 'Lista',
+  chipUpToDate: 'Al día',
+  chipError: 'Error',
+  chipDisabled: 'Desactivadas',
+  downloadProgress: 'Progreso de la descarga',
+  transferred: (done, total) => `${done} de ${total}`,
+  downloadDone: 'Descarga completada',
+  preparingDownload: 'Preparando descarga…',
+  restartAndInstall: 'Reiniciar e instalar',
+  downloadingButton: 'Descargando…',
+  checkForUpdates: 'Buscar actualizaciones',
+  badgeAvailable: (version) => `Nueva versión ${version} disponible`,
+  badgeDownloading: (percent) => `Descargando actualización… ${percent}%`,
+  badgeReady: (version) => `Versión ${version} lista para instalar`
+}
+
+export default { 'pt-BR': ptBR, en, es }

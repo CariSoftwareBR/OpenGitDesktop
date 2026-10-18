@@ -33,15 +33,17 @@ import { useAiStore } from '../store/aiStore'
 import { useAiUi } from '../lib/useAiUi'
 import { useGithubAuthStore } from '../store/githubAuthStore'
 import ConfirmDialog, { PromptDialog } from './ConfirmDialog'
+import { useT } from '../lib/i18n'
+import type { Messages } from '../../../shared/i18n'
 
-function timeAgo(timestamp: number | null): string {
-  if (!timestamp) return 'Nunca buscado'
+function timeAgo(t: Messages['topBar'], timestamp: number | null): string {
+  if (!timestamp) return t.neverFetched
   const seconds = Math.floor((Date.now() - timestamp) / 1000)
-  if (seconds < 60) return 'Agora mesmo'
+  if (seconds < 60) return t.justNow
   const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `Há ${minutes} min`
+  if (minutes < 60) return t.minutesAgo(minutes)
   const hours = Math.floor(minutes / 60)
-  return `Há ${hours}h`
+  return t.hoursAgo(hours)
 }
 
 const STATUS_TRIGGER =
@@ -84,6 +86,7 @@ function RepoCard({ compact }: { compact: boolean }): JSX.Element {
   const repoPath = useRepoStore((s) => s.currentRepoPath)
   const recentRepos = useRepoStore((s) => s.recentRepos)
   const openRepository = useRepoStore((s) => s.openRepository)
+  const t = useT().topBar
   const [repoFilter, setRepoFilter] = useState('')
   const [open, setOpen] = useState(false)
   const [menuPos, setMenuPos] = useState<MenuPosition | null>(null)
@@ -112,7 +115,7 @@ function RepoCard({ compact }: { compact: boolean }): JSX.Element {
         className={`${STATUS_TRIGGER} ${compact ? 'max-w-[140px]' : ''}`}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={compact ? `Repositório atual: ${name}` : undefined}
+        aria-label={compact ? t.currentRepoAria(name) : undefined}
         onClick={toggle}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown' && !open) {
@@ -126,7 +129,7 @@ function RepoCard({ compact }: { compact: boolean }): JSX.Element {
           <span title={name} className="truncate text-body font-medium text-primary-text">{name}</span>
         ) : (
           <span className="flex flex-col leading-tight">
-            <span className="text-label uppercase tracking-wide text-tertiary-text">Repositório atual</span>
+            <span className="text-label uppercase tracking-wide text-tertiary-text">{t.currentRepo}</span>
             <span title={name} className="max-w-40 truncate text-body font-medium text-primary-text">{name}</span>
           </span>
         )}
@@ -141,8 +144,8 @@ function RepoCard({ compact }: { compact: boolean }): JSX.Element {
                 type="search"
                 value={repoFilter}
                 onChange={(e) => setRepoFilter(e.target.value)}
-                placeholder="Filtrar repositórios…"
-                aria-label="Filtrar repositórios"
+                placeholder={t.filterReposPlaceholder}
+                aria-label={t.filterRepos}
                 className="field mb-1.5 w-full py-1.5"
               />
             )}
@@ -156,7 +159,7 @@ function RepoCard({ compact }: { compact: boolean }): JSX.Element {
                     type="button"
                     role="menuitem"
                     className={MENU_ITEM}
-                    title={repo.missing ? `${repo.path} (pasta não encontrada)` : repo.path}
+                    title={repo.missing ? t.folderMissing(repo.path) : repo.path}
                     disabled={repo.missing}
                     onClick={() => {
                       setOpen(false)
@@ -164,7 +167,7 @@ function RepoCard({ compact }: { compact: boolean }): JSX.Element {
                     }}
                   >
                     <span className={`truncate ${isCurrent ? 'font-semibold' : ''} ${repo.missing ? 'opacity-50' : ''}`}>{repo.name}</span>
-                    {isCurrent && <Check size={14} className="ml-auto shrink-0 text-command-blue" aria-label="(atual)" />}
+                    {isCurrent && <Check size={14} className="ml-auto shrink-0 text-command-blue" aria-label={t.currentMarker} />}
                   </button>
                 )
               })}
@@ -188,6 +191,7 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
   const renameBranch = useRepoStore((s) => s.renameBranch)
   const [open, setOpen] = useState(false)
   const [menuPos, setMenuPos] = useState<MenuPosition | null>(null)
+  const t = useT().topBar
   const [mergeTarget, setMergeTarget] = useState<string | null>(null)
   const [newBranchOpen, setNewBranchOpen] = useState(false)
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
@@ -244,7 +248,7 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
         className={`${STATUS_TRIGGER} ${compact ? 'max-w-[140px]' : ''}`}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={compact ? `Branch atual: ${currentBranch}` : undefined}
+        aria-label={compact ? t.currentBranchAria(currentBranch) : undefined}
         onClick={toggle}
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown' && !open) {
@@ -261,7 +265,7 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
           </span>
         ) : (
           <span className="flex flex-col leading-tight">
-            <span className="text-label uppercase tracking-wide text-tertiary-text">Branch atual</span>
+            <span className="text-label uppercase tracking-wide text-tertiary-text">{t.currentBranch}</span>
             <span title={currentBranch} className="max-w-32 truncate text-body font-medium text-primary-text">
               {currentBranch}
             </span>
@@ -279,21 +283,21 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
             className={`${MENU_PANEL} max-w-[360px]`}
           >
             <button type="button" role="menuitem" className={`${MENU_ITEM} text-command-blue`} onClick={handleNewBranch}>
-              <Plus size={14} aria-hidden /> Nova branch
+              <Plus size={14} aria-hidden /> {t.newBranch}
             </button>
             {showFilter && (
               <input
                 type="search"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                placeholder="Filtrar branches…"
-                aria-label="Filtrar branches"
+                placeholder={t.filterBranchesPlaceholder}
+                aria-label={t.filterBranches}
                 className="field mt-1.5 w-full py-1.5"
               />
             )}
             <div className="my-1.5 h-px bg-default-border" role="separator" />
             {visibleLocal.length === 0 && visibleRemote.length === 0 && (
-              <p className="px-2.5 py-1.5 text-caption text-tertiary-text">Nenhuma branch encontrada.</p>
+              <p className="px-2.5 py-1.5 text-caption text-tertiary-text">{t.noBranchFound}</p>
             )}
             {visibleLocal.map((branch) => (
               <div key={branch.name} className="flex items-center">
@@ -310,7 +314,7 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
                   {branch.isCurrent ? (
                     <>
                       <span className="truncate font-semibold">{branch.name}</span>
-                      <Check size={14} className="ml-auto shrink-0 text-command-blue" aria-label="(atual)" />
+                      <Check size={14} className="ml-auto shrink-0 text-command-blue" aria-label={t.currentMarker} />
                     </>
                   ) : (
                     <span className="truncate">{branch.name}</span>
@@ -320,8 +324,8 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
                   type="button"
                   role="menuitem"
                   className={ROW_ICON}
-                  title={`Renomear ${branch.name}`}
-                  aria-label={`Renomear ${branch.name}`}
+                  title={t.renameBranchAria(branch.name)}
+                  aria-label={t.renameBranchAria(branch.name)}
                   onClick={() => requestRename(branch.name)}
                 >
                   <Pencil size={14} aria-hidden />
@@ -332,8 +336,8 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
                       type="button"
                       role="menuitem"
                       className={ROW_ICON}
-                      title={`Mesclar ${branch.name} na atual`}
-                      aria-label={`Mesclar ${branch.name} na atual`}
+                      title={t.mergeIntoCurrentAria(branch.name)}
+                      aria-label={t.mergeIntoCurrentAria(branch.name)}
                       onClick={() => requestMerge(branch.name)}
                     >
                       <GitMerge size={14} aria-hidden />
@@ -342,8 +346,8 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
                       type="button"
                       role="menuitem"
                       className={`${ROW_ICON} hover:text-danger-red`}
-                      title={`Excluir ${branch.name}`}
-                      aria-label={`Excluir ${branch.name}`}
+                      title={t.deleteBranchAria(branch.name)}
+                      aria-label={t.deleteBranchAria(branch.name)}
                       onClick={() => requestDelete(branch.name)}
                     >
                       <Trash2 size={14} aria-hidden />
@@ -354,14 +358,14 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
             ))}
             {visibleRemote.length > 0 && (
               <>
-                <div className="mt-2 px-2.5 pb-1 text-label uppercase tracking-wide text-tertiary-text">Remotas</div>
+                <div className="mt-2 px-2.5 pb-1 text-label uppercase tracking-wide text-tertiary-text">{t.remotes}</div>
                 {visibleRemote.map((remote) => (
                   <button
                     key={remote}
                     type="button"
                     role="menuitem"
                     className={MENU_ITEM}
-                    title={`Criar a branch local "${remote.slice(remote.indexOf('/') + 1)}" a partir de ${remote} e trocar para ela`}
+                    title={t.checkoutRemoteTitle(remote.slice(remote.indexOf('/') + 1), remote)}
                     onClick={() => {
                       setOpen(false)
                       void checkoutRemoteBranch(remote)
@@ -378,13 +382,9 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
         )}
       <ConfirmDialog
         open={mergeTarget !== null}
-        title="Mesclar branch?"
-        message={
-          mergeTarget
-            ? `Mesclar "${mergeTarget}" na branch atual ("${currentBranch}")? Conflitos, se houver, aparecerão em Alterações.`
-            : ''
-        }
-        confirmLabel="Mesclar"
+        title={t.mergeTitle}
+        message={mergeTarget ? t.mergeMessage(mergeTarget, currentBranch) : ''}
+        confirmLabel={t.mergeConfirm}
         onCancel={() => setMergeTarget(null)}
         onConfirm={() => {
           const name = mergeTarget
@@ -395,15 +395,15 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
       <ConfirmDialog
         open={deleteTarget !== null}
         danger
-        title={deleteTarget?.force ? 'Excluir mesmo assim?' : 'Excluir branch?'}
+        title={deleteTarget?.force ? t.deleteForceTitle : t.deleteTitle}
         message={
           !deleteTarget
             ? ''
             : deleteTarget.force
-              ? `"${deleteTarget.name}" tem commits que não estão em nenhuma outra branch. Excluir mesmo assim apaga esses commits localmente.`
-              : `Excluir a branch local "${deleteTarget.name}"? A branch no remoto, se existir, não é afetada.`
+              ? t.deleteForceMessage(deleteTarget.name)
+              : t.deleteMessage(deleteTarget.name)
         }
-        confirmLabel={deleteTarget?.force ? 'Excluir mesmo assim' : 'Excluir'}
+        confirmLabel={deleteTarget?.force ? t.deleteForceConfirm : t.deleteConfirm}
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => {
           const target = deleteTarget
@@ -417,10 +417,10 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
       />
       <PromptDialog
         open={newBranchOpen}
-        title="Nova branch"
-        label="Nome da branch"
+        title={t.newBranch}
+        label={t.branchName}
         placeholder="feature/…"
-        confirmLabel="Criar branch"
+        confirmLabel={t.createBranch}
         transform={sanitizeBranchInput}
         validate={(name) => validateBranchName(name, branches.map((b) => b.name))}
         onCancel={() => {
@@ -434,15 +434,15 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
       />
       <PromptDialog
         open={renameTarget !== null}
-        title="Renomear branch"
-        message={renameTarget ? `Novo nome para "${renameTarget}". A branch no remoto, se existir, mantém o nome antigo.` : undefined}
-        label="Novo nome"
+        title={t.renameTitle}
+        message={renameTarget ? t.renameMessage(renameTarget) : undefined}
+        label={t.newName}
         initialValue={renameTarget ?? ''}
-        confirmLabel="Renomear"
+        confirmLabel={t.renameConfirm}
         transform={sanitizeBranchInput}
         validate={(name) =>
           name === renameTarget
-            ? 'Escolha um nome diferente do atual.'
+            ? t.renameSameName
             : validateBranchName(
                 name,
                 branches.map((b) => b.name).filter((b) => b !== renameTarget)
@@ -467,43 +467,40 @@ function SyncCard({ compact }: { compact: boolean }): JSX.Element {
   const forcePushPrompt = useRepoStore((s) => s.forcePushPrompt)
   const forcePush = useRepoStore((s) => s.forcePush)
   const dismissForcePush = useRepoStore((s) => s.dismissForcePush)
+  const t = useT().topBar
 
   const forcePushDialog = (
     <ConfirmDialog
       open={forcePushPrompt !== null}
       danger
-      title="Forçar push?"
-      message={
-        forcePushPrompt
-          ? `Você desfez ou alterou commits de "${forcePushPrompt.branch}" que já estavam no remoto. Forçar o push substitui esses commits no remoto pelos seus (com --force-with-lease: se alguém tiver enviado algo novo nesse meio-tempo, nada é sobrescrito).`
-          : ''
-      }
-      confirmLabel="Forçar push"
+      title={t.forcePushTitle}
+      message={forcePushPrompt ? t.forcePushMessage(forcePushPrompt.branch) : ''}
+      confirmLabel={t.forcePushConfirm}
       onCancel={dismissForcePush}
       onConfirm={() => void forcePush()}
     />
   )
 
   let icon = <RefreshCw size={16} className="text-secondary-text" aria-hidden />
-  let label = 'Buscar origin'
-  let subtitle = timeAgo(lastFetchedAt)
+  let label = t.fetchOrigin
+  let subtitle = timeAgo(t, lastFetchedAt)
 
   if (status && !status.upstream) {
     icon = <UploadCloud size={16} className="text-command-blue" aria-hidden />
-    label = 'Publicar branch'
-    subtitle = 'Ainda não publicada'
+    label = t.publishBranch
+    subtitle = t.notPublished
   } else if (status && status.behind > 0 && status.ahead > 0) {
     icon = <RefreshCw size={16} className="text-warning-amber" aria-hidden />
-    label = `Sincronizar (↓${status.behind} ↑${status.ahead})`
-    subtitle = 'Divergiu do remoto'
+    label = t.syncDiverged(status.behind, status.ahead)
+    subtitle = t.divergedFromRemote
   } else if (status && status.behind > 0) {
     icon = <DownloadCloud size={16} className="text-warning-amber" aria-hidden />
-    label = `Puxar origin (${status.behind})`
-    subtitle = `${status.behind} commit${status.behind === 1 ? '' : 's'} atrás`
+    label = t.pullOrigin(status.behind)
+    subtitle = t.commitsBehind(status.behind)
   } else if (status && status.ahead > 0) {
     icon = <UploadCloud size={16} className="text-command-blue" aria-hidden />
-    label = `Enviar origin (${status.ahead})`
-    subtitle = `${status.ahead} commit${status.ahead === 1 ? '' : 's'} à frente`
+    label = t.pushOrigin(status.ahead)
+    subtitle = t.commitsAhead(status.ahead)
   }
 
   if (isBusy) icon = <Loader2 size={16} className="animate-spin text-secondary-text" aria-hidden />
@@ -544,6 +541,7 @@ function GithubUserCard({ compact }: { compact: boolean }): JSX.Element | null {
   const user = useGithubAuthStore((s) => s.user)
   const loadCurrentUser = useGithubAuthStore((s) => s.loadCurrentUser)
   const setView = useRepoStore((s) => s.setView)
+  const t = useT().topBar
 
   useEffect(() => {
     void loadCurrentUser('github.com')
@@ -559,8 +557,8 @@ function GithubUserCard({ compact }: { compact: boolean }): JSX.Element | null {
         type="button"
         className="flex h-[42px] w-[42px] items-center justify-center rounded-md border border-default-border bg-coal-raised transition-[background-color,transform] duration-100 hover:bg-hover-overlay active:scale-95"
         onClick={() => setView('settings')}
-        title={`${displayName} (@${user.login}) — Conta do GitHub`}
-        aria-label={`Conta do GitHub: ${displayName}`}
+        title={t.githubAccountTitle(displayName, user.login)}
+        aria-label={t.githubAccountAria(displayName)}
       >
         <img src={user.avatarUrl} alt="" className="h-7 w-7 rounded-full border border-default-border" />
       </button>
@@ -572,8 +570,8 @@ function GithubUserCard({ compact }: { compact: boolean }): JSX.Element | null {
       type="button"
       className={CARD_TRIGGER}
       onClick={() => setView('settings')}
-      title={`${displayName} (@${user.login}) — Conta do GitHub`}
-      aria-label={`Conta do GitHub: ${displayName}`}
+      title={t.githubAccountTitle(displayName, user.login)}
+      aria-label={t.githubAccountAria(displayName)}
     >
       <img
         src={user.avatarUrl}
@@ -594,7 +592,7 @@ function UpdateIconButton({ iconBtn }: { iconBtn: (active: boolean) => string })
   const status = useUpdateStatus()
   const setView = useRepoStore((s) => s.setView)
 
-  const label = updateStatusLabel(status)
+  const label = updateStatusLabel(useT().about, status)
   if (!label) return null
 
   const ready = status.state === 'downloaded'
@@ -620,15 +618,16 @@ function TopBar(): JSX.Element {
   const panelOpen = useAiStore((s) => s.panelOpen)
   const togglePanel = useAiStore((s) => s.togglePanel)
   const ui = useAiUi()
+  const t = useT().topBar
   const narrow = useMediaQuery(NARROW_LAYOUT_QUERY)
 
   const tabs = [
-    { id: 'changes' as const, label: 'Alterações', icon: FileDiff },
-    { id: 'history' as const, label: 'Histórico', icon: Clock },
-    { id: 'stash' as const, label: 'Stash', icon: Archive },
-    { id: 'pullRequests' as const, label: 'Pull Requests', icon: GitPullRequest },
-    { id: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'settings' as const, label: 'Configurações', icon: Settings2 }
+    { id: 'changes' as const, label: t.tabs.changes, icon: FileDiff },
+    { id: 'history' as const, label: t.tabs.history, icon: Clock },
+    { id: 'stash' as const, label: t.tabs.stash, icon: Archive },
+    { id: 'pullRequests' as const, label: t.tabs.pullRequests, icon: GitPullRequest },
+    { id: 'dashboard' as const, label: t.tabs.dashboard, icon: LayoutDashboard },
+    { id: 'settings' as const, label: t.tabs.settings, icon: Settings2 }
   ]
 
   const iconBtn = (active: boolean): string =>
@@ -643,14 +642,14 @@ function TopBar(): JSX.Element {
           type="button"
           className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-md border border-default-border bg-coal-raised text-secondary-text shadow-[var(--shadow-raised)] transition-[background-color,transform,color] duration-100 hover:bg-hover-overlay hover:text-primary-text active:scale-95 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:-translate-x-0.5"
           onClick={closeRepository}
-          title="Voltar para recentes"
-          aria-label="Voltar para recentes"
+          title={t.backToRecents}
+          aria-label={t.backToRecents}
         >
           <ArrowLeft size={16} />
         </button>
         <div
           className="flex h-[42px] shrink-0 items-stretch overflow-hidden rounded-md border border-default-border bg-coal-raised shadow-[var(--shadow-raised)]"
-          aria-label="Repositório, branch e sincronização"
+          aria-label={t.repoBranchSync}
         >
           <RepoCard compact={narrow} />
           <span className="w-px self-stretch bg-default-border" aria-hidden />
@@ -677,7 +676,7 @@ function TopBar(): JSX.Element {
         <UpdateIconButton iconBtn={iconBtn} />
       </header>
 
-      <nav className="flex gap-1 overflow-x-auto border-b border-default-border bg-obsidian-panel px-3" aria-label="Visões do repositório">
+      <nav className="flex gap-1 overflow-x-auto border-b border-default-border bg-obsidian-panel px-3" aria-label={t.repoViews}>
         {tabs.map((tab) => {
           const Icon = tab.icon
           const active = view === tab.id

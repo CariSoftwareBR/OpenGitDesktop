@@ -1,6 +1,8 @@
 import { resolveActiveConfig, type AiSettings } from '../../../../shared/ai'
 import { commitMessageLanguageInstruction } from '../../../../shared/aiPrompts'
 import { sendChatRequest } from './providers'
+import { getLocale } from '../i18n'
+import type { AiLanguage } from '../../../../shared/aiPrompts'
 
 // Unlike generatePrDraft, this returns free-form markdown (rendered directly
 // via the app's Markdown component) rather than structured JSON — it's an
@@ -11,7 +13,7 @@ function buildPrompt(
   headBranch: string,
   baseBranch: string,
   diff: string,
-  language: AiSettings['language']
+  language: AiLanguage
 ): string {
   const languageInstruction = commitMessageLanguageInstruction(language)
 
@@ -53,7 +55,7 @@ export async function reviewPrDraft(
   }: { title: string; body: string; headBranch: string; baseBranch: string; diff: string }
 ): Promise<string> {
   const truncatedDiff = diff.slice(0, settings.maxDiffChars)
-  const prompt = buildPrompt(title, body, headBranch, baseBranch, truncatedDiff, settings.language)
+  const prompt = buildPrompt(title, body, headBranch, baseBranch, truncatedDiff, getLocale())
 
   const response = await sendChatRequest(resolveActiveConfig(settings), apiKey, [
     { role: 'system', content: 'You give concise, honest pre-flight reviews of pull requests before they are created.' },

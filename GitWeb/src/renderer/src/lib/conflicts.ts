@@ -1,3 +1,5 @@
+import { getT } from './i18n'
+
 export interface ConflictBlock {
   type: 'conflict'
   id: number
@@ -114,7 +116,7 @@ export function renderResolvedWithChoices(blocks: FileBlock[], choices: Map<numb
       continue
     }
     const choice = choices.get(block.id)
-    if (choice === undefined) throw new Error(`Bloco de conflito #${block.id} não foi resolvido pela IA.`)
+    if (choice === undefined) throw new Error(getT().stores.conflictBlockUnresolved(block.id))
     if (choice === 'ours') outputLines.push(...block.ours)
     else if (choice === 'theirs') outputLines.push(...block.theirs)
     else if (choice === 'both') outputLines.push(...block.ours, ...block.theirs)

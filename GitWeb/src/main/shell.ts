@@ -2,6 +2,7 @@ import { shell } from 'electron'
 import { existsSync } from 'fs'
 import { dirname, resolve, sep } from 'path'
 import { resolveRepoPath } from './gitProcess'
+import { tMain } from './i18n'
 
 function isWithinRoot(root: string, target: string): boolean {
   const normalizedRoot = resolve(root)
@@ -17,7 +18,7 @@ function isWithinRoot(root: string, target: string): boolean {
 export async function showItemInFolder(cwd: string, relativePath: string): Promise<void> {
   const fullPath = resolveRepoPath(cwd, relativePath)
   if (!existsSync(fullPath)) {
-    throw new Error(`Arquivo não encontrado: ${fullPath}`)
+    throw new Error(tMain().shell.fileNotFound(fullPath))
   }
   shell.showItemInFolder(fullPath)
 }
@@ -30,14 +31,14 @@ export async function openPath(cwd: string, relativePath: string): Promise<strin
     const parent = dirname(fullPath)
     const root = resolveRepoPath(cwd, '.')
     if (!isWithinRoot(root, parent)) {
-      throw new Error(`Arquivo não encontrado: ${fullPath}`)
+      throw new Error(tMain().shell.fileNotFound(fullPath))
     }
     if (existsSync(parent)) {
       const err = await shell.openPath(parent)
       if (err) throw new Error(err)
       return ''
     }
-    throw new Error(`Arquivo não encontrado: ${fullPath}`)
+    throw new Error(tMain().shell.fileNotFound(fullPath))
   }
   const err = await shell.openPath(fullPath)
   if (err) throw new Error(err)

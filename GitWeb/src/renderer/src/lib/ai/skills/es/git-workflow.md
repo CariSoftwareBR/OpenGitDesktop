@@ -1,0 +1,16 @@
+# Skill: flujo Git del día a día (commit, push, pull, ramas, stash)
+
+Sigue estas reglas siempre que el usuario pida commit, push, pull, crear o cambiar de rama, stash o corregir la identidad de Git.
+
+1. **Mira antes de actuar.** Parte del contexto del repositorio que ya tienes (rama, ahead/behind del upstream, estado). Llama a `read_changes` cuando necesites el diff real — nunca describas cambios que no has visto. `read_changes` **no** muestra archivos nuevos aún no rastreados (`??` en el estado): antes del commit, abre cada uno con `read_file`.
+2. **Commit (`commit`).** La herramienta escribe el mensaje sola, en el idioma configurado en la app — no redactes un mensaje ni prometas un formato específico.
+   - Si no hay nada en stage, `commit` añade al stage *todos* los cambios pendientes. Cuando los cambios mezclan claramente trabajos sin relación (p. ej., una funcionalidad y un ajuste de configuración no relacionado), avisa y sugiere que el usuario añada al stage un grupo cada vez en la pestaña Cambios. Si es un único cambio lógico, sigue adelante.
+   - Si el diff parece contener un secreto (contenido de `.env`, claves privadas, tokens de API, contraseñas), detente antes del commit: cita la ruta del archivo, nunca repitas el valor, y pregunta al usuario cómo proceder.
+   - Si hay conflictos de merge sin resolver, sigue la skill de merge de ramas.
+   - Si el commit falla con "Author identity unknown" / "Please tell me who you are", llama a `get_git_identity` y después ofrece `set_git_identity` (pregunta si es local o global si el usuario no lo dijo).
+3. **Rama principal.** Al hacer commit o push directamente en `main`/`master`, avisa una vez y ofrece `create_branch` para una rama de tema. Si el usuario confirma que quiere la rama principal, continúa — no vuelvas a preguntar.
+4. **Antes del `push`.** Si el contexto muestra que la rama está por detrás del upstream, o si no estás seguro, llama a `check_incoming_commits`. Si hay commits nuevos en el remoto, llama primero a `pull` y después a `push`. Un push rechazado (non-fast-forward) significa traer e integrar los cambios. No existe herramienta de force push — nunca la presentes como opción, ni como comando manual; si el usuario insiste en reescribir el historial remoto, explica por qué es arriesgado en ramas compartidas y que eso queda fuera de este chat.
+5. **Pull (`pull`).** Con cambios sin commit que puedan chocar, sugiere `stash` (o `commit`) antes. Si el pull termina en conflicto, sigue la skill de merge de ramas.
+6. **Ramas.** Nombra las ramas nuevas con un prefijo que indique la intención — `feature/`, `fix/`, `refactor/`, `docs/`, `hotfix/` — en minúsculas, palabras separadas por `-` (p. ej., `feature/wizard-pr`). Antes de `switch_branch` con cambios sin commit, ofrece `stash` y recuerda que `stash_pop` los recupera después.
+7. **Sin reescritura de historial.** No hay herramientas para amend, rebase, revert, tags o force push, y no enseñas esos comandos como paso manual. La única excepción es `undo_last_commit`, que deshace el último commit aún no enviado.
+8. **Informa con honestidad.** Un commit que falló, un push rechazado o un pull con conflicto no es un éxito — di qué pasó y cuál es el siguiente paso.

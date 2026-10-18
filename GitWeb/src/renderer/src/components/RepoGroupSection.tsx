@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react'
 import { ChevronDown, ChevronRight, Folder, Pencil, Trash2 } from 'lucide-react'
+import { useT } from '../lib/i18n'
 
 interface RepoGroupSectionProps {
   /** null renders the "Sem pasta" section, which cannot be renamed or deleted. */
@@ -32,6 +33,7 @@ function RepoGroupSection({
   onDropRepo,
   children
 }: RepoGroupSectionProps): JSX.Element {
+  const t = useT().ui
   const [editing, setEditing] = useState(Boolean(startEditing))
   const [draft, setDraft] = useState(name)
   const [dragOver, setDragOver] = useState(false)
@@ -129,7 +131,7 @@ function RepoGroupSection({
                 setEditing(false)
               }
             }}
-            aria-label="Nome da pasta"
+            aria-label={t.folderName}
             className="w-44 rounded-sm border border-default-border bg-coal-raised px-1.5 py-0.5 text-label text-primary-text outline-none focus:border-command-blue focus:ring-[3px] focus:ring-command-blue-soft"
           />
         )}
@@ -140,8 +142,8 @@ function RepoGroupSection({
               type="button"
               onClick={() => setEditing(true)}
               className="hit-area rounded-sm p-1 text-tertiary-text hover:bg-hover-overlay hover:text-secondary-text"
-              title="Renomear pasta"
-              aria-label={`Renomear a pasta ${name}`}
+              title={t.renameFolder}
+              aria-label={t.renameFolderAria(name)}
             >
               <Pencil size={13} />
             </button>
@@ -149,8 +151,8 @@ function RepoGroupSection({
               type="button"
               onClick={onDelete}
               className="hit-area rounded-sm p-1 text-tertiary-text hover:bg-danger-red-soft hover:text-danger-red"
-              title="Excluir pasta (os repositórios voltam para Sem pasta)"
-              aria-label={`Excluir a pasta ${name}`}
+              title={t.deleteFolder}
+              aria-label={t.deleteFolderAria(name)}
             >
               <Trash2 size={13} />
             </button>
@@ -161,7 +163,7 @@ function RepoGroupSection({
       {!collapsed &&
         (count === 0 ? (
           <p className="rounded-md border border-dashed border-default-border px-3 py-4 text-center text-caption text-tertiary-text">
-            Arraste repositórios para cá.
+            {t.dropReposHere}
           </p>
         ) : (
           children

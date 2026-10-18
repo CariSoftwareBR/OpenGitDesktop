@@ -38,26 +38,27 @@ import GithubLoginModal from '../components/GithubLoginModal'
 import Markdown from '../components/Markdown'
 import Pagination from '../components/Pagination'
 import type { PullRequestState } from '../lib/github'
+import type { Formatters, Messages } from '../../../shared/i18n'
+import { useFormatters, useT } from '../lib/i18n'
 
-function formatDate(iso: string): string {
+type PrMessages = Messages['pullRequests']
+
+function formatDate(fmt: Formatters, iso: string): string {
   try {
-    return new Date(iso).toLocaleString('pt-BR')
+    return fmt.dateTime(iso)
   } catch {
     return iso
   }
 }
 
-const STATE_FILTER_OPTIONS = [
-  { value: 'open', label: 'Abertas' },
-  { value: 'closed', label: 'Fechadas' },
-  { value: 'all', label: 'Todas' }
-]
+const STATE_FILTERS = ['open', 'closed', 'all'] as const
 
-const MERGE_METHOD_OPTIONS = [
-  { value: 'merge', label: 'Commit de merge' },
-  { value: 'squash', label: 'Squash e merge' },
-  { value: 'rebase', label: 'Rebase e merge' }
-]
+const MERGE_METHODS = ['merge', 'squash', 'rebase'] as const
+type MergeMethod = (typeof MERGE_METHODS)[number]
+
+function mergeMethodOptions(t: PrMessages): { value: MergeMethod; label: string }[] {
+  return MERGE_METHODS.map((value) => ({ value, label: t.mergeMethod[value] }))
+}
 
 const MIN_LIST_WIDTH = 240
 const MAX_LIST_WIDTH = 640
@@ -76,16 +77,8 @@ const MAX_HEADER_HEIGHT = 480
 
 const PR_PAGE_SIZE = 10
 
-const MERGE_METHOD_HELP: Record<(typeof MERGE_METHOD_OPTIONS)[number]['value'], string> = {
-  merge:
-    'Cria um commit de merge na branch base, preservando todos os commits da branch da PR e o histórico completo.',
-  squash:
-    'Junta todos os commits da PR em um único commit na branch base. O histórico da branch fica limpo, com só um commit.',
-  rebase:
-    'Reaplica cada commit da PR um a um em cima da branch base, sem criar um commit de merge. O histórico fica linear.'
-}
-
-function MergeMethodHint({ method }: { method: keyof typeof MERGE_METHOD_HELP }): JSX.Element {
+function MergeMethodHint({ method }: { method: MergeMethod }): JSX.Element {
+  const t = useT().pullRequests
   const [open, setOpen] = useState(false)
   const hintId = useId()
   const rootRef = useRef<HTMLSpanElement>(null)
@@ -113,7 +106,7 @@ function MergeMethodHint({ method }: { method: keyof typeof MERGE_METHOD_HELP })
       <button
         type="button"
         className="hit-area rounded-sm p-1 text-tertiary-text transition-colors hover:text-secondary-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-command-blue"
-        aria-label="O que significa este método de merge?"
+        aria-label={t.mergeMethodHintAria}
         aria-expanded={open}
         aria-controls={hintId}
         onClick={() => setOpen((v) => !v)}
@@ -127,7 +120,7 @@ function MergeMethodHint({ method }: { method: keyof typeof MERGE_METHOD_HELP })
           className="absolute left-0 top-full z-30 mt-1 w-80 rounded-md border border-default-border bg-coal-raised px-2 py-2 text-caption leading-snug text-secondary-text shadow-floating"
         >
           <ul className="flex flex-col gap-0.5">
-            {MERGE_METHOD_OPTIONS.map((o) => {
+            {mergeMethodOptions(t).map((o) => {
               const selected = o.value === method
               return (
                 <li
@@ -138,13 +131,13 @@ function MergeMethodHint({ method }: { method: keyof typeof MERGE_METHOD_HELP })
                 >
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-primary-text">{o.label}</p>
-                    <p className="mt-0.5">{MERGE_METHOD_HELP[o.value]}</p>
+                    <p className="mt-0.5">{t.mergeMethodHelp[o.value]}</p>
                   </div>
                   {aiReady && (
                     <button
                       type="button"
-                      title={`Perguntar à IA sobre ${o.label}`}
-                      aria-label={`Perguntar à IA sobre ${o.label}`}
+                      title={t.askAiAbout(o.label)}
+                      aria-label={t.askAiAbout(o.label)}
                       disabled={isBusy}
                       onClick={() => void askAiAbout(o.label)}
                       className="hit-area mt-0.5 shrink-0 rounded-sm p-1 text-command-blue opacity-0 transition-[opacity,background-color,transform] duration-100 hover:bg-command-blue-soft group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 active:scale-90 disabled:opacity-30"
@@ -169,6 +162,7 @@ function LoginForm(): JSX.Element {
   const loginSuccess = usePullRequestStore((s) => s.loginSuccess)
   const [token, setToken] = useState('')
   const [loginModalOpen, setLoginModalOpen] = useState(false)
+  const t = useT().pullRequests
 
   return (
     <div className="rise-in w-full max-w-md rounded-lg border border-default-border bg-obsidian-panel p-6 shadow-[var(--shadow-raised)]">
@@ -176,9 +170,8 @@ function LoginForm(): JSX.Element {
         <Github size={20} />
       </span>
       <p className="mb-4 text-body text-secondary-text">
-        Remote detectado: <strong className="text-primary-text">{remote?.owner}/{remote?.repo}</strong> em{' '}
-        <span className="text-tertiary-text">{remote?.host}</span>. Entre com o GitHub para listar e gerenciar Pull
-        Requests.
+        {t.remoteDetected} <strong className="text-primary-text">{remote?.owner}/{remote?.repo}</strong> {t.remoteOn}{' '}
+        <span className="text-tertiary-text">{remote?.host}</span>. {t.loginHint}
       </p>
 
       <button
@@ -186,24 +179,24 @@ function LoginForm(): JSX.Element {
         disabled={isBusy}
         className="btn-primary mb-3 flex w-full items-center justify-center gap-2"
       >
-        <Github size={16} /> Continuar com GitHub
+        <Github size={16} /> {t.continueGithub}
       </button>
 
       <div className="mb-2 flex items-center gap-2 text-label uppercase tracking-wide text-tertiary-text">
-        <span className="h-px flex-1 bg-default-border" /> ou use um token <span className="h-px flex-1 bg-default-border" />
+        <span className="h-px flex-1 bg-default-border" /> {t.orUseToken} <span className="h-px flex-1 bg-default-border" />
       </div>
 
       <div className="flex gap-2">
         <input
           type="password"
-          placeholder="ghp_… (ou GitHub Enterprise)"
-          aria-label="Personal Access Token do GitHub"
+          placeholder={t.tokenPlaceholder}
+          aria-label={t.tokenAria}
           value={token}
           onChange={(e) => setToken(e.target.value)}
           className="field flex-1"
         />
         <button onClick={() => loginWithToken(token.trim())} disabled={!token.trim() || isBusy} className="btn-secondary shrink-0">
-          Entrar
+          {t.signIn}
         </button>
       </div>
 
@@ -220,12 +213,7 @@ function LoginForm(): JSX.Element {
   )
 }
 
-const PR_WIZARD_STEPS = [
-  { n: 1, label: 'Origem' },
-  { n: 2, label: 'Título' },
-  { n: 3, label: 'Destino' },
-  { n: 4, label: 'Revisão' }
-] as const
+const PR_WIZARD_STEPS = [1, 2, 3, 4] as const
 
 // Only the conventional default names are guessed; anything else keeps "main",
 // which GitHub accepts as long as it exists on the remote.
@@ -239,11 +227,16 @@ function pickDefaultBase(branches: { name: string }[], head: string): string {
 
 // A subset of `git check-ref-format`, enough to catch what people actually
 // type (spaces, "..", trailing slash) before git rejects it with a raw error.
-function branchNameProblem(name: string, branches: { name: string }[], currentBranch?: string): string | null {
+function branchNameProblem(
+  t: PrMessages,
+  name: string,
+  branches: { name: string }[],
+  currentBranch?: string
+): string | null {
   if (!name) return null
-  if (/\s/.test(name)) return 'O nome da branch não pode ter espaços.'
+  if (/\s/.test(name)) return t.branchSpaces
   if (/[~^:?*[\\]/.test(name) || name.includes('..') || name.includes('@{')) {
-    return 'Caracteres inválidos. Use letras, números, "-", "_", "." e "/".'
+    return t.branchInvalidChars
   }
   if (
     name.startsWith('/') ||
@@ -254,9 +247,9 @@ function branchNameProblem(name: string, branches: { name: string }[], currentBr
     name.includes('//') ||
     name.split('/').some((part) => part.startsWith('.'))
   ) {
-    return 'Nome de branch inválido para o Git.'
+    return t.branchInvalid
   }
-  if (name !== currentBranch && branches.some((b) => b.name === name)) return 'Já existe uma branch com esse nome.'
+  if (name !== currentBranch && branches.some((b) => b.name === name)) return t.branchExists
   return null
 }
 
@@ -291,18 +284,19 @@ function BranchChip({ name }: { name: string }): JSX.Element {
 }
 
 function WizardSteps({ step }: { step: 1 | 2 | 3 | 4 }): JSX.Element {
+  const t = useT().pullRequests
   const last = PR_WIZARD_STEPS.length - 1
   return (
     <>
       <p className="sr-only" aria-live="polite">
-        Passo {step} de {PR_WIZARD_STEPS.length}: {PR_WIZARD_STEPS[step - 1].label}
+        {t.stepOf(step, PR_WIZARD_STEPS.length, t.wizardSteps[step - 1])}
       </p>
       <ol className="flex items-center" aria-hidden>
-        {PR_WIZARD_STEPS.map((s, i) => {
-          const done = step > s.n
-          const active = step === s.n
+        {PR_WIZARD_STEPS.map((n, i) => {
+          const done = step > n
+          const active = step === n
           return (
-            <li key={s.n} className={`flex items-center ${i < last ? 'flex-1' : ''}`}>
+            <li key={n} className={`flex items-center ${i < last ? 'flex-1' : ''}`}>
               <span className="flex items-center gap-2">
                 <span
                   className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-caption font-semibold tabular-nums transition-[background-color,border-color,color,box-shadow] duration-300 ${
@@ -313,14 +307,14 @@ function WizardSteps({ step }: { step: 1 | 2 | 3 | 4 }): JSX.Element {
                         : 'border-default-border bg-coal-raised text-tertiary-text'
                   }`}
                 >
-                  {done ? <Check size={13} strokeWidth={2.5} aria-hidden /> : s.n}
+                  {done ? <Check size={13} strokeWidth={2.5} aria-hidden /> : n}
                 </span>
                 <span
                   className={`text-caption font-medium transition-colors duration-300 ${
                     active ? 'text-primary-text' : done ? 'hidden text-secondary-text @[520px]:inline' : 'hidden text-tertiary-text @[520px]:inline'
                   }`}
                 >
-                  {s.label}
+                  {t.wizardSteps[n - 1]}
                 </span>
               </span>
               {i < last && (
@@ -405,6 +399,8 @@ function NewPullRequestWizard({
   const aiReady = isAiConfigured(aiSettings, aiApiKey)
   const currentBranch = branches.find((b) => b.isCurrent)?.name
   const hasUncommittedChanges = (status?.entries.length ?? 0) > 0
+  const messages = useT()
+  const t = messages.pullRequests
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [direction, setDirection] = useState<'forward' | 'back'>('forward')
@@ -418,7 +414,8 @@ function NewPullRequestWizard({
   const draftLabelId = useId()
   const titleId = useId()
   const newBranchInputId = useId()
-  const newBranchProblem = branchMode === 'new' ? branchNameProblem(newBranchName.trim(), branches, currentBranch) : null
+  const newBranchProblem =
+    branchMode === 'new' ? branchNameProblem(t, newBranchName.trim(), branches, currentBranch) : null
 
   function goToStep(next: 1 | 2 | 3 | 4): void {
     setDirection(next > step ? 'forward' : 'back')
@@ -442,7 +439,7 @@ function NewPullRequestWizard({
     }
     const name = newBranchName.trim()
     if (!name) {
-      setBranchError('Informe um nome para a nova branch.')
+      setBranchError(t.newBranchRequired)
       return
     }
     if (newBranchProblem) return
@@ -488,7 +485,7 @@ function NewPullRequestWizard({
       const diff = hasUncommittedChanges
         ? await getDraftDiff(currentRepoPath, effectiveBase, effectiveHead, useRepoStore.getState().status?.entries ?? [])
         : await window.api.git.branchDiff(currentRepoPath, effectiveBase, effectiveHead)
-      if (!diff.trim()) throw new Error('Não há diferenças para gerar um título e descrição.')
+      if (!diff.trim()) throw new Error(t.noDiff)
       const draftResult = await generatePrDraft(settings, apiKey, {
         headBranch: effectiveHead,
         baseBranch: effectiveBase,
@@ -528,7 +525,7 @@ function NewPullRequestWizard({
         if (stageErr) throw new Error(stageErr)
 
         useRepoStore.setState({ error: null })
-        await commitChanges(title.trim() || 'Atualização', body.trim())
+        await commitChanges(title.trim() || t.defaultCommitMessage, body.trim())
         const commitErr = useRepoStore.getState().error
         if (commitErr) throw new Error(commitErr)
       }
@@ -625,7 +622,7 @@ function NewPullRequestWizard({
               <GitPullRequest size={17} aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              <h2 className="text-title font-semibold text-primary-text">Nova Pull Request</h2>
+              <h2 className="text-title font-semibold text-primary-text">{t.newPr}</h2>
               {step > 1 && (
                 <div className="mt-1 flex min-w-0 items-center gap-1.5 text-caption text-tertiary-text">
                   <BranchChip name={head} />
@@ -638,7 +635,7 @@ function NewPullRequestWizard({
               type="button"
               onClick={onClose}
               disabled={stepBusy}
-              aria-label="Fechar"
+              aria-label={messages.common.close}
               className="shrink-0 rounded-sm p-1.5 text-tertiary-text transition-colors hover:bg-hover-overlay hover:text-primary-text"
             >
               <X size={16} aria-hidden />
@@ -657,7 +654,7 @@ function NewPullRequestWizard({
         >
           {step === 1 && (
             <fieldset className="flex flex-col gap-2.5">
-              <legend className="mb-3 text-body text-secondary-text">De qual branch as mudanças vão sair?</legend>
+              <legend className="mb-3 text-body text-secondary-text">{t.originQuestion}</legend>
 
               <div className={optionCard(branchMode === 'current', !currentBranch)}>
                 <label className={`flex items-start gap-3 ${currentBranch ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
@@ -673,11 +670,11 @@ function NewPullRequestWizard({
                     <GitBranch size={16} aria-hidden />
                   </span>
                   <span className="flex min-w-0 flex-col items-start gap-1">
-                    <span className="text-body font-medium text-primary-text">Usar a branch atual</span>
+                    <span className="text-body font-medium text-primary-text">{t.useCurrentBranch}</span>
                     {currentBranch ? (
                       <BranchChip name={currentBranch} />
                     ) : (
-                      <span className="text-caption text-tertiary-text">Nenhuma branch ativa (HEAD destacado).</span>
+                      <span className="text-caption text-tertiary-text">{t.detachedHead}</span>
                     )}
                   </span>
                 </label>
@@ -696,10 +693,10 @@ function NewPullRequestWizard({
                     <GitBranchPlus size={16} aria-hidden />
                   </span>
                   <span className="flex min-w-0 flex-col gap-1">
-                    <span className="text-body font-medium text-primary-text">Criar nova branch</span>
+                    <span className="text-body font-medium text-primary-text">{t.createNewBranch}</span>
                     {currentBranch && (
                       <span className="flex min-w-0 items-center gap-1.5 text-caption text-tertiary-text">
-                        a partir de <BranchChip name={currentBranch} />
+                        {t.fromBranch} <BranchChip name={currentBranch} />
                       </span>
                     )}
                   </span>
@@ -707,13 +704,13 @@ function NewPullRequestWizard({
                 {branchMode === 'new' && (
                   <div className="mt-3 flex flex-col gap-1.5 pl-[76px] animate-[wizard-panel-in_0.2s_ease-out]">
                     <label htmlFor={newBranchInputId} className="sr-only">
-                      Nome da nova branch
+                      {t.newBranchName}
                     </label>
                     <input
                       id={newBranchInputId}
                       type="text"
                       placeholder="feature/…"
-                      aria-label="Nome da nova branch"
+                      aria-label={t.newBranchName}
                       aria-invalid={Boolean(newBranchProblem)}
                       autoFocus
                       spellCheck={false}
@@ -754,15 +751,15 @@ function NewPullRequestWizard({
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <label htmlFor={titleId} className={fieldLabel}>
-                    Título
+                    {t.title}
                   </label>
                   {aiReady && (
                     <button
                       type="button"
                       onClick={() => void handleGenerateDraft()}
                       disabled={generating}
-                      title="Gerar título e descrição com IA a partir do diff da branch"
-                      aria-label="Gerar título e descrição com IA"
+                      title={t.generateTitle}
+                      aria-label={t.generateAria}
                       className="btn-agent"
                     >
                       {generating ? (
@@ -773,7 +770,7 @@ function NewPullRequestWizard({
                         <Sparkles size={13} aria-hidden />
                       )}
                       <span className={generating ? 'agent-busy-shimmer' : undefined}>
-                        {generating ? 'Gerando…' : 'Gerar com Agente'}
+                        {generating ? t.generating : t.generateWithAgent}
                       </span>
                     </button>
                   )}
@@ -781,8 +778,8 @@ function NewPullRequestWizard({
                 <input
                   id={titleId}
                   type="text"
-                  placeholder="Resuma a mudança em uma linha"
-                  aria-label="Título da pull request"
+                  placeholder={t.titlePlaceholder}
+                  aria-label={t.titleAria}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   onKeyDown={(e) => {
@@ -797,11 +794,11 @@ function NewPullRequestWizard({
 
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className={fieldLabel}>Descrição</span>
+                  <span className={fieldLabel}>{t.description}</span>
                   <div
                     className="relative inline-flex w-44 shrink-0 overflow-hidden rounded-md bg-coal-raised p-1"
                     role="tablist"
-                    aria-label="Modo de edição da descrição"
+                    aria-label={t.descModeAria}
                   >
                     <div
                       aria-hidden
@@ -818,7 +815,7 @@ function NewPullRequestWizard({
                         descTab === 'normal' ? 'text-primary-text' : 'text-secondary-text hover:text-primary-text'
                       }`}
                     >
-                      Normal
+                      {t.normal}
                     </button>
                     <button
                       type="button"
@@ -829,7 +826,7 @@ function NewPullRequestWizard({
                         descTab === 'preview' ? 'text-primary-text' : 'text-secondary-text hover:text-primary-text'
                       }`}
                     >
-                      Prévia
+                      {t.preview}
                     </button>
                   </div>
                 </div>
@@ -844,8 +841,8 @@ function NewPullRequestWizard({
                   >
                     {descTab === 'normal' ? (
                       <textarea
-                        placeholder="Descrição (markdown suportado)"
-                        aria-label="Descrição da pull request"
+                        placeholder={t.bodyPlaceholder}
+                        aria-label={t.bodyAria}
                         value={body}
                         onChange={(e) => setBody(e.target.value)}
                         rows={10}
@@ -856,7 +853,7 @@ function NewPullRequestWizard({
                         {body.trim() ? (
                           <Markdown text={body} />
                         ) : (
-                          <p className="text-caption text-tertiary-text">Nada para pré-visualizar.</p>
+                          <p className="text-caption text-tertiary-text">{t.nothingToPreview}</p>
                         )}
                       </div>
                     )}
@@ -877,7 +874,7 @@ function NewPullRequestWizard({
               <div className="rounded-md border border-default-border bg-obsidian-panel p-4 shadow-[var(--shadow-raised)]">
                 <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-3">
                   <div className="flex min-w-0 flex-col gap-1.5">
-                    <span className={fieldLabel}>Origem</span>
+                    <span className={fieldLabel}>{t.origin}</span>
                     <div className="flex h-[34px] min-w-0 items-center gap-2 rounded-sm border border-default-border bg-coal-raised px-3 text-primary-text">
                       <GitBranch size={13} className="shrink-0 text-tertiary-text" aria-hidden />
                       <span className="truncate font-mono text-[13px]">{head}</span>
@@ -887,7 +884,7 @@ function NewPullRequestWizard({
                     <ArrowRight size={13} aria-hidden />
                   </span>
                   <div className="flex min-w-0 flex-col gap-1.5">
-                    <span className={fieldLabel}>Destino</span>
+                    <span className={fieldLabel}>{t.destination}</span>
                     <Combobox
                       value={base}
                       onChange={(value) => {
@@ -895,20 +892,20 @@ function NewPullRequestWizard({
                         setBase(value)
                       }}
                       options={baseOptions}
-                      ariaLabel="Branch de destino"
-                      placeholder="Destino"
+                      ariaLabel={t.destinationBranch}
+                      placeholder={t.destination}
                     />
                   </div>
                 </div>
                 {head && base && head === base && (
                   <p className="mt-3 flex items-center gap-1.5 text-caption text-danger-red">
                     <AlertTriangle size={12} className="shrink-0" aria-hidden />
-                    Origem e destino não podem ser iguais.
+                    {t.sameBranch}
                   </p>
                 )}
                 {baseOptions.length === 0 && (
                   <p className="mt-3 text-caption text-tertiary-text">
-                    Não há outra branch local para usar como destino.
+                    {t.noOtherBranch}
                   </p>
                 )}
               </div>
@@ -917,9 +914,8 @@ function NewPullRequestWizard({
                 <div className="flex items-start gap-2.5 rounded-md border border-attention-orange/25 bg-attention-orange-soft px-3.5 py-3 text-caption text-secondary-text">
                   <AlertTriangle size={14} className="mt-px shrink-0 text-attention-orange" aria-hidden />
                   <p>
-                    Há {status?.entries.length} arquivo{status?.entries.length === 1 ? '' : 's'} com alterações — serão
-                    adicionados, commitados e enviados automaticamente ao avançar, com a mensagem{' '}
-                    <strong className="font-medium text-primary-text">“{title.trim() || 'Atualização'}”</strong>.
+                    {t.uncommittedNotice(status?.entries.length ?? 0)}{' '}
+                    <strong className="font-medium text-primary-text">“{title.trim() || t.defaultCommitMessage}”</strong>.
                   </p>
                 </div>
               )}
@@ -931,11 +927,9 @@ function NewPullRequestWizard({
                   </span>
                   <div className="min-w-0">
                     <p id={draftLabelId} className="text-body font-medium text-primary-text">
-                      Rascunho
+                      {t.draft}
                     </p>
-                    <p className="text-caption text-secondary-text">
-                      A PR abre como rascunho e só pode ser mesclada depois de marcada como pronta.
-                    </p>
+                    <p className="text-caption text-secondary-text">{t.draftHint}</p>
                   </div>
                 </div>
                 <Switch checked={draft} onChange={setDraft} ariaLabelledBy={draftLabelId} />
@@ -961,7 +955,7 @@ function NewPullRequestWizard({
                   )}
                   <div className="min-w-0 flex-1">
                     <h3 className="text-title font-semibold text-primary-text [overflow-wrap:anywhere]">
-                      {title || '(sem título)'}
+                      {title || t.untitled}
                     </h3>
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 text-caption text-tertiary-text">
                       <BranchChip name={head} />
@@ -969,14 +963,14 @@ function NewPullRequestWizard({
                       <BranchChip name={base} />
                       {draft && (
                         <span className="rounded-pill border border-default-border px-2 py-0.5 text-label uppercase text-tertiary-text">
-                          Rascunho
+                          {t.draft}
                         </span>
                       )}
                     </div>
                   </div>
                 </header>
                 <div className="p-4 text-body text-secondary-text">
-                  {body ? <Markdown text={body} /> : <p className="text-caption text-tertiary-text">Sem descrição.</p>}
+                  {body ? <Markdown text={body} /> : <p className="text-caption text-tertiary-text">{t.noDescription}</p>}
                 </div>
               </article>
 
@@ -991,7 +985,7 @@ function NewPullRequestWizard({
                       <Sparkles size={13} aria-hidden />
                     )}
                     <span className={reviewing ? 'agent-busy-shimmer' : undefined}>
-                      {reviewing ? 'Analisando…' : reviewResult ? 'Analisar novamente' : 'Analisar PR com Agente'}
+                      {reviewing ? t.analyzing : reviewResult ? t.analyzeAgain : t.analyzeWithAgent}
                     </span>
                   </button>
                   {reviewError && (
@@ -1020,7 +1014,7 @@ function NewPullRequestWizard({
                               {tone === 'success' ? <Check size={15} aria-hidden /> : tone === 'attention' ? <AlertTriangle size={15} aria-hidden /> : <Bot size={15} aria-hidden />}
                             </span>
                             <span className="flex min-w-0 flex-1 flex-col">
-                              <span className="text-body font-semibold text-primary-text">Parecer da IA</span>
+                              <span className="text-body font-semibold text-primary-text">{t.aiVerdict}</span>
                               {verdict && <span className={`text-caption font-medium ${REVIEW_TONE[tone].verdict}`}>{verdict}</span>}
                             </span>
                             <ChevronDown
@@ -1053,12 +1047,12 @@ function NewPullRequestWizard({
             disabled={stepBusy}
             className="btn-ghost"
           >
-            {step === 1 ? 'Cancelar' : 'Voltar'}
+            {step === 1 ? messages.common.cancel : t.back}
           </button>
           <div className="flex items-center gap-2">
             {step === 4 && (
               <button type="button" onClick={onClose} disabled={stepBusy} className="btn-ghost">
-                Cancelar
+                {messages.common.cancel}
               </button>
             )}
             {step === 1 && (
@@ -1070,18 +1064,18 @@ function NewPullRequestWizard({
               >
                 {preparingBranch ? (
                   <>
-                    <Loader2 size={13} className="animate-spin" aria-hidden /> Criando branch…
+                    <Loader2 size={13} className="animate-spin" aria-hidden /> {t.creatingBranch}
                   </>
                 ) : (
                   <>
-                    Próximo <ArrowRight size={14} aria-hidden />
+                    {t.next} <ArrowRight size={14} aria-hidden />
                   </>
                 )}
               </button>
             )}
             {step === 2 && (
               <button type="button" onClick={() => goToStep(3)} disabled={!canGoNext} className="btn-primary">
-                Próximo <ArrowRight size={14} aria-hidden />
+                {t.next} <ArrowRight size={14} aria-hidden />
               </button>
             )}
             {step === 3 && (
@@ -1093,11 +1087,11 @@ function NewPullRequestWizard({
               >
                 {preparing ? (
                   <>
-                    <Loader2 size={13} className="animate-spin" aria-hidden /> Preparando…
+                    <Loader2 size={13} className="animate-spin" aria-hidden /> {t.preparing}
                   </>
                 ) : (
                   <>
-                    Próximo <ArrowRight size={14} aria-hidden />
+                    {t.next} <ArrowRight size={14} aria-hidden />
                   </>
                 )}
               </button>
@@ -1111,11 +1105,11 @@ function NewPullRequestWizard({
               >
                 {isBusy ? (
                   <>
-                    <Loader2 size={13} className="animate-spin" aria-hidden /> Criando…
+                    <Loader2 size={13} className="animate-spin" aria-hidden /> {t.creating}
                   </>
                 ) : (
                   <>
-                    <GitPullRequest size={14} aria-hidden /> Criar Pull Request
+                    <GitPullRequest size={14} aria-hidden /> {t.createPr}
                   </>
                 )}
               </button>
@@ -1145,6 +1139,9 @@ function PullRequestDetail(): JSX.Element | null {
   const [confirmAction, setConfirmAction] = useState<null | 'merge' | 'close' | 'approve' | 'changes'>(null)
   const [lineComment, setLineComment] = useState<{ line: number; path: string } | null>(null)
   const narrow = useMediaQuery(NARROW_LAYOUT_QUERY)
+  const t = useT().pullRequests
+  const fmt = useFormatters()
+  const MERGE_METHOD_OPTIONS = mergeMethodOptions(t)
 
   const [headerHeight, setHeaderHeight] = useState<number | null>(null)
   const headerRef = useRef<HTMLElement>(null)
@@ -1246,19 +1243,19 @@ function PullRequestDetail(): JSX.Element | null {
   const mergeBlocker = !isOpen
     ? null
     : detail.pr.draft
-      ? 'Esta PR é um rascunho: marque-a como pronta para revisão no GitHub antes de mesclar.'
+      ? t.draftBlocker
       : detail.pr.mergeable === false && detail.pr.mergeableState === 'dirty'
-        ? `Há conflitos entre "${detail.pr.headRef}" e "${detail.pr.baseRef}". Traga "${detail.pr.baseRef}" para a branch, resolva os conflitos em Alterações e faça commit e push.`
+        ? t.conflictBlocker(detail.pr.headRef, detail.pr.baseRef)
         : null
   const mergeWarning =
     !isOpen || mergeBlocker
       ? null
       : detail.pr.mergeableState === 'blocked'
-        ? 'Bloqueada pelas regras de proteção da branch (revisões ou checks obrigatórios).'
+        ? t.blocked
         : detail.pr.mergeableState === 'unstable'
-          ? 'Alguns checks desta PR falharam.'
+          ? t.unstable
           : detail.pr.mergeableState === 'behind'
-            ? `"${detail.pr.headRef}" está atrás de "${detail.pr.baseRef}".`
+            ? t.behind(detail.pr.headRef, detail.pr.baseRef)
             : null
 
   async function handleComment(): Promise<void> {
@@ -1279,8 +1276,8 @@ function PullRequestDetail(): JSX.Element | null {
         </h2>
         <p className="mt-1 text-body text-secondary-text">
           {detail.pr.merged
-            ? `${detail.pr.authorLogin} mesclou ${detail.pr.headRef} em ${detail.pr.baseRef}`
-            : `${detail.pr.authorLogin} quer mesclar ${detail.pr.headRef} → ${detail.pr.baseRef}`}
+            ? t.mergedBy(detail.pr.authorLogin, detail.pr.headRef, detail.pr.baseRef)
+            : t.wantsMerge(detail.pr.authorLogin, detail.pr.headRef, detail.pr.baseRef)}
         </p>
         {detail.pr.body && (
           <div className="mt-3 max-h-36 overflow-y-auto text-body text-secondary-text">
@@ -1293,7 +1290,7 @@ function PullRequestDetail(): JSX.Element | null {
             value={mergeMethod}
             onChange={(v) => setMergeMethod(v as typeof mergeMethod)}
             options={MERGE_METHOD_OPTIONS}
-            ariaLabel="Método de merge"
+            ariaLabel={t.mergeMethodAria}
             className="w-48"
           />
           <button
@@ -1304,43 +1301,43 @@ function PullRequestDetail(): JSX.Element | null {
             className="btn-primary flex items-center gap-1.5"
           >
             {isMerging && <Loader2 size={13} className="animate-spin" aria-hidden />}
-            {isMerging ? 'Mesclando…' : 'Mesclar Pull Request'}
+            {isMerging ? t.merging : t.mergePr}
           </button>
           <button
             type="button"
             onClick={() => setConfirmAction('approve')}
             disabled={isBusy || detail.pr.state !== 'open' || detail.pr.merged || isOwnPr}
-            title={isOwnPr ? 'Você não pode aprovar sua própria pull request' : undefined}
+            title={isOwnPr ? t.cannotApproveOwn : undefined}
             className="btn-secondary"
           >
-            Aprovar
+            {t.approve}
           </button>
           <button
             type="button"
             onClick={() => setConfirmAction('changes')}
             disabled={isBusy || detail.pr.state !== 'open' || detail.pr.merged || isOwnPr}
-            title={isOwnPr ? 'O GitHub não permite pedir mudanças na sua própria pull request' : undefined}
+            title={isOwnPr ? t.cannotRequestOwn : undefined}
             className="btn-ghost"
           >
-            Pedir mudanças
+            {t.requestChanges}
           </button>
           <button
             type="button"
             onClick={() => (detail.pr.state === 'open' ? setConfirmAction('close') : void setState('open'))}
             disabled={isBusy || detail.pr.merged}
-            title={detail.pr.merged ? 'Pull requests mescladas não podem ser reabertas' : undefined}
+            title={detail.pr.merged ? t.cannotReopenMerged : undefined}
             className="btn-ghost"
           >
-            {detail.pr.merged ? 'Mesclada' : detail.pr.state === 'open' ? 'Fechar PR' : 'Reabrir PR'}
+            {detail.pr.merged ? t.merged : detail.pr.state === 'open' ? t.closePr : t.reopenPr}
           </button>
           <a
             href={detail.pr.htmlUrl}
             target="_blank"
             rel="noreferrer"
             className="btn-ghost inline-flex items-center gap-1.5"
-            title="Abrir esta pull request no navegador"
+            title={t.openInBrowser}
           >
-            <ExternalLink size={13} aria-hidden /> Abrir no GitHub
+            <ExternalLink size={13} aria-hidden /> {t.openOnGithub}
           </a>
         </div>
         {(mergeBlocker || mergeWarning) && (
@@ -1358,9 +1355,9 @@ function PullRequestDetail(): JSX.Element | null {
             className="btn-secondary mt-2"
             disabled={repoBusy}
             onClick={() => void integrateBaseIntoBranch(detail.pr.headRef, detail.pr.baseRef)}
-            title={`Busca o remoto, troca para "${detail.pr.headRef}" e mescla "origin/${detail.pr.baseRef}" nela`}
+            title={t.integrateTitle(detail.pr.headRef, detail.pr.baseRef)}
           >
-            <GitMerge size={13} aria-hidden /> Trazer "{detail.pr.baseRef}" para esta branch
+            <GitMerge size={13} aria-hidden /> {t.integrateBase(detail.pr.baseRef)}
           </button>
         )}
       </header>
@@ -1369,7 +1366,7 @@ function PullRequestDetail(): JSX.Element | null {
         <div
           role="separator"
           aria-orientation="horizontal"
-          aria-label="Redimensionar detalhes da pull request"
+          aria-label={t.resizeDetails}
           aria-valuemin={MIN_HEADER_HEIGHT}
           aria-valuemax={MAX_HEADER_HEIGHT}
           aria-valuenow={headerHeight ?? MIN_HEADER_HEIGHT}
@@ -1394,7 +1391,7 @@ function PullRequestDetail(): JSX.Element | null {
           style={narrow ? undefined : { width: filesWidth }}
         >
           <h3 className="sticky top-0 z-10 border-b border-default-border bg-obsidian-panel px-3 py-2 text-label uppercase tracking-wide text-tertiary-text">
-            Arquivos ({detail.files.length})
+            {t.filesCount(detail.files.length)}
           </h3>
           <ul>
             {detail.files.map((file) => (
@@ -1415,7 +1412,7 @@ function PullRequestDetail(): JSX.Element | null {
               </li>
             ))}
             {detail.files.length === 0 && (
-              <li className="px-3 py-4 text-center text-caption text-tertiary-text">Nenhum arquivo neste PR.</li>
+              <li className="px-3 py-4 text-center text-caption text-tertiary-text">{t.noFiles}</li>
             )}
           </ul>
         </aside>
@@ -1424,7 +1421,7 @@ function PullRequestDetail(): JSX.Element | null {
           <div
             role="separator"
             aria-orientation="vertical"
-            aria-label="Redimensionar lista de arquivos"
+            aria-label={t.resizeFiles}
             aria-valuemin={MIN_FILES_WIDTH}
             aria-valuemax={MAX_FILES_WIDTH}
             aria-valuenow={filesWidth}
@@ -1445,16 +1442,16 @@ function PullRequestDetail(): JSX.Element | null {
 
         <section
           className={`h-full min-h-0 min-w-0 flex-1 overflow-hidden ${narrow && !detail.selectedFile ? 'hidden' : ''}`}
-          aria-label="Diff do arquivo"
+          aria-label={t.fileDiff}
         >
           {narrow && detail.selectedFile && (
             <button
               type="button"
               onClick={() => selectPullRequestFile('')}
               className="flex h-10 w-full items-center gap-2 border-b border-default-border px-3 text-body text-secondary-text hover:bg-hover-overlay hover:text-primary-text"
-              aria-label="Voltar para a lista de arquivos"
+              aria-label={t.backToFiles}
             >
-              <ArrowLeft size={16} aria-hidden /> Arquivos
+              <ArrowLeft size={16} aria-hidden /> {t.files}
             </button>
           )}
           {selectedFile?.patch ? (
@@ -1464,11 +1461,11 @@ function PullRequestDetail(): JSX.Element | null {
             />
           ) : selectedFile ? (
             <div className="flex h-full items-center justify-center p-6 text-center text-body text-secondary-text">
-              Sem patch disponível para este arquivo (binário ou muito grande).
+              {t.noPatch}
             </div>
           ) : (
             <div className="flex h-full items-center justify-center p-6 text-center text-body text-tertiary-text">
-              Selecione um arquivo à esquerda para ver o diff.
+              {t.selectFile}
             </div>
           )}
         </section>
@@ -1478,7 +1475,7 @@ function PullRequestDetail(): JSX.Element | null {
         <div
           role="separator"
           aria-orientation="horizontal"
-          aria-label="Redimensionar painel de comentários"
+          aria-label={t.resizeComments}
           aria-valuemin={MIN_COMMENTS_HEIGHT}
           aria-valuemax={MAX_COMMENTS_HEIGHT}
           aria-valuenow={commentsHeight}
@@ -1501,7 +1498,7 @@ function PullRequestDetail(): JSX.Element | null {
         className="flex shrink-0 flex-col gap-2 border-t border-default-border px-5 py-3"
         style={{ maxHeight: commentsHeight }}
       >
-        <h3 className="shrink-0 text-label uppercase tracking-wide text-tertiary-text">Comentários</h3>
+        <h3 className="shrink-0 text-label uppercase tracking-wide text-tertiary-text">{t.comments}</h3>
         {/* Only the thread scrolls: the composer stays in view however long it gets. */}
         <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
           {detail.comments.map((c) => (
@@ -1509,7 +1506,7 @@ function PullRequestDetail(): JSX.Element | null {
               <div className="flex items-baseline gap-2">
                 <strong className="text-body text-primary-text">{c.authorLogin}</strong>
                 <time dateTime={c.createdAt} className="text-caption text-tertiary-text">
-                  {new Date(c.createdAt).toLocaleString('pt-BR')}
+                  {formatDate(fmt, c.createdAt)}
                 </time>
               </div>
               <div className="mt-1 text-body text-secondary-text">
@@ -1518,27 +1515,27 @@ function PullRequestDetail(): JSX.Element | null {
             </div>
           ))}
           {detail.comments.length === 0 && (
-            <p className="text-caption text-tertiary-text">Nenhum comentário ainda.</p>
+            <p className="text-caption text-tertiary-text">{t.noComments}</p>
           )}
         </div>
         <textarea
-          placeholder="Escreva um comentário…"
-          aria-label="Escreva um comentário"
+          placeholder={t.commentPlaceholder}
+          aria-label={t.commentAria}
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           rows={2}
           className="field shrink-0 resize-y"
         />
         <button onClick={handleComment} disabled={!comment.trim() || isBusy} className="btn-secondary shrink-0 self-end">
-          Comentar
+          {t.comment}
         </button>
       </footer>
 
       <ConfirmDialog
         open={confirmAction === 'merge'}
-        title="Mesclar pull request?"
-        message={`Mesclar #${detail.pr.number} “${detail.pr.title}” em ${detail.pr.baseRef} com ${MERGE_METHOD_OPTIONS.find((o) => o.value === mergeMethod)?.label ?? mergeMethod}? Isso não pode ser desfeito pelo GitWeb.`}
-        confirmLabel="Mesclar Pull Request"
+        title={t.mergeDialogTitle}
+        message={t.mergeDialogMessage(detail.pr.number, detail.pr.title, detail.pr.baseRef, t.mergeMethod[mergeMethod])}
+        confirmLabel={t.mergePr}
         onCancel={() => setConfirmAction(null)}
         onConfirm={() => {
           setConfirmAction(null)
@@ -1547,9 +1544,9 @@ function PullRequestDetail(): JSX.Element | null {
       />
       <ConfirmDialog
         open={confirmAction === 'close'}
-        title="Fechar pull request?"
-        message={`Fechar #${detail.pr.number} “${detail.pr.title}” sem mesclar? Você poderá reabrir depois.`}
-        confirmLabel="Fechar Pull Request"
+        title={t.closeDialogTitle}
+        message={t.closeDialogMessage(detail.pr.number, detail.pr.title)}
+        confirmLabel={t.closeConfirm}
         danger
         onCancel={() => setConfirmAction(null)}
         onConfirm={() => {
@@ -1559,22 +1556,22 @@ function PullRequestDetail(): JSX.Element | null {
       />
       <ConfirmDialog
         open={confirmAction === 'approve'}
-        title="Aprovar esta pull request?"
-        message={`Publicar um review de aprovação em #${detail.pr.number}. Isso aparece no GitHub.`}
-        confirmLabel="Aprovar"
+        title={t.approveDialogTitle}
+        message={t.approveDialogMessage(detail.pr.number)}
+        confirmLabel={t.approve}
         onCancel={() => setConfirmAction(null)}
         onConfirm={() => {
           setConfirmAction(null)
-          void submitReview('APPROVE', 'Aprovado pelo GitWeb.')
+          void submitReview('APPROVE', t.approvedBody)
         }}
       />
       <PromptDialog
         open={confirmAction === 'changes'}
-        title="Pedir mudanças?"
-        message={`Publicar um review pedindo mudanças em #${detail.pr.number}. Isso aparece no GitHub.`}
-        label="O que precisa mudar"
-        placeholder="Descreva o que falta nesta PR"
-        confirmLabel="Pedir mudanças"
+        title={t.changesDialogTitle}
+        message={t.changesDialogMessage(detail.pr.number)}
+        label={t.changesLabel}
+        placeholder={t.changesPlaceholder}
+        confirmLabel={t.requestChanges}
         onCancel={() => setConfirmAction(null)}
         onConfirm={(body) => {
           setConfirmAction(null)
@@ -1583,11 +1580,11 @@ function PullRequestDetail(): JSX.Element | null {
       />
       <PromptDialog
         open={lineComment !== null}
-        title={`Comentar na linha ${lineComment?.line ?? ''}`}
+        title={t.lineCommentTitle(lineComment?.line ?? '')}
         message={lineComment ? `${lineComment.path}:${lineComment.line}` : undefined}
-        label="Comentário"
-        placeholder="O que precisa mudar nesta linha?"
-        confirmLabel="Publicar no GitHub"
+        label={t.commentLabel}
+        placeholder={t.lineCommentPlaceholder}
+        confirmLabel={t.publishOnGithub}
         onCancel={() => setLineComment(null)}
         onConfirm={(body) => {
           const target = lineComment
@@ -1616,6 +1613,8 @@ function PullRequestsView(): JSX.Element {
   const [showNewForm, setShowNewForm] = useState(false)
   const [wizardBusy, setWizardBusy] = useState(false)
   const narrow = useMediaQuery(NARROW_LAYOUT_QUERY)
+  const t = useT().pullRequests
+  const fmt = useFormatters()
 
   const [page, setPage] = useState(1)
   const pageCount = Math.max(1, Math.ceil(pullRequests.length / PR_PAGE_SIZE))
@@ -1661,7 +1660,7 @@ function PullRequestsView(): JSX.Element {
       <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-secondary-text">
         <h1 className="sr-only">Pull Requests</h1>
         <GitPullRequest size={32} />
-        <p>Este repositório não tem um remote do GitHub configurado (origin).</p>
+        <p>{t.noRemote}</p>
       </div>
     )
   }
@@ -1685,8 +1684,8 @@ function PullRequestsView(): JSX.Element {
           <Combobox
             value={stateFilter}
             onChange={(v) => setStateFilter(v as PullRequestState)}
-            options={STATE_FILTER_OPTIONS}
-            ariaLabel="Filtrar pull requests por estado"
+            options={STATE_FILTERS.map((value) => ({ value, label: t.stateFilter[value] }))}
+            ariaLabel={t.filterAria}
             className="flex-1"
           />
           <button
@@ -1694,8 +1693,8 @@ function PullRequestsView(): JSX.Element {
             onClick={() => void refreshPullRequests()}
             disabled={isBusy}
             className="btn-secondary shrink-0"
-            aria-label="Atualizar pull requests"
-            title="Atualizar"
+            aria-label={t.refreshAria}
+            title={t.refresh}
           >
             <RefreshCw size={14} className={isBusy ? 'animate-spin' : undefined} aria-hidden />
           </button>
@@ -1707,7 +1706,7 @@ function PullRequestsView(): JSX.Element {
             aria-pressed={showNewForm}
             className={`btn-secondary shrink-0 ${showNewForm ? 'border-command-blue/50! bg-command-blue-soft! text-command-blue!' : ''}`}
           >
-            <Plus size={14} aria-hidden /> Nova
+            <Plus size={14} aria-hidden /> {t.newShort}
           </button>
         </div>
       </div>
@@ -1729,24 +1728,24 @@ function PullRequestsView(): JSX.Element {
               >
                 <div className="flex items-center gap-1.5">
                   {pr.merged ? (
-                    <GitMerge size={14} className="shrink-0 text-command-blue" aria-label="Mesclada" />
+                    <GitMerge size={14} className="shrink-0 text-command-blue" aria-label={t.merged} />
                   ) : pr.state === 'closed' ? (
-                    <GitPullRequestClosed size={14} className="shrink-0 text-danger-red" aria-label="Fechada" />
+                    <GitPullRequestClosed size={14} className="shrink-0 text-danger-red" aria-label={t.closed} />
                   ) : pr.draft ? (
-                    <GitPullRequestDraft size={14} className="shrink-0 text-tertiary-text" aria-label="Rascunho" />
+                    <GitPullRequestDraft size={14} className="shrink-0 text-tertiary-text" aria-label={t.draft} />
                   ) : (
-                    <GitPullRequest size={14} className="shrink-0 text-success-green" aria-label="Aberta" />
+                    <GitPullRequest size={14} className="shrink-0 text-success-green" aria-label={t.open} />
                   )}
                   <span className="min-w-0 flex-1 truncate text-body font-medium text-primary-text">{pr.title}</span>
                   <span className="shrink-0 text-caption tabular-nums text-tertiary-text">#{pr.number}</span>
                 </div>
                 <div className="whitespace-normal text-caption text-tertiary-text [overflow-wrap:anywhere]">
-                  {pr.authorLogin} · {formatDate(pr.createdAt)} · {pr.headRef} → {pr.baseRef}
+                  {pr.authorLogin} · {formatDate(fmt, pr.createdAt)} · {pr.headRef} → {pr.baseRef}
                 </div>
               </button>
             </li>
           ))}
-          {pullRequests.length === 0 && <li className="px-2 py-4 text-center text-caption text-tertiary-text">Nenhuma pull request.</li>}
+          {pullRequests.length === 0 && <li className="px-2 py-4 text-center text-caption text-tertiary-text">{t.noPrs}</li>}
         </ul>
       </div>
       <Pagination page={page} pageCount={pageCount} onChange={setPage} />
@@ -1761,7 +1760,7 @@ function PullRequestsView(): JSX.Element {
           onClick={() => (showNewForm ? setShowNewForm(false) : clearPullRequestDetail())}
           disabled={showNewForm && wizardBusy}
           className="flex h-10 shrink-0 items-center gap-2 border-b border-default-border px-3 text-body text-secondary-text hover:bg-hover-overlay hover:text-primary-text"
-          aria-label="Voltar para a lista de pull requests"
+          aria-label={t.backToList}
         >
           <ArrowLeft size={16} aria-hidden /> Pull Requests
         </button>
@@ -1773,7 +1772,7 @@ function PullRequestsView(): JSX.Element {
       ) : (
         <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-body text-tertiary-text">
           <PostMergeActions />
-          Selecione uma pull request.
+          {t.selectPr}
         </div>
       )}
     </div>
@@ -1787,7 +1786,7 @@ function PullRequestsView(): JSX.Element {
         <span className="truncate text-body text-primary-text">{user.name ?? user.login}</span>
         <span className="truncate text-caption text-tertiary-text">@{user.login}</span>
         <button type="button" onClick={() => logout()} className="ml-auto shrink-0 text-caption text-command-blue hover:underline">
-          Sair
+          {t.signOut}
         </button>
       </div>
 
@@ -1799,7 +1798,7 @@ function PullRequestsView(): JSX.Element {
           <div
             role="separator"
             aria-orientation="vertical"
-            aria-label="Redimensionar lista de pull requests"
+            aria-label={t.resizeList}
             aria-valuemin={MIN_LIST_WIDTH}
             aria-valuemax={MAX_LIST_WIDTH}
             aria-valuenow={listWidth}

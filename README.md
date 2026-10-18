@@ -1,5 +1,7 @@
 # OpenGitDesktop
 
+**Português** · [English](README.en.md) · [Español](README.es.md)
+
 ### O cliente Git que trabalha com você — não no seu lugar.
 
 Imagine abrir o repositório, olhar o diff, pedir *“cria uma branch, faz o commit e abre o PR”*… e ver cada passo acontecer **só depois que você aprova**.
@@ -42,6 +44,9 @@ Liste, crie, revise arquivos e comentários, mescle, feche ou reabra — tudo in
 
 ### Chat de IA
 Painel lateral ou flutuante. Fale em linguagem natural. A IA lê o estado do repo e propõe ferramentas reais — cada uma com preview e aprovação antes de rodar.
+
+### No seu idioma
+Interface, mensagens de erro e respostas da IA seguem o idioma do sistema — **Português (Brasil)**, **English** ou **Español** — e dá para trocar a qualquer momento em Configurações.
 
 ---
 
@@ -97,7 +102,7 @@ Credenciais criptografadas via Credential Manager / Keychain / libsecret — nun
 GitWeb/src/
 ├─ main/       → git, credenciais, IPC, settings, device flow
 ├─ preload/    → bridge tipada para o renderer
-├─ shared/     → tipos compartilhados
+├─ shared/     → tipos compartilhados e traduções (i18n/)
 └─ renderer/   → views, stores, GitHub client, tools de IA
 ```
 

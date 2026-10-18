@@ -31,36 +31,37 @@ export interface ToolDisplayInfo {
   icon: LucideIcon
 }
 
-const TOOL_DISPLAY: Record<string, ToolDisplayInfo> = {
-  create_branch: { label: 'Criar branch', icon: GitBranchPlus },
-  create_pull_request: { label: 'Criar pull request', icon: GitPullRequestArrow },
-  list_pull_requests: { label: 'Listar pull requests', icon: ListChecks },
-  read_pull_request: { label: 'Ler pull request', icon: GitPullRequest },
-  read_commit: { label: 'Ler commit', icon: FileSearch },
-  list_commits: { label: 'Listar commits', icon: History },
-  merge_pull_request: { label: 'Mergear pull request', icon: GitPullRequestClosed },
-  merge_branch: { label: 'Mergear branch', icon: GitMerge },
-  commit: { label: 'Criar commit', icon: GitCommitHorizontal },
-  undo_last_commit: { label: 'Desfazer último commit', icon: Undo2 },
-  ignore_files: { label: 'Ignorar arquivos', icon: EyeOff },
-  resolve_conflict: { label: 'Resolver conflito', icon: FileDiff },
-  check_incoming_commits: { label: 'Verificar commits novos', icon: RadarIcon },
-  get_git_identity: { label: 'Ler identidade Git', icon: UserSearch },
-  set_git_identity: { label: 'Configurar identidade Git', icon: UserCog },
-  list_all_repos: { label: 'Listar repositórios', icon: FolderGit2 },
-  list_branches: { label: 'Listar branches', icon: GitBranch },
-  list_branches_all_repos: { label: 'Listar branches (todos os repos)', icon: GitBranch },
-  check_all_repos: { label: 'Verificar todos os repositórios', icon: RadarIcon },
-  fetch_all: { label: 'Fetch em todos os repositórios', icon: RefreshCw },
-  pull_repo: { label: 'Pull no repositório', icon: ArrowDownToLine },
-  pull_all: { label: 'Pull em todos os repositórios', icon: ArrowDownToLine },
-  push: { label: 'Enviar alterações (push)', icon: ArrowUpFromLine },
-  pull: { label: 'Buscar alterações (pull)', icon: ArrowDownToLine },
-  switch_branch: { label: 'Trocar de branch', icon: GitFork },
-  stash: { label: 'Guardar alterações (stash)', icon: PackageOpen },
-  stash_pop: { label: 'Restaurar stash', icon: CircleFadingArrowUp }
+const TOOL_ICONS: Record<string, LucideIcon> = {
+  create_branch: GitBranchPlus,
+  create_pull_request: GitPullRequestArrow,
+  list_pull_requests: ListChecks,
+  read_pull_request: GitPullRequest,
+  read_commit: FileSearch,
+  list_commits: History,
+  merge_pull_request: GitPullRequestClosed,
+  merge_branch: GitMerge,
+  commit: GitCommitHorizontal,
+  undo_last_commit: Undo2,
+  ignore_files: EyeOff,
+  resolve_conflict: FileDiff,
+  check_incoming_commits: RadarIcon,
+  get_git_identity: UserSearch,
+  set_git_identity: UserCog,
+  list_all_repos: FolderGit2,
+  list_branches: GitBranch,
+  list_branches_all_repos: GitBranch,
+  check_all_repos: RadarIcon,
+  fetch_all: RefreshCw,
+  pull_repo: ArrowDownToLine,
+  pull_all: ArrowDownToLine,
+  push: ArrowUpFromLine,
+  pull: ArrowDownToLine,
+  switch_branch: GitFork,
+  stash: PackageOpen,
+  stash_pop: CircleFadingArrowUp
 }
 
-export function getToolDisplay(name: string): ToolDisplayInfo {
-  return TOOL_DISPLAY[name] ?? { label: name, icon: Check }
+/** Labels come from the current locale, so callers re-render on a language switch. */
+export function getToolDisplay(name: string, labels: Record<string, string>): ToolDisplayInfo {
+  return { label: labels[name] ?? name, icon: TOOL_ICONS[name] ?? Check }
 }

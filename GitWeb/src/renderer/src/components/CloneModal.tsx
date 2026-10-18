@@ -17,7 +17,8 @@ import {
 import GithubLoginModal from './GithubLoginModal'
 import CloneDestinationField from './CloneDestinationField'
 import ProgressBar from './ProgressBar'
-import { clonePhaseLabel, useCloneProgress } from '../lib/useCloneProgress'
+import { useCloneProgress } from '../lib/useCloneProgress'
+import { useFormatters, useT } from '../lib/i18n'
 
 type CloneTab = 'github' | 'url' | 'token'
 
@@ -39,6 +40,7 @@ function RepoList({
   onSelect: (repo: GitHubRepoSummary) => void
 }): JSX.Element | null {
   const [query, setQuery] = useState('')
+  const t = useT().clone
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
     if (!needle) return repos
@@ -51,8 +53,8 @@ function RepoList({
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <input
         type="search"
-        placeholder="Buscar repositório…"
-        aria-label="Buscar repositório"
+        placeholder={t.searchRepoPlaceholder}
+        aria-label={t.searchRepo}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="field shrink-0"
@@ -69,12 +71,12 @@ function RepoList({
               }
             >
               {repo.fullName}
-              {repo.private && <span className="rounded-pill border border-default-border px-2 py-0.5 text-label text-tertiary-text">privado</span>}
+              {repo.private && <span className="rounded-pill border border-default-border px-2 py-0.5 text-label text-tertiary-text">{t.private}</span>}
             </button>
           </li>
         ))}
         {filtered.length === 0 && (
-          <li className="px-3 py-4 text-center text-caption text-tertiary-text">Nenhum repositório corresponde à busca.</li>
+          <li className="px-3 py-4 text-center text-caption text-tertiary-text">{t.noMatch}</li>
         )}
       </ul>
     </div>
@@ -87,6 +89,9 @@ const STALL_AFTER_SECONDS = 10
 function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
   const titleId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
+  const messages = useT()
+  const t = messages.clone
+  const fmt = useFormatters()
 
   const isBusy = useRepoStore((s) => s.isBusy)
   const error = useRepoStore((s) => s.error)
@@ -275,14 +280,14 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
       >
         <div className="flex shrink-0 items-center justify-between">
           <h2 id={titleId} className="text-title font-semibold text-primary-text">
-            Clonar repositório
+            {t.title}
           </h2>
-          <button type="button" onClick={onClose} className="hit-area rounded-sm p-1 text-tertiary-text hover:bg-hover-overlay" aria-label="Fechar">
+          <button type="button" onClick={onClose} className="hit-area rounded-sm p-1 text-tertiary-text hover:bg-hover-overlay" aria-label={messages.common.close}>
             <X size={16} />
           </button>
         </div>
 
-        <div className="flex shrink-0 gap-1" role="tablist" aria-label="Método de clone">
+        <div className="flex shrink-0 gap-1" role="tablist" aria-label={t.methodAria}>
           <button
             type="button"
             role="tab"
@@ -326,8 +331,8 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
                   onClick={() => void loadOauthRepos()}
                   disabled={loadingOauthRepos}
                   className="btn-ghost shrink-0 border border-default-border px-2"
-                  title="Recarregar repositórios"
-                  aria-label="Recarregar repositórios"
+                  title={t.reloadRepos}
+                  aria-label={t.reloadRepos}
                 >
                   <RefreshCw size={14} className={loadingOauthRepos ? 'animate-spin' : undefined} />
                 </button>
@@ -335,8 +340,8 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
                   type="button"
                   onClick={() => void handleSwitchAccount()}
                   className="btn-ghost shrink-0 border border-default-border px-2"
-                  title="Trocar conta"
-                  aria-label="Trocar conta"
+                  title={t.switchAccount}
+                  aria-label={t.switchAccount}
                 >
                   <LogOut size={14} />
                 </button>
@@ -347,7 +352,7 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
                 disabled={loadingOauthRepos}
                 className="btn-primary flex shrink-0 items-center justify-center gap-2"
               >
-                <Github size={16} /> Continuar com GitHub
+                <Github size={16} /> {t.continueGithub}
               </button>
             )}
 
@@ -362,8 +367,8 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
           <div className="flex min-h-0 flex-1 flex-col gap-3" role="tabpanel">
             <input
               type="text"
-              placeholder="URL do repositório (https://…)"
-              aria-label="URL do repositório"
+              placeholder={t.urlPlaceholder}
+              aria-label={t.urlAria}
               value={cloneUrl}
               onChange={(e) => handleCloneUrlChange(e.target.value)}
               className="field shrink-0"
@@ -373,12 +378,12 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
 
         {cloneTab === 'token' && (
           <div className="flex min-h-0 flex-1 flex-col gap-3" role="tabpanel">
-            <p className="shrink-0 text-caption text-secondary-text">Para github.com ou uma instância GitHub Enterprise, com uma conta independente do login acima.</p>
+            <p className="shrink-0 text-caption text-secondary-text">{t.tokenHint}</p>
             <div className="flex min-w-0 shrink-0 flex-col gap-2">
               <input
                 type="text"
-                placeholder="github.com ou host da Enterprise"
-                aria-label="Host do GitHub"
+                placeholder={t.hostPlaceholder}
+                aria-label={t.hostAria}
                 value={tokenHost}
                 onChange={(e) => setTokenHost(e.target.value)}
                 className="field min-w-0"
@@ -387,13 +392,13 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
                 <input
                   type="password"
                   placeholder="Personal Access Token"
-                  aria-label="Personal Access Token do GitHub"
+                  aria-label={t.tokenAria}
                   value={tokenValue}
                   onChange={(e) => setTokenValue(e.target.value)}
                   className="field h-[34px] min-w-0 flex-1 py-0"
                 />
                 <button onClick={handleLoadTokenRepos} disabled={!tokenValue.trim() || loadingTokenRepos} className="btn-secondary shrink-0">
-                  {loadingTokenRepos ? 'Carregando…' : 'Carregar'}
+                  {loadingTokenRepos ? t.loading : t.load}
                 </button>
               </div>
             </div>
@@ -419,7 +424,7 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
             disabled={isCloning}
             className="btn-secondary shrink-0"
           >
-            Escolher pasta…
+            {t.chooseFolder}
           </button>
         </div>
 
@@ -428,18 +433,18 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
         {isCloning && (
           <div className="shrink-0 space-y-1.5" role="status" aria-live="polite">
             <p className="text-caption text-secondary-text">
-              {progress ? clonePhaseLabel(progress.phase) : 'Iniciando…'}
+              {progress ? t.phase[progress.phase] : t.starting}
               {progress && <span className="ml-1.5 tabular-nums text-tertiary-text">{progress.percent}%</span>}
             </p>
-            <ProgressBar percent={progress?.percent ?? 0} label="Progresso do clone" />
+            <ProgressBar percent={progress?.percent ?? 0} label={t.progressAria} />
             {stalledFor >= STALL_AFTER_SECONDS ? (
               <p className="text-caption tabular-nums text-attention-orange">
-                Sem resposta há {stalledFor}s — a conexão pode ter travado.
+                {t.stalled(stalledFor)}
               </p>
             ) : (
               progress && (
                 <p className="text-caption tabular-nums text-tertiary-text">
-                  {progress.objects.toLocaleString('pt-BR')}/{progress.totalObjects.toLocaleString('pt-BR')} objetos
+                  {fmt.number(progress.objects)}/{fmt.number(progress.totalObjects)} {t.objects}
                   {progress.transferred && ` · ${progress.transferred}`}
                   {progress.rate && ` · ${progress.rate}`}
                 </p>
@@ -454,7 +459,7 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
             onClick={() => void cancelClone(cloningPath)}
             className="btn-secondary shrink-0"
           >
-            Cancelar clone
+            {t.cancelClone}
           </button>
         ) : (
           <button
@@ -462,7 +467,7 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
             disabled={isBusy || !cloneUrl.trim() || !cloneDestination.trim()}
             className="btn-primary shrink-0"
           >
-            Clonar
+            {t.clone}
           </button>
         )}
       </div>

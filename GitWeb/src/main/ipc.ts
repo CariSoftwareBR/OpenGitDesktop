@@ -80,6 +80,7 @@ import {
 } from './recentRepositories'
 import { scanForRepositories } from './repoScan'
 import { getAiSettings, getSettings, setAiSettings, setAppSettings, setLastRepositoryPath } from './settings'
+import { applyLanguagePreference, systemLocale } from './language'
 import { sendChatRequest, sendToolAwareChatRequest, listModels, abortChatRequest } from './aiProxy'
 import type { AiSettings, ResolvedAiConfig } from '../shared/ai'
 import type { ChatMessage, ToolDefinition } from '../shared/aiChat'
@@ -348,7 +349,12 @@ export function registerIpcHandlers(): void {
 
   handle('settings:get', () => getSettings())
   handle('settings:setLastRepositoryPath', (_e, path: string | null) => setLastRepositoryPath(path))
-  handle('settings:setAppSettings', (_e, partial: Partial<AppSettings>) => setAppSettings(partial))
+  handle('settings:setAppSettings', async (_e, partial: Partial<AppSettings>) => {
+    const next = await setAppSettings(partial)
+    if (partial.language) applyLanguagePreference(next.language)
+    return next
+  })
+  handle('settings:getSystemLocale', () => systemLocale())
 
   handle('ai:getSettings', () => getAiSettings())
   handle('ai:setSettings', (_e, settings: AiSettings) => setAiSettings(settings))

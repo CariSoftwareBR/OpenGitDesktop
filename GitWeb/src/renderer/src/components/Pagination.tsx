@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { useT } from '../lib/i18n'
 
 function Pagination({
   page,
@@ -9,6 +10,7 @@ function Pagination({
   pageCount: number
   onChange: (page: number) => void
 }): JSX.Element | null {
+  const t = useT().ui
   if (pageCount <= 1) return null
 
   return (
@@ -17,19 +19,19 @@ function Pagination({
         type="button"
         onClick={() => onChange(page - 1)}
         disabled={page <= 1}
-        aria-label="Página anterior"
+        aria-label={t.previousPage}
         className="hit-area rounded-sm p-1 text-tertiary-text hover:bg-hover-overlay hover:text-primary-text disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronLeft size={14} aria-hidden />
       </button>
       <span className="text-caption tabular-nums text-tertiary-text">
-        Página {page} de {pageCount}
+        {t.pageOf(page, pageCount)}
       </span>
       <button
         type="button"
         onClick={() => onChange(page + 1)}
         disabled={page >= pageCount}
-        aria-label="Próxima página"
+        aria-label={t.nextPage}
         className="hit-area rounded-sm p-1 text-tertiary-text hover:bg-hover-overlay hover:text-primary-text disabled:pointer-events-none disabled:opacity-40"
       >
         <ChevronRight size={14} aria-hidden />

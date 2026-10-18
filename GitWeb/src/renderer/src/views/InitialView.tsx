@@ -40,6 +40,10 @@ import type {
   RepoUpdateResult,
   RepoUpdateStatus
 } from '../../../shared/git'
+import type { Messages } from '../../../shared/i18n'
+import { useT } from '../lib/i18n'
+
+type InitialMessages = Messages['initial']
 
 function FetchCheckBadge({ check }: { check?: RepoUpdateStatus }): JSX.Element | null {
   if (!check) return null
@@ -69,31 +73,29 @@ interface StatusChip {
   title: string
 }
 
-/** Plural forms are whole words — suffix concatenation produced "alteraçãoões". */
-function commits(n: number): string {
-  return `${n} commit${n === 1 ? '' : 's'}`
-}
 
 /**
  * Per-repo status as icon + number only. Words here repeat on every card and
  * are what made the list bulky; the meaning lives in the tooltip, and the
  * badge at the end of the row already carries the overall state.
  */
-function repoStatusChips(check: RepoUpdateStatus): StatusChip[] {
+function repoStatusChips(t: InitialMessages, check: RepoUpdateStatus): StatusChip[] {
   const chips: StatusChip[] = []
-  const def = check.defaultBranch
+  const def = check.defaultBranch ?? ''
+  // Plural forms are whole words — suffix concatenation produced "alteraçãoões".
+  const commits = t.commits
 
   if (check.state === 'diverged') {
     chips.push({
       icon: GitBranch,
       value: `↑${check.localDefaultAhead} ↓${check.localDefaultBehind}`,
-      title: `"${def}" local divergiu de origin/${def}: ${commits(check.localDefaultAhead)} só seus, ${commits(check.localDefaultBehind)} no remote`
+      title: t.chipDiverged(def, commits(check.localDefaultAhead), commits(check.localDefaultBehind))
     })
   } else if (check.state === 'behind') {
     chips.push({
       icon: ArrowDown,
       value: String(check.behindDefault),
-      title: `${commits(check.behindDefault)} atrás de origin/${def}`
+      title: t.chipBehind(commits(check.behindDefault), def)
     })
     // On another branch the headline number is not what a pull would fix, so
     // the local default branch gets its own chip.
@@ -101,7 +103,7 @@ function repoStatusChips(check: RepoUpdateStatus): StatusChip[] {
       chips.push({
         icon: GitBranch,
         value: String(check.localDefaultBehind),
-        title: `"${def}" local está ${commits(check.localDefaultBehind)} atrás`
+        title: t.chipLocalDefaultBehind(def, commits(check.localDefaultBehind))
       })
     } else if (!check.hasLocalDefault) {
       // No local default branch means no checkbox and no batch update for this
@@ -109,8 +111,8 @@ function repoStatusChips(check: RepoUpdateStatus): StatusChip[] {
       // on, and the reason is only visible by hovering the badge.
       chips.push({
         icon: GitBranch,
-        value: `sem ${def}`,
-        title: `Não existe um branch "${def}" local, então a atualização em lote não alcança este repositório — abra-o e faça checkout de "${def}", ou um pull no branch atual`
+        value: t.chipNoLocalDefault(def),
+        title: t.chipNoLocalDefaultTitle(def)
       })
     }
   }
@@ -119,29 +121,20 @@ function repoStatusChips(check: RepoUpdateStatus): StatusChip[] {
     chips.push({
       icon: ArrowUp,
       value: String(check.ahead),
-      title: `${commits(check.ahead)} ainda não enviados`
+      title: t.chipAhead(commits(check.ahead))
     })
   }
   if (check.localChanges > 0) {
     chips.push({
       icon: Pencil,
       value: String(check.localChanges),
-      title:
-        check.localChanges === 1 ? '1 arquivo com alteração local' : `${check.localChanges} arquivos com alterações locais`
+      title: t.chipLocalChanges(check.localChanges)
     })
   }
 
   return chips
 }
 
-const OUTCOME_LABEL: Record<RepoUpdateResult['outcome'], string> = {
-  updated: 'atualizado',
-  alreadyUpToDate: 'já estava em dia',
-  skippedDirty: 'pulado',
-  skippedDiverged: 'pulado',
-  skippedNoDefault: 'pulado',
-  failed: 'falhou'
-}
 
 function outcomeClass(outcome: RepoUpdateResult['outcome']): string {
   if (outcome === 'updated' || outcome === 'alreadyUpToDate') return 'text-success-green'
@@ -149,7 +142,7 @@ function outcomeClass(outcome: RepoUpdateResult['outcome']): string {
   return 'text-attention-orange'
 }
 
-function summarizeBatch(results: Record<string, RepoUpdateResult>): string | null {
+function summarizeBatch(t: InitialMessages, results: Record<string, RepoUpdateResult>): string | null {
   const all = Object.values(results)
   if (all.length === 0) return null
 
@@ -160,10 +153,10 @@ function summarizeBatch(results: Record<string, RepoUpdateResult>): string | nul
   const alreadyOk = all.filter((r) => r.outcome === 'alreadyUpToDate').length
 
   const parts: string[] = []
-  if (updated > 0) parts.push(`${updated} atualizado${updated === 1 ? '' : 's'} (${commits} commit${commits === 1 ? '' : 's'})`)
-  if (alreadyOk > 0) parts.push(`${alreadyOk} já estava${alreadyOk === 1 ? '' : 'm'} em dia`)
-  if (skipped > 0) parts.push(`${skipped} pulado${skipped === 1 ? '' : 's'}`)
-  if (failed > 0) parts.push(`${failed} com falha`)
+  if (updated > 0) parts.push(t.batchUpdated(updated, commits))
+  if (alreadyOk > 0) parts.push(t.batchAlreadyOk(alreadyOk))
+  if (skipped > 0) parts.push(t.batchSkipped(skipped))
+  if (failed > 0) parts.push(t.batchFailed(failed))
   return parts.join(' · ')
 }
 
@@ -180,10 +173,11 @@ function MoveToGroupMenu({
   onClose: () => void
 }): JSX.Element {
   const ref = useRef<HTMLDivElement>(null)
+  const t = useT().initial
   useClickOutside(ref, onClose)
 
   const options: { id: string | null; name: string }[] = [
-    { id: null, name: 'Sem pasta' },
+    { id: null, name: t.noFolder },
     ...groups.map((g) => ({ id: g.id as string | null, name: g.name }))
   ]
 
@@ -209,7 +203,7 @@ function MoveToGroupMenu({
         </button>
       ))}
       {groups.length === 0 && (
-        <p className="px-2.5 py-1.5 text-caption text-tertiary-text">Crie uma pasta primeiro.</p>
+        <p className="px-2.5 py-1.5 text-caption text-tertiary-text">{t.createFolderFirst}</p>
       )}
     </div>
   )
@@ -302,6 +296,8 @@ function InitialView(): JSX.Element {
   const clearError = useRepoStore((s) => s.clearError)
   const setError = useRepoStore((s) => s.setError)
   const setView = useRepoStore((s) => s.setView)
+  const messages = useT()
+  const t = messages.initial
 
   // Single source of truth for "is the user signed in to GitHub" — shared
   // with CloneModal's GitHub tab, so cloning reflects an existing login
@@ -343,7 +339,7 @@ function InitialView(): JSX.Element {
   const updatablePaths = recentRepos.map((r) => r.path).filter((path) => recentRepoChecks[path]?.canFastForward)
   const selectedCount = selectedRepoPaths.filter((path) => recentRepoChecks[path]?.canFastForward).length
   const allUpdatableSelected = updatablePaths.length > 0 && selectedCount === updatablePaths.length
-  const batchSummary = summarizeBatch(batchUpdateResults)
+  const batchSummary = summarizeBatch(t, batchUpdateResults)
   // Kept visible during and after a run: `canFastForward` flips to false as
   // repos get updated, and the column vanishing mid-run would shift the layout.
   const showSelection = updatablePaths.length > 0 || isBatchUpdating || batchSummary !== null
@@ -361,7 +357,7 @@ function InitialView(): JSX.Element {
 
   async function handleCreateGroup(): Promise<void> {
     const before = new Set(useRepoStore.getState().repoGroups.map((g) => g.id))
-    await createRepoGroup('Nova pasta')
+    await createRepoGroup(t.newFolder)
     // The id is minted in main, so the only way to know which one to focus is
     // to diff against the ids we had before the call.
     const created = useRepoStore.getState().repoGroups.find((g) => !before.has(g.id))
@@ -382,7 +378,7 @@ function InitialView(): JSX.Element {
     try {
       const found = await window.api.git.scanForRepositories(path)
       if (found.length === 0) {
-        setError(`Nenhum repositório git encontrado em "${path}".`)
+        setError(t.noRepoFound(path))
       } else if (found.length === 1) {
         await openRepository(found[0])
       } else {
@@ -402,7 +398,7 @@ function InitialView(): JSX.Element {
     const check = repo.missing ? undefined : recentRepoChecks[repo.path]
     const result = batchUpdateResults[repo.path]
     const selectable = Boolean(check?.canFastForward)
-    const chips = check && check.state !== 'checking' ? repoStatusChips(check) : []
+    const chips = check && check.state !== 'checking' ? repoStatusChips(t, check) : []
 
     return (
       <li
@@ -429,7 +425,7 @@ function InitialView(): JSX.Element {
                 checked={selectedRepoPaths.includes(repo.path)}
                 onChange={() => toggleRepoSelection(repo.path)}
                 disabled={isBusy}
-                aria-label={`Selecionar ${repo.name} para atualizar`}
+                aria-label={t.selectToUpdate(repo.name)}
               />
             )}
           </span>
@@ -456,7 +452,7 @@ function InitialView(): JSX.Element {
             {repo.missing ? (
               <span className="mt-0.5 flex items-center gap-1 text-caption text-attention-orange">
                 <AlertTriangle size={12} aria-hidden />
-                pasta não encontrada
+                {t.folderNotFound}
               </span>
             ) : (
               // Empty for a clean, up-to-date repo — rendering the span anyway
@@ -479,7 +475,7 @@ function InitialView(): JSX.Element {
             )}
             {result && (
               <span className={`mt-0.5 text-caption ${outcomeClass(result.outcome)}`}>
-                {OUTCOME_LABEL[result.outcome]}: {result.message}
+                {t.outcome[result.outcome]}: {result.message}
               </span>
             )}
           </span>
@@ -494,8 +490,8 @@ function InitialView(): JSX.Element {
             type="button"
             onClick={() => setMoveTarget(moveTarget === repo.path ? null : repo.path)}
             className="btn-ghost shrink-0 px-1.5 text-caption"
-            title="Mover para pasta"
-            aria-label={`Mover ${repo.name} para uma pasta`}
+            title={t.moveToFolder}
+            aria-label={t.moveToFolderAria(repo.name)}
             aria-expanded={moveTarget === repo.path}
           >
             <FolderInput size={14} />
@@ -506,8 +502,8 @@ function InitialView(): JSX.Element {
               onClick={() => void fetchRecentRepo(repo.path)}
               disabled={isBusy}
               className="btn-ghost shrink-0 px-1.5 text-caption"
-              title="Fetch (rechecar)"
-              aria-label={`Fetch em ${repo.name}`}
+              title={t.fetchRecheck}
+              aria-label={t.fetchAria(repo.name)}
             >
               <CloudDownload size={14} />
             </button>
@@ -518,8 +514,8 @@ function InitialView(): JSX.Element {
               onClick={() => setPullTarget({ path: repo.path, name: repo.name })}
               disabled={isBusy}
               className="btn-ghost shrink-0 px-1.5 text-caption"
-              title="Pull"
-              aria-label={`Pull em ${repo.name}`}
+              title={t.pull}
+              aria-label={t.pullAria(repo.name)}
             >
               <ArrowDownToLine size={14} />
             </button>
@@ -528,8 +524,8 @@ function InitialView(): JSX.Element {
             onClick={() => removeRecentRepo(repo.path)}
             disabled={isBusy}
             className="shrink-0 rounded-md p-1.5 text-tertiary-text hover:bg-danger-red-soft hover:text-danger-red"
-            aria-label={`Remover ${repo.name} da lista de recentes`}
-            title="Remover da lista (não apaga a pasta)"
+            aria-label={t.removeAria(repo.name)}
+            title={t.removeTitle}
           >
             <Trash2 size={15} />
           </button>
@@ -572,7 +568,7 @@ function InitialView(): JSX.Element {
         </div>
         <div>
           <h1 className="text-display font-semibold text-primary-text">GitWeb</h1>
-          <p className="mt-1 text-body text-secondary-text">Cliente Git multiplataforma inspirado no GitHub Desktop.</p>
+          <p className="mt-1 text-body text-secondary-text">{t.tagline}</p>
         </div>
       </div>
 
@@ -581,7 +577,7 @@ function InitialView(): JSX.Element {
         <div className="flex w-full items-center gap-2 rounded-md border border-danger-red/30 bg-danger-red-soft px-4 py-2.5 text-body text-danger-red" role="alert">
           <AlertCircle size={14} className="shrink-0" aria-hidden />
           <span className="flex-1">{error}</span>
-          <button type="button" className="hit-area rounded-sm p-1 hover:bg-hover-overlay" onClick={clearError} aria-label="Fechar aviso de erro">
+          <button type="button" className="hit-area rounded-sm p-1 hover:bg-hover-overlay" onClick={clearError} aria-label={messages.common.dismissError}>
             <X size={14} />
           </button>
         </div>
@@ -597,31 +593,31 @@ function InitialView(): JSX.Element {
         {hasGithubAccount === false && (
           <ActionTile
             icon={Github}
-            label="Entrar com GitHub"
-            description="Autentique-se para acessar seus repositórios."
+            label={t.signInGithub}
+            description={t.signInGithubHint}
             onClick={() => setLoginModalOpen(true)}
             disabled={isBusy}
           />
         )}
         <ActionTile
           icon={FolderOpen}
-          label="Abrir"
-          description="Uma pasta com um ou vários repositórios git."
+          label={t.open}
+          description={t.openHint}
           onClick={handleOpen}
           disabled={isBusy || isScanningFolder}
         />
         <ActionTile
           icon={DownloadCloud}
-          label="Clonar"
-          description="Um repositório remoto do GitHub ou de uma URL."
+          label={t.clone}
+          description={t.cloneHint}
           onClick={() => setShowClone(true)}
           disabled={isBusy}
           active={showClone}
         />
         <ActionTile
           icon={FolderPlus}
-          label="Criar"
-          description="Um repositório git novo do zero."
+          label={t.create}
+          description={t.createHint}
           onClick={handleCreate}
           disabled={isBusy}
         />
@@ -629,7 +625,7 @@ function InitialView(): JSX.Element {
 
       <section className="flex min-h-0 flex-1 flex-col gap-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h2 className="text-label uppercase tracking-wide text-tertiary-text">Recentes</h2>
+          <h2 className="text-label uppercase tracking-wide text-tertiary-text">{t.recents}</h2>
           <button
             type="button"
             onClick={() => void handleCreateGroup()}
@@ -637,7 +633,7 @@ function InitialView(): JSX.Element {
             className="flex items-center gap-1 text-caption text-command-blue hover:underline disabled:opacity-50 disabled:hover:no-underline"
           >
             <FolderPlus size={13} aria-hidden />
-            Nova pasta
+            {t.newFolder}
           </button>
           {updatablePaths.length > 0 && (
             <button
@@ -646,9 +642,7 @@ function InitialView(): JSX.Element {
               disabled={isBusy}
               className="text-caption text-command-blue hover:underline disabled:opacity-50 disabled:hover:no-underline"
             >
-              {allUpdatableSelected
-                ? 'Desmarcar todos'
-                : `Selecionar os ${updatablePaths.length} desatualizado${updatablePaths.length === 1 ? '' : 's'}`}
+              {allUpdatableSelected ? t.deselectAll : t.selectOutdated(updatablePaths.length)}
             </button>
           )}
           {showSelection && (
@@ -663,9 +657,7 @@ function InitialView(): JSX.Element {
               ) : (
                 <ArrowDownToLine size={13} aria-hidden />
               )}
-              {isBatchUpdating
-                ? 'Atualizando…'
-                : `Atualizar ${selectedCount || ''} selecionado${selectedCount === 1 ? '' : 's'}`}
+              {isBatchUpdating ? t.updating : t.updateSelected(selectedCount)}
             </button>
           )}
         </div>
@@ -678,7 +670,7 @@ function InitialView(): JSX.Element {
               type="button"
               className="hit-area rounded-sm p-1 hover:bg-hover-overlay"
               onClick={clearBatchResults}
-              aria-label="Fechar resumo da atualização"
+              aria-label={t.dismissBatchSummary}
             >
               <X size={13} />
             </button>
@@ -688,8 +680,8 @@ function InitialView(): JSX.Element {
         {recentRepos.length === 0 ? (
           <div className="mx-auto flex w-full max-w-md flex-col items-center justify-center gap-2 rounded-lg border border-default-border px-4 py-10 text-center">
             <FolderGit2 size={22} className="text-tertiary-text" />
-            <p className="text-body text-secondary-text">Nenhum repositório recente.</p>
-            <p className="text-caption text-tertiary-text">Abra, clone ou crie um repositório para começar.</p>
+            <p className="text-body text-secondary-text">{t.noRecents}</p>
+            <p className="text-caption text-tertiary-text">{t.noRecentsHint}</p>
           </div>
         ) : (
           <div className="flex flex-col gap-1">
@@ -720,7 +712,7 @@ function InitialView(): JSX.Element {
             {(ungrouped.length > 0 || repoGroups.length === 0 || draggingPath !== null) && (
               <RepoGroupSection
                 id={null}
-                name="Sem pasta"
+                name={t.noFolder}
                 count={ungrouped.length}
                 collapsed={ungroupedCollapsed}
                 onToggleCollapsed={() => setUngroupedCollapsed((v) => !v)}
@@ -758,7 +750,7 @@ function InitialView(): JSX.Element {
           className="flex items-center gap-1.5 text-caption text-tertiary-text transition-colors duration-100 hover:text-secondary-text"
         >
           <Settings2 size={13} aria-hidden />
-          Configurações
+          {t.settings}
         </button>
         <button
           type="button"
@@ -766,15 +758,15 @@ function InitialView(): JSX.Element {
           className="flex items-center gap-1.5 text-caption text-tertiary-text transition-colors duration-100 hover:text-secondary-text"
         >
           <Info size={13} aria-hidden />
-          Sobre o GitWeb
+          {t.about}
         </button>
       </footer>
       </div>
       <ConfirmDialog
         open={groupToDelete !== null}
-        title={`Excluir a pasta "${groupToDelete?.name ?? ''}"?`}
-        message="Os repositórios dentro dela voltam para “Sem pasta”. Nenhum repositório é apagado do disco."
-        confirmLabel="Excluir pasta"
+        title={t.deleteFolderTitle(groupToDelete?.name ?? '')}
+        message={t.deleteFolderMessage}
+        confirmLabel={t.deleteFolderConfirm}
         danger
         onCancel={() => setGroupToDelete(null)}
         onConfirm={() => {
@@ -785,9 +777,9 @@ function InitialView(): JSX.Element {
       />
       <ConfirmDialog
         open={pullTarget !== null}
-        title={`Pull em ${pullTarget?.name ?? ''}?`}
-        message="Isso altera o working tree desse repositório (git pull), mesmo que ele não esteja aberto agora."
-        confirmLabel="Fazer pull"
+        title={t.pullTitle(pullTarget?.name ?? '')}
+        message={t.pullMessage}
+        confirmLabel={t.pullConfirm}
         onCancel={() => setPullTarget(null)}
         onConfirm={() => {
           const target = pullTarget

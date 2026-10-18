@@ -11,6 +11,7 @@ import {
   type AiSettings
 } from '../shared/ai'
 import { DEFAULT_APP_SETTINGS, MAX_CLONE_BASE_FOLDERS, type AppSettings } from '../shared/settings'
+import { isLanguagePreference } from '../shared/i18n/locales'
 
 const FILE_NAME = 'settings.json'
 const DEFAULTS: AppSettings = DEFAULT_APP_SETTINGS
@@ -33,6 +34,7 @@ function sanitizeCloneBaseFolders(value: unknown): string[] {
 // settings.json written before a new field existed still picks up its
 // default instead of coming back `undefined`.
 function normalizeSettings(stored: Partial<AppSettings>): AppSettings {
+  const language = isLanguagePreference(stored.language) ? stored.language : DEFAULTS.language
   const colorScheme: AppSettings['colorScheme'] =
     stored.colorScheme === 'dark' || stored.colorScheme === 'light' || stored.colorScheme === 'system'
       ? stored.colorScheme
@@ -45,6 +47,7 @@ function normalizeSettings(stored: Partial<AppSettings>): AppSettings {
     ...DEFAULTS,
     ...stored,
     colorScheme,
+    language,
     cloneBaseFolders: sanitizeCloneBaseFolders(stored.cloneBaseFolders),
     lastCloneBaseFolder
   }
@@ -52,6 +55,19 @@ function normalizeSettings(stored: Partial<AppSettings>): AppSettings {
 
 export async function getSettings(): Promise<AppSettings> {
   return normalizeSettings(await readJson<Partial<AppSettings>>(FILE_NAME, DEFAULTS))
+}
+
+// Before the app-wide language existed, only the AI had one ('pt-BR' | 'en',
+// in ai-settings.json). Someone who had switched it to English keeps English
+// instead of being moved to the OS language. Runs once: afterwards
+// settings.json carries `language`, which short-circuits it.
+export async function migrateLegacyAiLanguage(): Promise<void> {
+  // No fallback to DEFAULTS here: it carries `language`, so a missing
+  // settings.json would look already migrated.
+  const app = await readJson<Partial<AppSettings>>(FILE_NAME, {})
+  if (isLanguagePreference(app.language)) return
+  const ai = await readJson<{ language?: unknown }>(AI_FILE_NAME, {})
+  await setAppSettings({ language: ai.language === 'en' ? 'en' : 'system' })
 }
 
 // Both writers go through updateJson: as two separate read-then-write steps,
@@ -82,7 +98,6 @@ const AI_DEFAULTS: AiSettings = {
   maxDiffChars: DEFAULT_MAX_DIFF_CHARS,
   investigationConcurrency: DEFAULT_INVESTIGATION_CONCURRENCY,
   investigationContextTokens: DEFAULT_INVESTIGATION_CONTEXT_TOKENS,
-  language: 'pt-BR',
   reasoningEffort: 'off',
   providers: {
     openai: { model: 'gpt-4o-mini', apiBaseUrl: 'https://api.openai.com/v1' },
@@ -124,7 +139,6 @@ export async function getAiSettings(): Promise<AiSettings> {
       131_072,
       AI_DEFAULTS.investigationContextTokens
     ),
-    language: stored.language === 'en' || stored.language === 'pt-BR' ? stored.language : AI_DEFAULTS.language,
     reasoningEffort: normalizeReasoningEffort(stored.reasoningEffort),
     activeProvider: stored.activeProvider ?? AI_DEFAULTS.activeProvider,
     providers

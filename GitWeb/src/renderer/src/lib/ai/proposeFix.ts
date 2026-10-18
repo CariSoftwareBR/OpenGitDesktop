@@ -1,5 +1,10 @@
 import type { InvestigationFinding } from './commitInvestigation'
-import { proposeFixNoContentError, proposeFixPrompt, proposeFixUserMessage } from '../../../../shared/aiPrompts'
+import {
+  proposeFixNoContentError,
+  proposeFixPrompt,
+  proposeFixUserMessage,
+  type AiLanguage
+} from '../../../../shared/aiPrompts'
 import type { AiSettings } from '../../../../shared/ai'
 import { sendChatRequest } from './providers'
 import { unifiedPreview } from '../../../../shared/patch'
@@ -8,7 +13,7 @@ import type { ResolvedAiConfig } from '../../../../shared/ai'
 export async function proposeFileFix(input: {
   finding: InvestigationFinding
   fileContent: string
-  language: AiSettings['language']
+  language: AiLanguage
   config: ResolvedAiConfig
   apiKey: string
   requestId: string

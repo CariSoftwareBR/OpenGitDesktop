@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { HISTORY_REWRITTEN_MESSAGE, isConflicted, sameRepoStatus } from '../../../shared/git'
+import { isConflicted, isHistoryRewrittenMessage, sameRepoStatus } from '../../../shared/git'
 import type {
   BranchInfo,
   CommitFile,
@@ -21,6 +21,7 @@ import {
   scanReposForUpdates
 } from '../lib/recentRepoScan'
 import { useAppSettingsStore } from './appSettingsStore'
+import { getT } from '../lib/i18n'
 import { extractHunkPatch, parseFileDiff } from '../../../shared/patch'
 
 type ViewName = 'changes' | 'history' | 'stash' | 'pullRequests' | 'dashboard' | 'settings' | 'about'
@@ -162,7 +163,7 @@ function describeError(err: unknown): string {
 }
 
 function isHistoryRewritten(err: unknown): boolean {
-  return describeError(err).includes(HISTORY_REWRITTEN_MESSAGE)
+  return isHistoryRewrittenMessage(describeError(err))
 }
 
 // Guards against a stale scan (from a previous mount of the recent-repos
@@ -316,7 +317,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     set({ isBusy: true, error: null })
     try {
       const isRepo = await window.api.git.isRepository(path)
-      if (!isRepo) throw new Error(`"${path}" não é um repositório git.`)
+      if (!isRepo) throw new Error(getT().stores.notARepo(path))
       if (generation !== repoOpenGeneration) return
 
       const recentData = await window.api.recentRepos.add(path)
@@ -500,7 +501,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       // "/" (it doesn't recurse into it) — that's not a file, so reading it
       // would throw EISDIR.
       if (path.endsWith('/')) {
-        set({ diffText: '(pasta não rastreada — use o menu de contexto para ignorá-la ou adicione seus arquivos)' })
+        set({ diffText: getT().stores.untrackedFolder })
         return
       }
 
@@ -509,8 +510,8 @@ export const useRepoStore = create<RepoState>((set, get) => ({
         // `git diff` shows nothing for untracked files; read the raw content instead.
         const content = await window.api.fs.readRepoFile(repoPath, path)
         if (generation !== repoOpenGeneration || get().currentRepoPath !== repoPath) return
-        const preview = content.length > 200_000 ? `${content.slice(0, 200_000)}\n… (arquivo truncado)` : content
-        set({ diffText: preview || '(arquivo novo vazio)' })
+        const preview = content.length > 200_000 ? `${content.slice(0, 200_000)}\n${getT().stores.fileTruncated}` : content
+        set({ diffText: preview || getT().stores.emptyNewFile })
       } else {
         const diffText = await window.api.git.diff(path, repoPath, staged)
         if (generation !== repoOpenGeneration || get().currentRepoPath !== repoPath) return
@@ -598,7 +599,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
             await Promise.all([get().refreshStatus(), get().refreshBranches()])
           } catch (err) {
             if (isHistoryRewritten(err)) set({ forcePushPrompt: { branch: status.branch } })
-            else set({ error: `Commit criado, mas o push falhou: ${describeError(err)}` })
+            else set({ error: getT().stores.pushFailedAfterCommit(describeError(err)) })
           }
         }
       }
@@ -658,12 +659,12 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       const shown = get()
       if (shown.selectedFile?.path === path && shown.selectedFile.staged === stagedDiff && shown.diffText !== diffText) {
         await get().selectFile(path, stagedDiff)
-        throw new Error('O arquivo mudou desde que o diff foi exibido. Confira o diff atualizado e tente de novo.')
+        throw new Error(getT().stores.fileChangedSinceDiff)
       }
       const parsed = parseFileDiff(diffText)
-      if (!parsed) throw new Error('Não foi possível ler os hunks deste diff.')
+      if (!parsed) throw new Error(getT().stores.cannotReadHunks)
       const patch = extractHunkPatch(parsed, hunkIndex)
-      if (!patch.trim()) throw new Error('Hunk inválido.')
+      if (!patch.trim()) throw new Error(getT().stores.invalidHunk)
       await window.api.git.applyPatch(currentRepoPath, patch, action !== 'discard', action !== 'stage')
       await get().refreshStatus()
       const { staged, unstaged } = splitStatus(get().status)
@@ -703,7 +704,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       const result = await window.api.git.pull(path)
       // git prints "CONFLICT (content): …" to stdout, not stderr.
       if (result.exitCode !== 0 && !/conflict/i.test(`${result.stdout}\n${result.stderr}`)) {
-        throw new Error(result.stderr.trim() || 'git pull falhou.')
+        throw new Error(result.stderr.trim() || getT().stores.pullFailed)
       }
       const check = await checkRepoUpdate(path, false)
       set((state) => ({ recentRepoChecks: { ...state.recentRepoChecks, [path]: check } }))
@@ -818,10 +819,10 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       await Promise.all([get().refreshStatus(), get().refreshLog()])
       const hasConflicts = get().status?.entries.some(isConflicted)
       if (result.exitCode !== 0 && !hasConflicts) {
-        throw new Error(result.stderr.trim() || `git merge ${branchName} falhou.`)
+        throw new Error(result.stderr.trim() || getT().stores.mergeFailed(branchName))
       }
       if (hasConflicts) {
-        set({ error: 'Merge com conflitos. Resolva os arquivos marcados em Alterações antes de continuar.' })
+        set({ error: getT().stores.mergeConflicts })
       }
     } catch (err) {
       set({ error: describeError(err) })
@@ -839,9 +840,9 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       await Promise.all([get().refreshStatus(), get().refreshLog()])
       const hasConflicts = get().status?.entries.some(isConflicted)
       if (hasConflicts) {
-        set({ view: 'changes', error: 'A reversão gerou conflitos. Resolva os arquivos em Alterações e conclua com o commit.' })
+        set({ view: 'changes', error: getT().stores.revertConflicts })
       } else if (result.exitCode !== 0) {
-        throw new Error(result.stderr.trim() || 'git revert falhou.')
+        throw new Error(result.stderr.trim() || getT().stores.revertFailed)
       }
     } catch (err) {
       set({ error: describeError(err) })
@@ -895,7 +896,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     set({ isBusy: true, error: null })
     try {
       if (!status.upstream) {
-        if (!status.branch) throw new Error('Nenhuma branch atual para publicar.')
+        if (!status.branch) throw new Error(getT().stores.noBranchToPublish)
         await window.api.git.push(currentRepoPath, status.branch, true)
       } else if (status.behind > 0 && status.ahead > 0) {
         // Diverged (e.g. remote bot commit + local work): push integrates via rebase.
@@ -905,10 +906,10 @@ export const useRepoStore = create<RepoState>((set, get) => ({
         await get().refreshStatus()
         const hasConflicts = get().status?.entries.some(isConflicted)
         if (result.exitCode !== 0 && !hasConflicts) {
-          throw new Error(result.stderr.trim() || 'git pull falhou.')
+          throw new Error(result.stderr.trim() || getT().stores.pullFailed)
         }
         if (hasConflicts) {
-          set({ error: 'Pull com conflitos. Resolva os arquivos marcados em Alterações antes de continuar.' })
+          set({ error: getT().stores.pullConflicts })
         }
       } else if (status.ahead > 0) {
         await window.api.git.push(currentRepoPath, status.branch ?? '', false)
@@ -987,7 +988,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       // The lease did its job: someone pushed after our last fetch.
       set({
         error: /stale info|rejected/i.test(message)
-          ? 'O remoto recebeu commits novos de outra pessoa desde a última busca, então nada foi sobrescrito. Use "Buscar origin", confira o histórico e integre antes de publicar.'
+          ? getT().stores.leaseRejected
           : message
       })
     } finally {

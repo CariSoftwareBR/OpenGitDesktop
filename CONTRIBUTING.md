@@ -50,6 +50,29 @@ Estrutura do código e detalhes técnicos: [`GitWeb/README.md`](GitWeb/README.md
 - Mantenha os PRs focados: uma mudança por PR facilita a revisão.
 - Mudanças visíveis na interface ficam melhores com um print ou GIF no PR.
 
+## Traduções
+
+O app fala **pt-BR**, **en** e **es**. Interface, mensagens do processo main e
+respostas da IA usam um único idioma, escolhido em Configurações (o padrão segue
+o sistema operacional).
+
+- **Dicionários:** `GitWeb/src/shared/i18n/messages/<namespace>.ts`. Cada arquivo
+  traz as três traduções lado a lado; `en` e `es` são tipados a partir do objeto
+  `ptBR`, então uma chave faltando ou sobrando quebra o `npm run typecheck`.
+  Textos com variáveis ou plural são funções (`(n: number) => …`).
+- **Usar no renderer:** `const t = useT().<namespace>` em componentes;
+  `getT()` / `getLocale()` em stores e funções fora do React. Datas e números
+  passam por `useFormatters()` / `getFmt()` — nada de `'pt-BR'` fixo.
+- **Usar no main:** `tMain()` em `GitWeb/src/main/i18n.ts`. A saída crua do
+  `git` (stderr) não é traduzida.
+- **Nova chave:** adicione-a nas três traduções do namespace. Para um namespace
+  novo, crie o arquivo e registre-o em `GitWeb/src/shared/i18n/index.ts`.
+- **IA:** prompts em `GitWeb/src/shared/aiPrompts.ts` (cada texto com uma
+  versão por idioma) e skills em `GitWeb/src/renderer/src/lib/ai/skills/<idioma>/`.
+- **Idioma novo:** inclua-o em `SUPPORTED_LOCALES`/`resolveLocale`
+  (`GitWeb/src/shared/i18n/locales.ts`), traduza todos os namespaces, os prompts
+  e as skills; o `test/i18n.test.ts` confere a paridade de chaves e strings vazias.
+
 ## Releases
 
 As releases são geradas pelo CI a partir da `main`; quem contribui não precisa

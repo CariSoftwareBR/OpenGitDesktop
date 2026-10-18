@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 import { useClickOutside } from '../lib/useClickOutside'
 import { pathsEqual } from '../lib/path'
+import { useT } from '../lib/i18n'
 
 interface CloneDestinationFieldProps {
   value: string
@@ -21,6 +22,7 @@ function CloneDestinationField({
   disabled
 }: CloneDestinationFieldProps): JSX.Element {
   const listboxId = useId()
+  const t = useT().clone
   const optionIdPrefix = useId()
   const [open, setOpen] = useState(false)
   const [highlighted, setHighlighted] = useState(0)
@@ -82,8 +84,8 @@ function CloneDestinationField({
         <input
           ref={inputRef}
           type="text"
-          placeholder="Pasta de destino"
-          aria-label="Pasta de destino do clone"
+          placeholder={t.destinationPlaceholder}
+          aria-label={t.destinationAria}
           aria-autocomplete="list"
           aria-expanded={open}
           aria-controls={listboxId}
@@ -97,7 +99,7 @@ function CloneDestinationField({
         />
         <button
           type="button"
-          aria-label="Pastas-base cadastradas"
+          aria-label={t.baseFoldersAria}
           aria-haspopup="listbox"
           aria-expanded={open}
           onClick={() => setOpen((isOpen) => !isOpen)}
@@ -116,7 +118,7 @@ function CloneDestinationField({
         >
           {baseFolders.length === 0 && (
             <li className="px-3 py-2 text-caption text-tertiary-text" role="presentation">
-              Nenhuma pasta-base ainda. Use “Escolher pasta…”.
+              {t.noBaseFolders(t.chooseFolder)}
             </li>
           )}
           {baseFolders.map((folder, index) => {

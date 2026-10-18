@@ -14,6 +14,7 @@ import {
   type AiSettings
 } from '../../shared/ai'
 import { DEFAULT_APP_SETTINGS, type AppSettings } from '../../shared/settings'
+import { resolveLocale } from '../../shared/i18n/locales'
 import type {
   BranchInfo,
   CommitDetails,
@@ -36,7 +37,6 @@ const AI_DEFAULTS: AiSettings = {
   maxDiffChars: DEFAULT_MAX_DIFF_CHARS,
   investigationConcurrency: DEFAULT_INVESTIGATION_CONCURRENCY,
   investigationContextTokens: DEFAULT_INVESTIGATION_CONTEXT_TOKENS,
-  language: 'pt-BR',
   reasoningEffort: 'off',
   providers: {
     openai: { model: '', apiBaseUrl: '' },
@@ -331,7 +331,8 @@ function installBrowserApiStub(): void {
       setAppSettings: async (partial) => {
         appSettings = { ...appSettings, ...partial }
         return appSettings
-      }
+      },
+      getSystemLocale: async () => resolveLocale(navigator.languages)
     },
     ai: {
       getSettings: async () => structuredClone(aiSettings),

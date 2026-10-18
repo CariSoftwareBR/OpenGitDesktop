@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Markdown from './Markdown'
+import { useFormatters, useT } from '../lib/i18n'
 
 // Long results (a PR's diffs, a big log) would otherwise blow up the chat
 // bubble's layout — collapsed by default, with an explicit toggle to expand
@@ -31,6 +32,8 @@ function ToolResult({
   headerLines?: number
 }): JSX.Element {
   const [expanded, setExpanded] = useState(false)
+  const t = useT().tools
+  const fmt = useFormatters()
   const isLong = text.length > LONG_RESULT_THRESHOLD
   const colorClass = tone === 'danger' ? 'text-danger-red' : 'text-secondary-text'
 
@@ -45,7 +48,7 @@ function ToolResult({
         {renderBlock(header, false, colorClass)}
         {expanded && <div className="mb-1.5 mt-1.5 max-h-80 overflow-y-auto">{renderBlock(rest, markdown, colorClass)}</div>}
         <button onClick={() => setExpanded((v) => !v)} className="mt-1 text-caption text-command-blue hover:underline">
-          {expanded ? 'Mostrar menos' : 'Mostrar descrição, arquivos e comentários'}
+          {expanded ? t.showLess : t.showDetails}
         </button>
       </div>
     )
@@ -55,7 +58,7 @@ function ToolResult({
     <div>
       {expanded && <div className="mb-1.5 max-h-80 overflow-y-auto">{renderBlock(text, markdown, colorClass)}</div>}
       <button onClick={() => setExpanded((v) => !v)} className="text-caption text-command-blue hover:underline">
-        {expanded ? 'Mostrar menos' : `Mostrar resultado completo (${text.length.toLocaleString('pt-BR')} caracteres)`}
+        {expanded ? t.showLess : t.showFull(fmt.number(text.length))}
       </button>
     </div>
   )

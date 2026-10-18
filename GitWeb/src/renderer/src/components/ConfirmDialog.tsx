@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useFocusTrap } from '../lib/useFocusTrap'
+import { useT } from '../lib/i18n'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -19,7 +20,7 @@ function ConfirmDialog({
   title,
   message,
   confirmLabel,
-  cancelLabel = 'Cancelar',
+  cancelLabel,
   danger = false,
   confirmClassName,
   onConfirm,
@@ -27,6 +28,7 @@ function ConfirmDialog({
 }: ConfirmDialogProps): JSX.Element | null {
   const titleId = useId()
   const descId = useId()
+  const common = useT().common
   const panelRef = useRef<HTMLDivElement>(null)
   const confirmRef = useRef<HTMLButtonElement>(null)
   const cancelRef = useRef<HTMLButtonElement>(null)
@@ -54,7 +56,7 @@ function ConfirmDialog({
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button ref={cancelRef} type="button" onClick={onCancel} className="btn-secondary">
-            {cancelLabel}
+            {cancelLabel ?? common.cancel}
           </button>
           <button
             ref={confirmRef}
@@ -96,7 +98,7 @@ export function PromptDialog({
   label,
   placeholder,
   confirmLabel,
-  cancelLabel = 'Cancelar',
+  cancelLabel,
   onConfirm,
   onCancel,
   transform,
@@ -105,6 +107,7 @@ export function PromptDialog({
 }: PromptDialogProps): JSX.Element | null {
   const titleId = useId()
   const descId = useId()
+  const common = useT().common
   const inputId = useId()
   const panelRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -182,7 +185,7 @@ export function PromptDialog({
             }}
             className="btn-secondary"
           >
-            {cancelLabel}
+            {cancelLabel ?? common.cancel}
           </button>
           <button type="button" onClick={submit} disabled={!value.trim() || Boolean(invalid)} className="btn-primary">
             {confirmLabel}

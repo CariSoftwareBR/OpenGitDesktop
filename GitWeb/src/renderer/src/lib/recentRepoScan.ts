@@ -3,6 +3,7 @@
 // (getRepoUpdateStatus), so one IPC round-trip per repo is enough.
 
 import type { RepoUpdateStatus } from '../../../shared/git'
+import { getT } from './i18n'
 
 export type { RepoUpdateStatus, RepoUpdateResult, RepoUpdateState, RepoUpdateOutcome } from '../../../shared/git'
 
@@ -70,5 +71,5 @@ export function failedCheck(err: unknown): RepoUpdateStatus {
 }
 
 export function checkingPlaceholder(): RepoUpdateStatus {
-  return { ...EMPTY_CHECK, state: 'checking', message: 'Verificando…' }
+  return { ...EMPTY_CHECK, state: 'checking', message: getT().stores.checking }
 }

@@ -1,6 +1,7 @@
 import { DownloadCloud } from 'lucide-react'
 import { useRepoStore } from '../store/repoStore'
 import { updateStatusLabel, useUpdateStatus } from '../lib/useUpdateStatus'
+import { useT } from '../lib/i18n'
 
 // Floating corner indicator used only where there's no TopBar to embed an
 // icon button into (InitialView). Once a repo is open, TopBar renders the
@@ -9,7 +10,7 @@ function UpdateBadge(): JSX.Element | null {
   const status = useUpdateStatus()
   const setView = useRepoStore((s) => s.setView)
 
-  const label = updateStatusLabel(status)
+  const label = updateStatusLabel(useT().about, status)
   if (!label) return null
 
   const ready = status.state === 'downloaded'

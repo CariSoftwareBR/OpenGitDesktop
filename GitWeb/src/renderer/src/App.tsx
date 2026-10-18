@@ -18,6 +18,7 @@ import AboutView from './views/AboutView'
 import TopBar from './components/TopBar'
 import UpdateBadge from './components/UpdateBadge'
 import ErrorExplainButton from './components/ErrorExplainButton'
+import { useDocumentLanguage, useT } from './lib/i18n'
 
 const MIN_CHAT_WIDTH = 320
 const MAX_CHAT_WIDTH = 720
@@ -37,6 +38,8 @@ function App(): JSX.Element {
   const loadAppSettings = useAppSettingsStore((s) => s.loadSettings)
   const colorScheme = useAppSettingsStore((s) => s.settings?.colorScheme ?? 'system')
   useResolvedTheme(colorScheme)
+  useDocumentLanguage()
+  const t = useT().common
   const compactShell = useMediaQuery(COMPACT_SHELL_QUERY)
   const panelOpen = useAiStore((s) => s.panelOpen)
   const setPanelOpen = useAiStore((s) => s.setPanelOpen)
@@ -195,7 +198,7 @@ function App(): JSX.Element {
               if (message === error) clearError()
               if (message === prError) clearPrError()
             }}
-            aria-label="Fechar aviso de erro"
+            aria-label={t.dismissError}
           >
             <X size={14} />
           </button>
@@ -212,7 +215,7 @@ function App(): JSX.Element {
             type="button"
             className="hit-area rounded-sm p-1 text-success-green transition-colors hover:bg-hover-overlay"
             onClick={clearPrSuccessMessage}
-            aria-label="Fechar aviso de sucesso"
+            aria-label={t.dismissSuccess}
           >
             <X size={14} />
           </button>
@@ -233,7 +236,7 @@ function App(): JSX.Element {
             <div
               role="separator"
               aria-orientation="vertical"
-              aria-label="Redimensionar chat de IA"
+              aria-label={t.resizeAiChat}
               aria-valuemin={MIN_CHAT_WIDTH}
               aria-valuemax={MAX_CHAT_WIDTH}
               aria-valuenow={chatWidth}
@@ -253,7 +256,7 @@ function App(): JSX.Element {
             <aside
               className="flex h-full shrink-0 flex-col overflow-hidden border-l border-default-border bg-obsidian-panel"
               style={{ width: chatWidth }}
-              aria-label="Chat de IA"
+              aria-label={t.aiChat}
             >
               <AiChatView />
             </aside>
@@ -264,8 +267,8 @@ function App(): JSX.Element {
             type="button"
             onClick={() => setPanelOpen(true)}
             className="flex w-9 shrink-0 flex-col items-center justify-center gap-2 border-l border-default-border bg-obsidian-panel text-secondary-text transition-colors hover:bg-hover-overlay hover:text-primary-text"
-            aria-label="Abrir chat de IA"
-            title="Abrir chat de IA"
+            aria-label={t.openAiChat}
+            title={t.openAiChat}
           >
             <Bot size={16} />
           </button>
@@ -285,7 +288,7 @@ function App(): JSX.Element {
                   height: Math.min(520, window.innerHeight - 96)
                 }
           }
-          aria-label={floating ? 'Chat de IA (flutuante)' : 'Chat de IA'}
+          aria-label={floating ? t.aiChatFloating : t.aiChat}
         >
           <AiChatView />
         </div>

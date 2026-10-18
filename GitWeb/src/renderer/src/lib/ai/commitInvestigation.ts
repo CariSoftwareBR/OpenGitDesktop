@@ -3,12 +3,15 @@ import {
   emptyInvestigationMarkdown,
   investigationConsolidationFallback,
   investigationFinalPrompt,
+  investigationLabels,
   investigationVerifyPrompt,
   investigationWorkerPrompt,
-  isEmptyInvestigationMarkdown
+  isEmptyInvestigationMarkdown,
+  type AiLanguage
 } from '../../../../shared/aiPrompts'
 import type { CommitFile } from '../../../../shared/git'
 import { sendChatRequest, type ChatMessage } from './providers'
+import { getLocale } from '../i18n'
 
 export { isEmptyInvestigationMarkdown }
 
@@ -103,22 +106,19 @@ function hunkDigest(patch: string, limit = 8): string {
 }
 
 function buildCommitBrief(
-  language: AiSettings['language'],
+  language: AiLanguage,
   commit: { hash: string; summary: string; body: string },
   files: CommitFile[],
   patches: Map<string, string>,
   tokenLimit: number
 ): string {
-  const subjectLabel = language === 'pt-BR' ? 'Assunto' : 'Subject'
-  const messageLabel = language === 'pt-BR' ? 'Mensagem' : 'Message'
-  const filesLabel = language === 'pt-BR' ? 'Arquivos deste commit:' : 'Files in this commit:'
-  const moreFilesLabel = language === 'pt-BR' ? 'arquivo(s)' : 'more file(s)'
+  const labels = investigationLabels(language)
 
   let brief = [
     `Commit ${commit.hash}`,
-    `${subjectLabel}: ${commit.summary}`,
-    commit.body.trim() ? `${messageLabel}:\n${commit.body.trim()}` : '',
-    filesLabel
+    `${labels.subject}: ${commit.summary}`,
+    commit.body.trim() ? `${labels.message}:\n${commit.body.trim()}` : '',
+    labels.filesInCommit
   ]
     .filter(Boolean)
     .join('\n')
@@ -129,7 +129,7 @@ function buildCommitBrief(
     const entry = `${file.status} ${file.path}${digest ? `\n${digest}` : ''}`
     const next = `${brief}\n${entry}`
     if (estimateTokens(next) > tokenLimit) {
-      brief += `\n… ${language === 'pt-BR' ? 'e mais' : 'and'} ${files.length - included} ${moreFilesLabel}`
+      brief += `\n… ${labels.moreFiles(files.length - included)}`
       break
     }
     brief = next
@@ -161,10 +161,9 @@ function packVerifyUserMessage(
   ownPatch: string,
   related: { path: string; patch: string }[]
 ): string {
-  const verifyPrompt = investigationVerifyPrompt(input.settings.language)
-  const findingFileLabel = input.settings.language === 'pt-BR' ? 'Arquivo do achado' : 'Finding file'
-  const findingLabel = input.settings.language === 'pt-BR' ? 'Achado' : 'Finding'
-  const header = `${brief}\n\n${findingFileLabel}: ${path}\n${findingLabel}:\n${JSON.stringify(toPublicFinding(finding))}\n`
+  const verifyPrompt = investigationVerifyPrompt(getLocale())
+  const labels = investigationLabels(getLocale())
+  const header = `${brief}\n\n${labels.findingFile}: ${path}\n${labels.finding}:\n${JSON.stringify(toPublicFinding(finding))}\n`
   const budget = inputBudget(input.settings.investigationContextTokens)
   let used = estimateTokens(verifyPrompt + header)
   const sections: string[] = []
@@ -182,13 +181,13 @@ function packVerifyUserMessage(
   }
 
   append(
-    input.settings.language === 'pt-BR' ? `Diff de ${path}:` : `Diff for ${path}:`,
+    labels.diffFor(path),
     ownPatch || finding.chunk || ''
   )
   for (const file of related) {
     if (
       !append(
-        input.settings.language === 'pt-BR' ? `Diff relacionado (${file.path}):` : `Related diff (${file.path}):`,
+        labels.relatedDiff(file.path),
         file.patch
       )
     ) {
@@ -324,15 +323,14 @@ function parseVerdict(content: string): 'confirm' | 'reject' {
 }
 
 function workerMessages(
-  language: AiSettings['language'],
+  language: AiLanguage,
   brief: string,
   path: string,
   chunk: string,
   part: number,
   parts: number
 ): ChatMessage[] {
-  const fileLabel = language === 'pt-BR' ? 'Arquivo' : 'File'
-  const batchLabel = language === 'pt-BR' ? 'Lote' : 'Batch'
+  const { file: fileLabel, batch: batchLabel } = investigationLabels(language)
   return [
     { role: 'system', content: investigationWorkerPrompt(language) },
     {
@@ -351,7 +349,7 @@ function verifyMessages(
   related: { path: string; patch: string }[]
 ): ChatMessage[] {
   return [
-    { role: 'system', content: investigationVerifyPrompt(input.settings.language) },
+    { role: 'system', content: investigationVerifyPrompt(getLocale()) },
     { role: 'user', content: packVerifyUserMessage(input, brief, path, finding, ownPatch, related) }
   ]
 }
@@ -368,7 +366,7 @@ function finalMessages(input: CommitInvestigationInput, reports: FileReport[]): 
       error
     }))
   return [
-    { role: 'system', content: investigationFinalPrompt(input.settings.language) },
+    { role: 'system', content: investigationFinalPrompt(getLocale()) },
     {
       role: 'user',
       content: `Commit ${input.commit.hash} ("${input.commit.summary}"). Resultados dos subagentes:\n${JSON.stringify(compactReports)}`
@@ -402,7 +400,7 @@ export async function investigateCommitWithWorkers(input: CommitInvestigationInp
   }
   const briefLimit = Math.min(3_000, Math.floor(inputBudget(input.settings.investigationContextTokens) * 0.25))
   const brief = buildCommitBrief(
-    input.settings.language,
+    getLocale(),
     { hash: input.commit.hash, summary: input.commit.summary, body: details?.body ?? '' },
     files,
     patches,
@@ -444,7 +442,7 @@ export async function investigateCommitWithWorkers(input: CommitInvestigationInp
   async function inspectFile(file: CommitFile): Promise<FileReport> {
     const patch = patches.get(file.path) ?? ''
     if (!patch.trim()) return { path: file.path, coverage: 'skipped', findings: [] }
-    const workerPrompt = investigationWorkerPrompt(input.settings.language)
+    const workerPrompt = investigationWorkerPrompt(getLocale())
     const overhead = estimateTokens(workerPrompt + brief)
     const chunks = chunkDiff(patch, input.settings.investigationContextTokens, overhead)
     const findings: WorkerFinding[] = []
@@ -458,7 +456,7 @@ export async function investigateCommitWithWorkers(input: CommitInvestigationInp
         const response = await sendChatRequest(
           config,
           input.apiKey,
-          workerMessages(input.settings.language, brief, file.path, chunks[index], index + 1, chunks.length),
+          workerMessages(getLocale(), brief, file.path, chunks[index], index + 1, chunks.length),
           [],
           requestId
         )
@@ -578,7 +576,7 @@ export async function investigateCommitWithWorkers(input: CommitInvestigationInp
   if (!hasFindings && !hasIncompleteCoverage) {
     stage = 'completed'
     reportProgress()
-    return emptyInvestigationMarkdown(input.settings.language)
+    return emptyInvestigationMarkdown(getLocale())
   }
 
   const requestId = `investigate-summary-${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -587,7 +585,7 @@ export async function investigateCommitWithWorkers(input: CommitInvestigationInp
     const response = await sendChatRequest(config, input.apiKey, finalMessages(input, reports), [], requestId)
     stage = 'completed'
     reportProgress()
-    return response.content.trim() || investigationConsolidationFallback(input.settings.language)
+    return response.content.trim() || investigationConsolidationFallback(getLocale())
   } finally {
     input.unregisterRequest(requestId)
   }

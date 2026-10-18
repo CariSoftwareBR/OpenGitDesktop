@@ -13,33 +13,31 @@ import {
 } from '../../../shared/ai'
 import { credentialKey, useAiStore } from '../store/aiStore'
 import Combobox from './Combobox'
+import type { Messages } from '../../../shared/i18n'
+import { useT } from '../lib/i18n'
 
-const PROVIDERS: { value: AiProvider; label: string }[] = [
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'claude', label: 'Claude' },
-  { value: 'openrouter', label: 'OpenRouter' },
-  { value: 'ollama', label: 'Ollama (local)' },
-  { value: 'local', label: 'Local (compatível OpenAI)' }
-]
+type AiSettingsMessages = Messages['aiSettings']
 
-const LANGUAGE_OPTIONS = [
-  { value: 'pt-BR', label: 'Português' },
-  { value: 'en', label: 'English' }
-]
-
-const REASONING_LABELS: Record<ReasoningEffort, string> = {
-  off: 'Desligado',
-  low: 'Baixo',
-  medium: 'Médio',
-  high: 'Alto',
-  xhigh: 'Muito alto'
+function providerOptions(t: AiSettingsMessages): { value: AiProvider; label: string }[] {
+  return [
+    { value: 'openai', label: 'OpenAI' },
+    { value: 'claude', label: 'Claude' },
+    { value: 'openrouter', label: 'OpenRouter' },
+    { value: 'ollama', label: t.ollamaLocal },
+    { value: 'local', label: t.localCompatible }
+  ]
 }
-const REASONING_OPTIONS = REASONING_EFFORT_LEVELS.map((level) => ({ value: level, label: REASONING_LABELS[level] }))
 
-const INVESTIGATION_CONCURRENCY_OPTIONS = [
-  { value: '0', label: 'Não usar' },
-  ...Array.from({ length: 8 }, (_, index) => ({ value: String(index + 1), label: String(index + 1) }))
-]
+function reasoningOptions(t: AiSettingsMessages): { value: ReasoningEffort; label: string }[] {
+  return REASONING_EFFORT_LEVELS.map((level) => ({ value: level, label: t.reasoning[level] }))
+}
+
+function concurrencyOptions(t: AiSettingsMessages): { value: string; label: string }[] {
+  return [
+    { value: '0', label: t.doNotUse },
+    ...Array.from({ length: 8 }, (_, index) => ({ value: String(index + 1), label: String(index + 1) }))
+  ]
+}
 
 const INVESTIGATION_CONTEXT_OPTIONS = [
   { value: '32768', label: '32k' },
@@ -79,11 +77,7 @@ function Field({
   )
 }
 
-const SAMPLING_MODE_OPTIONS: { value: SamplingMode; label: string }[] = [
-  { value: 'system', label: 'Padrão do sistema' },
-  { value: 'user', label: 'Padrão do usuário' },
-  { value: 'none', label: 'Sem padrão' }
-]
+const SAMPLING_MODES: SamplingMode[] = ['system', 'user', 'none']
 
 const SAMPLING_FIELDS: { key: keyof SamplingParams; label: string }[] = [
   { key: 'temperature', label: 'temperature' },
@@ -94,10 +88,7 @@ const SAMPLING_FIELDS: { key: keyof SamplingParams; label: string }[] = [
   { key: 'repetitionPenalty', label: 'repetition_penalty' }
 ]
 
-const SAMPLING_COLUMNS: { key: keyof SamplingProfile; label: string }[] = [
-  { key: 'thinking', label: 'Com pensamento' },
-  { key: 'nonThinking', label: 'Sem pensamento' }
-]
+const SAMPLING_COLUMNS: { key: keyof SamplingProfile }[] = [{ key: 'thinking' }, { key: 'nonThinking' }]
 
 // Keeps the typed text locally so a cell can be cleared or start with "-" / "0."
 // mid-edit; only a finite number reaches the draft, and blur restores the last
@@ -163,6 +154,7 @@ function SamplingSection({
   onUserSamplingChange: (profile: SamplingProfile) => void
 }): JSX.Element {
   const modeHintId = useId()
+  const t = useT().aiSettings
   const profile = mode === 'user' ? userSampling : SYSTEM_SAMPLING
 
   function setValue(column: keyof SamplingProfile, key: keyof SamplingParams, value: number): void {
@@ -173,32 +165,32 @@ function SamplingSection({
   return (
     <div className="flex flex-col gap-2 border-t border-default-border pt-3">
       <Field
-        label="Parâmetros de amostragem"
-        hint="Com esforço de raciocínio desligado vale a coluna Sem pensamento; ligado, Com pensamento."
+        label={t.sampling}
+        hint={t.samplingHint}
         hintId={modeHintId}
       >
         <Combobox
           value={mode}
           onChange={(v) => onModeChange(v as SamplingMode)}
-          options={SAMPLING_MODE_OPTIONS}
-          ariaLabel="Parâmetros de amostragem"
+          options={SAMPLING_MODES.map((value) => ({ value, label: t.samplingMode[value] }))}
+          ariaLabel={t.sampling}
           ariaDescribedBy={modeHintId}
         />
       </Field>
 
       {mode === 'none' ? (
         <p className="text-caption text-tertiary-text">
-          Nenhum parâmetro de amostragem é enviado; o servidor usa os próprios padrões.
+          {t.samplingNone}
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-caption">
             <thead>
               <tr>
-                <th className="py-1 pr-2 text-left font-normal text-tertiary-text">Parâmetro</th>
+                <th className="py-1 pr-2 text-left font-normal text-tertiary-text">{t.parameter}</th>
                 {SAMPLING_COLUMNS.map((c) => (
                   <th key={c.key} className="py-1 pl-2 text-right font-normal text-tertiary-text">
-                    {c.label}
+                    {t.samplingColumn[c.key]}
                   </th>
                 ))}
               </tr>
@@ -213,7 +205,7 @@ function SamplingSection({
                         <SamplingNumberInput
                           value={profile[c.key][f.key]}
                           onChange={(v) => setValue(c.key, f.key, v)}
-                          ariaLabel={`${f.label} — ${c.label}`}
+                          ariaLabel={`${f.label} — ${t.samplingColumn[c.key]}`}
                         />
                       ) : (
                         <span className="block text-right font-mono tabular-nums text-primary-text">{profile[c.key][f.key]}</span>
@@ -234,7 +226,7 @@ function SamplingSection({
           disabled={sameProfile(userSampling, SYSTEM_SAMPLING)}
           className="flex items-center gap-1 self-start text-caption text-secondary-text transition-opacity hover:text-primary-text hover:opacity-80 disabled:opacity-30"
         >
-          <RotateCcw size={11} /> Copiar do sistema
+          <RotateCcw size={11} /> {t.copyFromSystem}
         </button>
       )}
     </div>
@@ -251,6 +243,7 @@ function AiSettingsForm(): JSX.Element | null {
   const loadModels = useAiStore((s) => s.loadModels)
   const loadSettings = useAiStore((s) => s.loadSettings)
   const updateInvestigation = useAiStore((s) => s.updateInvestigationSettings)
+  const t = useT().aiSettings
 
   const [draft, setDraft] = useState<AiSettings | null>(settings)
   const [apiKeyDraft, setApiKeyDraft] = useState('')
@@ -318,16 +311,16 @@ function AiSettingsForm(): JSX.Element | null {
 
   return (
     <div className="flex flex-col gap-3 rounded-lg border border-default-border bg-obsidian-panel p-4">
-      <Field label="Provedor">
+      <Field label={t.provider}>
         <Combobox
           value={draft.activeProvider}
           onChange={(v) => update('activeProvider', v as AiProvider)}
-          options={PROVIDERS}
-          ariaLabel="Provedor de IA"
+          options={providerOptions(t)}
+          ariaLabel={t.providerAria}
         />
       </Field>
 
-      <Field label="API key" hint="Guardada no cofre do sistema operacional." hintId={apiKeyHintId}>
+      <Field label="API key" hint={t.apiKeyHint} hintId={apiKeyHintId}>
         <div className="relative">
           <input
             type="password"
@@ -340,7 +333,7 @@ function AiSettingsForm(): JSX.Element | null {
           />
           <span
             className="absolute right-2.5 top-1/2 -translate-y-1/2 text-tertiary-text"
-            title="Armazenada no cofre do sistema"
+            title={t.apiKeyStored}
             aria-hidden
           >
             <Lock size={13} />
@@ -349,30 +342,30 @@ function AiSettingsForm(): JSX.Element | null {
       </Field>
 
       <Field
-        label="URL base (opcional)"
-        hint="Ollama, LM Studio ou outro endpoint compatível com a API da OpenAI."
+        label={t.baseUrl}
+        hint={t.baseUrlHint}
         hintId={baseUrlHintId}
       >
         <input
           type="text"
           aria-describedby={baseUrlHintId}
           placeholder="https://…"
-          title="Para Ollama, LM Studio ou outro endpoint compatível com a API da OpenAI."
+          title={t.baseUrlTitle}
           value={activeProviderConfig.apiBaseUrl}
           onChange={(e) => updateProvider('apiBaseUrl', e.target.value)}
           className="field"
         />
       </Field>
 
-      <Field label="Modelo">
+      <Field label={t.model}>
         <div className="flex gap-2">
           <Combobox
             className="flex-1"
             value={activeProviderConfig.model}
             onChange={(v) => updateProvider('model', v)}
             disabled={models.length === 0 && !activeProviderConfig.model}
-            placeholder="Carregar modelos…"
-            ariaLabel="Modelo de IA"
+            placeholder={t.loadModelsPlaceholder}
+            ariaLabel={t.modelAria}
             options={
               activeProviderConfig.model && !models.includes(activeProviderConfig.model)
                 ? [{ value: activeProviderConfig.model, label: activeProviderConfig.model }, ...models.map((m) => ({ value: m, label: m }))]
@@ -383,22 +376,13 @@ function AiSettingsForm(): JSX.Element | null {
             type="button"
             onClick={() => void handleLoadModels()}
             disabled={isBusy}
-            title="Carregar modelos disponíveis"
-            aria-label="Carregar modelos disponíveis"
+            title={t.loadModels}
+            aria-label={t.loadModels}
             className="btn-ghost shrink-0 border border-default-border px-2.5"
           >
             <RotateCcw size={13} className={isBusy ? 'animate-spin' : ''} />
           </button>
         </div>
-      </Field>
-
-      <Field label="Idioma das respostas">
-        <Combobox
-          value={draft.language}
-          onChange={(v) => update('language', v as AiSettings['language'])}
-          options={LANGUAGE_OPTIONS}
-          ariaLabel="Idioma das respostas"
-        />
       </Field>
 
       <button
@@ -407,25 +391,25 @@ function AiSettingsForm(): JSX.Element | null {
         className="flex items-center justify-between border-t border-default-border pt-3 text-caption text-secondary-text hover:text-primary-text"
         aria-expanded={showAdvanced}
       >
-        <span className="text-label uppercase tracking-wide text-tertiary-text">Avançado</span>
-        <span>{showAdvanced ? 'Ocultar' : 'Mostrar'}</span>
+        <span className="text-label uppercase tracking-wide text-tertiary-text">{t.advanced}</span>
+        <span>{showAdvanced ? t.hide : t.show}</span>
       </button>
 
       {showAdvanced && (
         <>
           <div className="flex items-center justify-between">
-            <span className="text-caption text-secondary-text">Comportamento do modelo</span>
+            <span className="text-caption text-secondary-text">{t.modelBehavior}</span>
             <button
               type="button"
               onClick={() => update('maxDiffChars', DEFAULT_MAX_DIFF_CHARS)}
               disabled={draft.maxDiffChars === DEFAULT_MAX_DIFF_CHARS}
               className="flex items-center gap-1 text-caption text-secondary-text transition-opacity hover:text-primary-text hover:opacity-80 disabled:opacity-30"
             >
-              <RotateCcw size={11} /> Padrão
+              <RotateCcw size={11} /> {t.default}
             </button>
           </div>
 
-          <Field label="Limite do diff" hint="Máx. de caracteres enviados à IA" hintId={maxDiffHintId}>
+          <Field label={t.diffLimit} hint={t.diffLimitHint} hintId={maxDiffHintId}>
             <input
               type="text"
               aria-describedby={maxDiffHintId}
@@ -436,12 +420,12 @@ function AiSettingsForm(): JSX.Element | null {
             />
           </Field>
 
-          <Field label="Esforço de raciocínio" hint="Mais esforço = respostas mais lentas e cuidadosas" hintId={effortHintId}>
+          <Field label={t.reasoningEffort} hint={t.reasoningEffortHint} hintId={effortHintId}>
             <Combobox
               value={draft.reasoningEffort}
               onChange={(v) => update('reasoningEffort', v as ReasoningEffort)}
-              options={REASONING_OPTIONS}
-              ariaLabel="Esforço de raciocínio"
+              options={reasoningOptions(t)}
+              ariaLabel={t.reasoningEffort}
               ariaDescribedBy={effortHintId}
             />
           </Field>
@@ -457,10 +441,10 @@ function AiSettingsForm(): JSX.Element | null {
 
       <div className="flex gap-2 border-t border-default-border pt-3">
         <button type="button" onClick={() => void handleSave()} disabled={isBusy} className="btn-primary flex-1 justify-center">
-          {savedFlash ? <Check size={14} /> : null} {savedFlash ? 'Salvo' : 'Salvar'}
+          {savedFlash ? <Check size={14} /> : null} {savedFlash ? t.saved : t.save}
         </button>
         <button type="button" onClick={() => void handleTest()} disabled={isBusy} className="btn-secondary flex-1 justify-center">
-          Testar conexão
+          {t.testConnection}
         </button>
       </div>
       {testResult && <p className="text-caption text-success-green">{testResult}</p>}
@@ -470,27 +454,25 @@ function AiSettingsForm(): JSX.Element | null {
           <Bot size={17} aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-title font-semibold text-primary-text">Investigação de commits</div>
-          <p className="mt-0.5 text-caption text-secondary-text">
-            Cada subagente analisa um arquivo ou lote isolado; aumentar os dois valores também aumenta uso e custo de IA.
-          </p>
+          <div className="text-title font-semibold text-primary-text">{t.investigation}</div>
+          <p className="mt-0.5 text-caption text-secondary-text">{t.investigationHint}</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="flex flex-col gap-1 text-caption text-secondary-text">
-              Subagentes simultâneos
+              {t.concurrency}
               <Combobox
                 value={String(draft.investigationConcurrency)}
                 onChange={(value) => persistInvestigation('investigationConcurrency', Number(value))}
-                options={INVESTIGATION_CONCURRENCY_OPTIONS}
-                ariaLabel="Subagentes simultâneos"
+                options={concurrencyOptions(t)}
+                ariaLabel={t.concurrency}
               />
             </label>
             <label className="flex flex-col gap-1 text-caption text-secondary-text">
-              Contexto por subagente (tokens)
+              {t.contextTokens}
               <Combobox
                 value={String(draft.investigationContextTokens)}
                 onChange={(value) => persistInvestigation('investigationContextTokens', Number(value))}
                 options={INVESTIGATION_CONTEXT_OPTIONS}
-                ariaLabel="Contexto por subagente"
+                ariaLabel={t.contextAria}
               />
             </label>
           </div>
