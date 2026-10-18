@@ -1,0 +1,33 @@
+version: 2
+updates:
+  # Electron ships a full Chromium, so a stale major means shipping known
+  # browser CVEs to every user. Weekly checks keep that from drifting again.
+  - package-ecosystem: npm
+    directory: /GitWeb
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      electron:
+        patterns:
+          - electron
+          - electron-builder
+          - electron-updater
+          - electron-vite
+      dev-dependencies:
+        dependency-type: development
+    # electron-vite 5 aceita vite só até ^7, e @vitejs/plugin-react 6 exige
+    # vite ^8 — o major dos dois é immergível (quebra o npm ci) até o
+    # electron-vite 6 sair da beta. Sem isto o Dependabot reabre a mesma PR
+    # impossível toda semana. Quando a 6 estabilizar ela chega pelo grupo
+    # `electron` e estas duas entradas podem cair.
+    ignore:
+      - dependency-name: vite
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@vitejs/plugin-react"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

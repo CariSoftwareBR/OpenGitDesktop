@@ -1,0 +1,63 @@
+appId: com.gitweb.app
+productName: GitWeb
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**/*
+  - package.json
+  # BrowserWindow.icon é resolvido em runtime a partir de __dirname (ver
+  # APP_ICON em src/main/index.ts). Sem isto o caminho não existe dentro do
+  # asar e a janela cai no ícone padrão do Electron, mesmo com o .exe já
+  # carregando o icon.ico correto.
+  - build/icon.png
+icon: build/icon.png
+publish:
+  provider: github
+  owner: CariSoftwareBR
+  repo: OpenGitDesktop
+  # Do not set private: true here — it makes the installed app prefer
+  # process.env GH_TOKEN/GITHUB_TOKEN over the in-app GitHub login token.
+win:
+  target:
+    - nsis
+  icon: build/icon.ico
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.developer-tools
+  icon: build/icon.png
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Development
+  maintainer: CariSoftwareBR <63272749+paulocarinhena@users.noreply.github.com>
+  icon: build/icon.png
+deb:
+  # O nome padrão viria do "name" do package.json ("gitweb"), que colide com
+  # o pacote gitweb oficial do Debian/Ubuntu (interface web CGI do git). Esse
+  # tem epoch ("1:2.43.0"), então o apt sempre o considera mais novo e, numa
+  # atualização de sistema, "atualiza" o GitWeb para ele — removendo o app.
+  packageName: opengitdesktop-gitweb
+  # Transição de instalações antigas publicadas como "gitweb" 0.x: o versionado
+  # "<< 1:0" pega só as nossas versões (sem epoch) e nunca o pacote do Ubuntu,
+  # então o dpkg remove o pacote antigo ao instalar este no lugar.
+  fpm:
+    - --conflicts=gitweb (<< 1:0)
+    - --replaces=gitweb (<< 1:0)
+nsis:
+  # electron-builder's default NSIS artifact name ("${productName} Setup
+  # ${version}.exe", with spaces) does not match the filename it separately
+  # writes into latest.yml for auto-update ("${productName}-Setup-${version}.exe",
+  # dashes) — and GitHub Releases silently turns the uploaded space-named
+  # file's spaces into dots on top of that. electron-updater then looks for
+  # the dashed name from latest.yml, finds neither the dotted nor the
+  # space-named asset, and fails with "Cannot find asset". Forcing the
+  # artifact name to match latest.yml's dashed convention exactly fixes
+  # auto-update and incidentally avoids the GitHub renaming too.
+  artifactName: ${productName}-Setup-${version}.${ext}
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false

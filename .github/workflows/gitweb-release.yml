@@ -1,0 +1,173 @@
+name: GitWeb Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  # Manual re-run for a tag that already exists — used to fill in a release
+  # whose assets never made it (v0.1.17 shipped empty when the artifact quota
+  # ran out). Safe to re-run: electron-builder replaces same-named assets.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag existente a (re)publicar, ex: v0.1.17'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.t.outputs.tag }}
+    steps:
+      - id: t
+        run: echo "tag=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      # The three platform jobs publish into this release, so it has to exist
+      # before the matrix starts or they race to create it. Idempotent so a
+      # manual re-run against an already-published tag just reuses it.
+      - name: Ensure release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ steps.t.outputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG já existe; reaproveitando."
+          else
+            gh release create "$TAG" --draft --title "GitWeb $TAG" --notes "Empacotando…"
+          fi
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        # Ver a nota em gitweb-auto-release.yml: macOS custa 10x minutos.
+        # Descomente macos-latest aqui e lá para voltar a publicar .dmg.
+        os:
+          - windows-latest
+          - ubuntu-latest
+          # - macos-latest
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: GitWeb
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: GitWeb/package-lock.json
+
+      - name: Sync version from tag
+        shell: bash
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          VERSION="${TAG#v}"
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      # --publish always uploads the installers and the latest*.yml auto-update
+      # metadata straight to the release. Actions artifacts are deliberately not
+      # used here: a full matrix is ~672 MB against a 500 MB quota.
+      - name: Package (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: npx electron-builder --linux --publish always
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package (macOS)
+        if: matrix.os == 'macos-latest'
+        run: npx electron-builder --mac --publish always
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        run: npx electron-builder --win --publish always
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Generate release notes
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          git fetch --tags origin
+          PREV_TAG="$(git tag -l 'v*.*.*' --sort=-v:refname | sed -n '2p' || true)"
+          {
+            echo "## O que mudou"
+            echo ""
+            if [[ -n "${PREV_TAG}" ]]; then
+              NOTES="$(git log --format='- %s' "${PREV_TAG}..${TAG}" --no-merges \
+                | grep -v '^\- chore(gitweb): release ' || true)"
+            else
+              NOTES="$(git log -1 --format='- %s' "${TAG}" \
+                | grep -v '^\- chore(gitweb): release ' || true)"
+            fi
+            if [[ -z "${NOTES}" ]]; then
+              echo "- Release ${TAG} (sem commits de produto listados desde a tag anterior)."
+            else
+              echo "${NOTES}"
+            fi
+            echo ""
+            echo "---"
+            echo ""
+            if [[ -n "${PREV_TAG}" ]]; then
+              echo "**Changelog completo:** [GitWeb Release](https://github.com/${REPO}/compare/${PREV_TAG}...${TAG})"
+            else
+              echo "**Tag:** [GitWeb Release](https://github.com/${REPO}/releases/tag/${TAG})"
+            fi
+          } > release-notes.md
+          echo "----- release-notes.md -----"
+          cat release-notes.md
+
+      # The platform jobs already uploaded the assets; this only writes the
+      # notes and flips the release to published. Refuse to publish an empty
+      # release — that is exactly how v0.1.17 shipped with no installers.
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          set -euo pipefail
+          COUNT="$(gh release view "$TAG" --json assets -q '.assets | length')"
+          if [[ "$COUNT" -eq 0 ]]; then
+            echo "Nenhum asset em $TAG — mantendo como draft em vez de publicar vazia." >&2
+            exit 1
+          fi
+          echo "$COUNT assets em $TAG; publicando."
+          gh release edit "$TAG" \
+            --title "GitWeb $TAG" \
+            --notes-file release-notes.md \
+            --draft=false

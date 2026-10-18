@@ -1,0 +1,23 @@
+.playwright-mcp/
+
+node_modules/
+
+# Never commit secrets — GitWeb/.gitignore only covers the GitWeb/ subtree.
+.env
+.env.*
+!.env.example
+
+# Impeccable engine binaries — the launcher downloads and caches them on demand.
+**/impeccable/scripts/bin/
+
+# Ferramentas internas de agentes de IA (Claude, Codex, Cursor, OpenCode,
+# Impeccable). Ficam só na máquina local, fora do repositório público.
+.agents/
+.claude/
+.codex/
+.cursor/
+.impeccable/
+.opencode/
+.github/agents/
+.github/hooks/
+.github/skills/
