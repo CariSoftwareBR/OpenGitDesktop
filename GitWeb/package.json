@@ -26,11 +26,11 @@
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@icons-pack/react-simple-icons": "^13.15.1",
     "@tailwindcss/vite": "^4.3.3",
-    "@tanstack/react-virtual": "^3.14.10",
+    "@tanstack/react-virtual": "^3.14.21",
     "electron-updater": "^6.8.9",
-    "lucide-react": "^1.47.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "lucide-react": "^1.59.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "react-markdown": "^10.1.0",
     "rehype-raw": "^7.0.0",
     "rehype-sanitize": "^6.0.0",
@@ -44,15 +44,15 @@
     }
   },
   "devDependencies": {
-    "@types/node": "^26.6.2",
+    "@types/node": "^26.6.5",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "@vitejs/plugin-react": "^6.1.0",
-    "electron": "^44.4.3",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^44.9.0",
     "electron-builder": "^26.15.3",
-    "electron-vite": "6.0.0-beta.1",
+    "electron-vite": "^6.0.0",
     "typescript": "^7.0.2",
-    "vite": "^8.2.2",
-    "vitest": "^5.0.1"
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
   }
 }
