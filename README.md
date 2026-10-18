@@ -1,162 +1,310 @@
-# OpenGitDesktop
+<div align="center">
 
-**Português** · [English](README.en.md) · [Español](README.es.md)
+<img src="docs/readme/hero-en.svg" alt="OpenGitDesktop — the Git client that works with you, not instead of you" width="100%">
 
-### O cliente Git que trabalha com você — não no seu lugar.
+<br>
+<br>
 
-Imagine abrir o repositório, olhar o diff, pedir *“cria uma branch, faz o commit e abre o PR”*… e ver cada passo acontecer **só depois que você aprova**.
+**English** · [Português](README.pt-BR.md) · [Español](README.es.md)
 
-Isso é o **OpenGitDesktop**: um cliente Git de verdade para Windows, macOS e Linux — com o fluxo completo do dia a dia e um assistente de IA que executa ações reais no repositório, sob o seu comando.
+<br>
 
-Sem terminal obrigatório. Sem agente solto no seu histórico. Só velocidade com controle.
+[![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/CariSoftwareBR/OpenGitDesktop/releases)
+[![macOS](https://img.shields.io/badge/macOS-build%20from%20source-000000?style=for-the-badge&logo=apple&logoColor=white)](GitWeb/README.en.md)
+[![Linux](https://img.shields.io/badge/Linux-AppImage%20%7C%20deb-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/CariSoftwareBR/OpenGitDesktop/releases)
+<br>
+[![Releases](https://img.shields.io/badge/download-releases-479ffa?style=flat-square&logo=github)](https://github.com/CariSoftwareBR/OpenGitDesktop/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-4ebe96?style=flat-square)](LICENSE)
+[![Electron](https://img.shields.io/badge/Electron-47848F?style=flat-square&logo=electron&logoColor=white)](GitWeb/README.en.md)
+[![React](https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB)](GitWeb/README.en.md)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](GitWeb/README.en.md)
 
----
+</div>
 
-## A ideia
+<br>
 
-Há ótimos clientes Git. Há ótimos agentes de IA. Quase nenhum junta as duas coisas do jeito certo.
+<h2 align="center">🎬 See it in action</h2>
 
-| Só GUI | Só agente | **OpenGitDesktop** |
-|---|---|---|
-| Você clica em tudo | A IA faz sozinha | Você conversa — e **aprova** cada ação |
-| Seguro, mas lento | Rápido, mas arriscado | Rápido **e** seguro |
+<p align="center">Ask in plain language. The assistant proposes a real Git action. <b>Nothing happens until you click Approve.</b></p>
 
-O diferencial não é “ter IA”. É **tool-calling com aprovação humana obrigatória**: a IA propõe branch, commit, push, stash, PR… e nada toca o repositório até você dizer sim.
+<p align="center">
+<img src="docs/readme/demo-en.gif" alt="Asking the assistant to create a branch, approving the action, then browsing history and pull requests" width="100%">
+</p>
 
----
+<br>
 
-## Fluxo completo — do clone ao merge
+<h2 align="center">🧭 How it works</h2>
 
-### Repositórios
-Abra, clone (por URL ou direto do GitHub) ou crie do zero. Recentes sempre à mão. Login com **OAuth Device Flow** ou **Personal Access Token** — funciona em github.com e GitHub Enterprise.
+<img src="docs/readme/flow-en.svg" alt="1. Ask in plain language · 2. AI proposes real Git actions · 3. You approve with a full preview · 4. Git runs on your machine" width="100%">
 
-### Changes
-Stage, unstage e discard por arquivo. Diff nítido. Commit com mensagem escrita por você — ou gerada pela IA a partir do que realmente mudou.
+There are great Git clients. There are great AI agents. Almost none brings the two together the right way.
 
-### History & branches
-Navegue o log, veja o que cada commit alterou, troque de branch, crie novas, mescle e resolva conflitos sem sair do app.
+| | GUI only | Agent only | **OpenGitDesktop** |
+|---|:---:|:---:|:---:|
+| **Who acts** | You click everything | The AI acts alone | You talk — and **approve** every action |
+| **Speed** | 🐢 Slow | ⚡ Fast | ⚡ Fast |
+| **Safety** | ✅ Safe | ⚠️ Risky | ✅ Safe |
 
-### Stash & sync
-Guarde trabalho em andamento, recupere quando precisar. Fetch, pull, push e publicar branch se adaptam ao estado ahead/behind/upstream.
+The difference isn't “having AI”. It's **tool-calling with mandatory human approval**: the AI proposes a branch, commit, push, stash, PR… and nothing touches the repository until you say yes.
 
-### Pull Requests
-Liste, crie, revise arquivos e comentários, mescle, feche ou reabra — tudo integrado à conta GitHub autenticada.
+<br>
 
-### Chat de IA
-Painel lateral ou flutuante. Fale em linguagem natural. A IA lê o estado do repo e propõe ferramentas reais — cada uma com preview e aprovação antes de rodar.
+<h2 align="center">💙 Why you'll love it</h2>
 
-### No seu idioma
-Interface, mensagens de erro e respostas da IA seguem o idioma do sistema — **Português (Brasil)**, **English** ou **Español** — e dá para trocar a qualquer momento em Configurações.
+<table>
+<tr>
+<td width="33%" valign="top">
 
----
+### 🛡️ You're in charge
+Every AI action shows a preview and waits for **Approve**. No agent running loose in your history.
 
-## O assistente, de perto
+</td>
+<td width="33%" valign="top">
 
-Não é um chatbot decorativo. É um operador supervisionado do seu Git.
+### 🔁 The full workflow
+Clone, stage by hunk, commit, branch, merge, resolve conflicts, stash, push — from clone to merge.
 
-**Ele pode:**
-- Criar, trocar e mesclar branches
-- Gerar mensagem e fazer commit
-- Push, pull e fetch
+</td>
+<td width="33%" valign="top">
+
+### 🐙 Pull Requests built in
+List, create, review files and comments, approve, merge, close or reopen — right next to your code.
+
+</td>
+</tr>
+<tr>
+<td valign="top">
+
+### ✍️ AI that helps, not hijacks
+Commit messages from what actually changed, “Explain diff”, PR drafts and reviews — all optional.
+
+</td>
+<td valign="top">
+
+### 🔐 Local-first
+Tokens and API keys live in your OS vault (`safeStorage`). The UI never even sees your GitHub token.
+
+</td>
+<td valign="top">
+
+### 🌍 Speaks your language
+English, Português (Brasil) and Español — the UI, the errors and the AI's replies. Dark, light and high-contrast themes.
+
+</td>
+</tr>
+</table>
+
+<br>
+
+<h2 align="center">🖼️ Take the tour</h2>
+
+<table>
+<tr>
+<td width="50%" valign="top">
+<img src="docs/readme/screenshots/en/changes.png" alt="Changes view with staged files and a diff">
+<p align="center"><b>Changes</b><br><sub>Stage per file or per hunk, crisp diffs, AI-written commit messages.</sub></p>
+</td>
+<td width="50%" valign="top">
+<img src="docs/readme/screenshots/en/ai-approval.png" alt="The AI assistant proposing a branch and waiting for approval">
+<p align="center"><b>Supervised assistant</b><br><sub>Each proposed action shows exactly what will run. Approve or cancel.</sub></p>
+</td>
+</tr>
+<tr>
+<td valign="top">
+<img src="docs/readme/screenshots/en/history.png" alt="History view with commit list and diff">
+<p align="center"><b>History</b><br><sub>Search the log, inspect any commit, branch from it or revert it.</sub></p>
+</td>
+<td valign="top">
+<img src="docs/readme/screenshots/en/pull-requests.png" alt="Pull request view with description, files and comments">
+<p align="center"><b>Pull Requests</b><br><sub>Review files, comment, approve and merge without leaving the app.</sub></p>
+</td>
+</tr>
+<tr>
+<td valign="top">
+<img src="docs/readme/screenshots/en/stash.png" alt="Stash view with saved work in progress">
+<p align="center"><b>Stash</b><br><sub>Put work aside, preview it, bring it back with conflict detection.</sub></p>
+</td>
+<td valign="top">
+<img src="docs/readme/screenshots/en/changes-light.png" alt="Changes view in the light theme">
+<p align="center"><b>Light theme</b><br><sub>Follows your system — or pick dark, light or high contrast in Settings.</sub></p>
+</td>
+</tr>
+</table>
+
+<br>
+
+<h2 align="center">🤖 The assistant, up close</h2>
+
+<p align="center">It isn't a decorative chatbot. It's a supervised operator for your Git.</p>
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+#### ✅ It can
+- Create, switch and merge branches
+- Write the message and commit
+- Push, pull and fetch
 - Stash / stash pop
-- Listar e criar pull requests
-- Ajudar a revisar e mesclar PRs (com skills dedicadas)
+- List and create pull requests
+- Help review and merge PRs (dedicated skills)
+- Explain a diff, a commit or an error
 
-**Ele não pode:**
-- Escrever no repositório sem a sua aprovação
-- Agir em vários repos ao mesmo tempo — opera só no que está aberto
-- Guardar suas chaves fora da máquina: API keys e tokens ficam no cofre do SO (`safeStorage`)
+</td>
+<td width="50%" valign="top">
 
-Escolha o provedor: **OpenAI**, **Claude**, **OpenRouter**, **Ollama** ou qualquer endpoint local compatível com OpenAI. A GUI completa funciona mesmo sem configurar IA nenhuma — o assistente é acelerador, não dependência.
+#### 🚫 It can't
+- Write to the repository without your approval
+- Act on several repos at once — only the one that's open
+- Send your keys anywhere: API keys and tokens stay in the OS vault
+- Become a requirement — the full GUI works with no AI configured
 
----
+</td>
+</tr>
+</table>
 
-## Autenticação GitHub que simplifica a vida
+<img src="docs/readme/providers-en.svg" alt="Works with OpenAI, Claude, OpenRouter, Ollama or any OpenAI-compatible endpoint" width="100%">
 
-Dois caminhos, lado a lado:
+<br>
 
-1. **OAuth Device Flow** — “Continuar com GitHub”, confirma o código em `github.com/login/device`, pronto.
-2. **Personal Access Token** — para github.com ou Enterprise Server.
+<h2 align="center">🔐 GitHub sign-in that just works</h2>
 
-O token vale para a API **e** para o `git` CLI (clone/fetch/pull/push HTTPS). Sem configurar Credential Manager à parte para remotes GitHub. SSH continua usando a config do sistema, intacta.
-
-Credenciais criptografadas via Credential Manager / Keychain / libsecret — nunca gravadas no repo. O token fica no processo main: a interface nunca o recebe, só pede as operações. Detalhes de escopos, isolamento e revogação em [GitWeb/README.md](GitWeb/README.md#autenticação-github).
-
-> **Os binários das releases ainda não são assinados.** O Windows vai mostrar o aviso do SmartScreen e o macOS vai barrar pelo Gatekeeper na primeira execução. O auto-updater verifica o hash SHA-512 publicado junto da release, mas não há cadeia de assinatura de código — se isso é inaceitável para você, compile a partir do fonte.
-
----
-
-## Stack
-
-| Área | Tecnologia |
+| | |
 |---|---|
-| Desktop | Electron |
-| UI | React · TypeScript · Zustand · Tailwind · lucide-react |
-| Build | electron-vite · electron-builder |
-| Git | CLI do sistema (`child_process` no main) |
-| GitHub | REST API + OAuth Device Flow / PAT |
-| IA | OpenAI · Claude · OpenRouter · Ollama · local |
-| Segurança | Electron `safeStorage` |
+| **OAuth Device Flow** | Click “Continue with GitHub”, confirm the code at `github.com/login/device` — done. |
+| **Personal Access Token** | For github.com or GitHub Enterprise Server. |
 
-```text
-GitWeb/src/
-├─ main/       → git, credenciais, IPC, settings, device flow
-├─ preload/    → bridge tipada para o renderer
-├─ shared/     → tipos compartilhados e traduções (i18n/)
-└─ renderer/   → views, stores, GitHub client, tools de IA
-```
+The token works for the API **and** for the `git` CLI (HTTPS clone/fetch/pull/push) — no separate Credential Manager setup for GitHub remotes. SSH keeps using your system config, untouched.
 
----
+Credentials are encrypted via Credential Manager / Keychain / libsecret and never written to the repo. The token stays in the main process: the interface never receives it, it only asks for operations. Scopes, isolation and revocation are detailed in [GitWeb/README.en.md](GitWeb/README.en.md#github-authentication).
 
-## Começar em 30 segundos
+<br>
 
-**Requisitos:** Node.js 20+ e Git no `PATH`.
+<h2 align="center">🚀 Get started</h2>
+
+**Download** the installer from [**Releases**](https://github.com/CariSoftwareBR/OpenGitDesktop/releases) — `.exe` for Windows, `.AppImage` / `.deb` for Linux. The app updates itself. On **macOS**, build from source for now (`npm run build:mac`).
+
+> [!WARNING]
+> **Release binaries are not code-signed yet.** Windows will show a SmartScreen warning on first launch. The auto-updater checks the SHA-512 hash published with each release, but there is no signing chain — if that's unacceptable for you, build from source.
+
+**Or build from source** — you need Node.js 20+ and Git on the `PATH`:
 
 ```bash
-cd GitWeb
+git clone https://github.com/CariSoftwareBR/OpenGitDesktop.git
+cd OpenGitDesktop/GitWeb
 npm install
 npm run dev
 ```
 
-### Empacotar
+<details>
+<summary><b>📦 Packaging installers</b></summary>
+<br>
 
 ```bash
-npm run build        # bundle em out/
+npm run build        # bundle in out/
 npm run build:win    # Windows (.exe / NSIS)
 npm run build:mac    # macOS (.dmg / .zip)
 npm run build:linux  # Linux (.AppImage / .deb)
 ```
 
-> No Windows, gerar o instalador NSIS localmente pede **Modo de Desenvolvedor** (links simbólicos). O app em `npm run dev` ou `dist/win-unpacked/` roda normalmente sem isso.
+On Windows, building the NSIS installer locally needs **Developer Mode** (symbolic links). The app in `npm run dev` or `dist/win-unpacked/` runs fine without it.
 
-Documentação técnica mais profunda: [`GitWeb/README.md`](GitWeb/README.md).
+</details>
 
----
+<br>
 
-## Em que acreditamos
+<h2 align="center">🧱 Under the hood</h2>
 
-1. **Você manda.** Toda ação da IA no Git passa por aprovação explícita.
-2. **IA é opcional.** O cliente Git precisa ser excelente sozinho.
-3. **Local-first.** Tokens e chaves ficam na sua máquina, no cofre do sistema.
-4. **Git de verdade.** Usamos o Git instalado no sistema — o mesmo que você confia no terminal.
+<details>
+<summary><b>Stack and project layout</b></summary>
+<br>
 
----
+| Area | Technology |
+|---|---|
+| Desktop | Electron |
+| UI | React · TypeScript · Zustand · Tailwind · lucide-react |
+| Build | electron-vite · electron-builder |
+| Git | System Git CLI (`child_process` in main) |
+| GitHub | REST API + OAuth Device Flow / PAT |
+| AI | OpenAI · Claude · OpenRouter · Ollama · local |
+| Security | Electron `safeStorage` |
 
-## Contribuir
+```text
+GitWeb/src/
+├─ main/       → git, credentials, IPC, settings, device flow
+├─ preload/    → typed bridge to the renderer
+├─ shared/     → shared types and translations (i18n/)
+└─ renderer/   → views, stores, GitHub client, AI tools
+```
 
-Issues e Pull Requests são bem-vindos. Leia o [guia de contribuição](CONTRIBUTING.md) e o [Código de Conduta](CODE_OF_CONDUCT.md). Falhas de segurança seguem o [`SECURITY.md`](SECURITY.md).
+Deeper technical docs: [`GitWeb/README.en.md`](GitWeb/README.en.md).
 
----
+</details>
 
-## Licença
+<br>
 
-MIT — livre para usar, estudar, modificar e distribuir.
+<h2 align="center">❓ Questions</h2>
 
-Feito por [CariSoftwareBR](https://github.com/CariSoftwareBR).
+<details>
+<summary><b>Do I need an AI provider to use it?</b></summary>
+<br>
+No. The Git client is complete on its own. The assistant is an accelerator you can switch on later in Settings.
+</details>
 
----
+<details>
+<summary><b>Can the AI change my repository by itself?</b></summary>
+<br>
+No. Every action that writes — branch, commit, push, stash, merge, PR — is shown as a card with a preview and waits for you to click <b>Approve</b>.
+</details>
 
-<p align="center">
-  <strong>Abra o repo. Peça o próximo passo. Aprove. Empurre.</strong><br/>
-  <em>Git, no ritmo da conversa — com você sempre no controle.</em>
-</p>
+<details>
+<summary><b>Where are my tokens and API keys stored?</b></summary>
+<br>
+In your operating system's vault (Credential Manager, Keychain or libsecret) through Electron's <code>safeStorage</code>. Never in the repository, never in plain text.
+</details>
+
+<details>
+<summary><b>Can I run the AI fully offline?</b></summary>
+<br>
+Yes — point it at <b>Ollama</b> or any local OpenAI-compatible endpoint and nothing leaves your machine.
+</details>
+
+<details>
+<summary><b>Which Git does it use?</b></summary>
+<br>
+The one installed on your system — the same Git you trust in the terminal, with your config, hooks and SSH keys.
+</details>
+
+<br>
+
+<h2 align="center">🧭 What we believe</h2>
+
+<table>
+<tr>
+<td align="center" width="25%"><h3>🎛️</h3><b>You're in charge</b><br><sub>Every AI action on Git goes through explicit approval.</sub></td>
+<td align="center" width="25%"><h3>🧩</h3><b>AI is optional</b><br><sub>The Git client has to be excellent on its own.</sub></td>
+<td align="center" width="25%"><h3>🏠</h3><b>Local-first</b><br><sub>Tokens and keys stay on your machine, in the system vault.</sub></td>
+<td align="center" width="25%"><h3>🌳</h3><b>Real Git</b><br><sub>The Git installed on your system, not a reimplementation.</sub></td>
+</tr>
+</table>
+
+<br>
+
+<div align="center">
+
+### 🤝 Contributing
+
+Issues and pull requests are welcome. Read the [contributing guide](CONTRIBUTING.md) (in Portuguese) and the [Code of Conduct](CODE_OF_CONDUCT.md).<br>
+Security issues follow [`SECURITY.md`](SECURITY.md).
+
+<br>
+
+**Open the repo. Ask for the next step. Approve. Push.**<br>
+<sub>Git at the pace of a conversation — with you always in control.</sub>
+
+<br>
+<br>
+
+<sub>[MIT](LICENSE) · Made by [CariSoftwareBR](https://github.com/CariSoftwareBR)</sub>
+
+</div>

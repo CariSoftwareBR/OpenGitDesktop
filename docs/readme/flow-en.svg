@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 190" width="880" height="190" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+<defs>
+<linearGradient id="fbg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0d0e11"/><stop offset="1" stop-color="#0a0a0b"/></linearGradient>
+<filter id="fblur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="60"/></filter>
+<pattern id="fdots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#fff" fill-opacity="0.05"/></pattern>
+<clipPath id="fframe"><rect width="880" height="190" rx="20"/></clipPath>
+<filter id="fshadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#000" flood-opacity="0.6"/></filter>
+</defs>
+<defs><linearGradient id="line" x1="0" x2="1"><stop offset="0" stop-color="#479ffa"/><stop offset="1" stop-color="#4ebe96"/></linearGradient></defs>
+<g clip-path="url(#fframe)"><rect width="880" height="190" fill="url(#fbg)"/><rect width="880" height="190" fill="url(#fdots)"/>
+<rect x="110" y="72.5" width="660" height="3" rx="1.5" fill="#fff" fill-opacity="0.08"/>
+<rect x="110" y="72.5" width="0" height="3" rx="1.5" fill="url(#line)"><animate attributeName="width" dur="8s" repeatCount="indefinite" keyTimes="0;0.08;0.7;0.9;0.95;1" values="0;0;660;660;0;0"/></rect>
+<circle cy="74" r="5" fill="#fff"><animate attributeName="cx" dur="8s" repeatCount="indefinite" keyTimes="0;0.08;0.7;1" values="110;110;770;770"/><animate attributeName="opacity" dur="8s" repeatCount="indefinite" keyTimes="0;0.08;0.7;0.75;1" values="0;1;1;0;0"/></circle>
+<circle cx="110" cy="74" r="22" fill="#1b1b1e" stroke="#fff" stroke-opacity="0.12"/>
+<circle cx="110" cy="74" r="22" fill="#479ffa" fill-opacity="0.18" stroke="#479ffa" stroke-width="1.5" opacity="0"><animate attributeName="opacity" dur="8s" repeatCount="indefinite" keyTimes="0;0.0800;0.1175;0.9200;0.9575;1" values="0;0;1;1;0;0"/></circle>
+<circle cx="110" cy="74" r="22" fill="none" stroke="#479ffa" stroke-width="2" opacity="0"><animate attributeName="r" dur="8s" repeatCount="indefinite" keyTimes="0;0.0800;0.1800;1" values="22;22;36;36"/><animate attributeName="opacity" dur="8s" repeatCount="indefinite" keyTimes="0;0.0800;0.1175;0.1425;0.1800;1" values="0;0;1;1;0;0"/></circle>
+<text x="110" y="79.5" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">1</text>
+<text x="110" y="126" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">Ask</text>
+<text x="110" y="147" font-size="12.5" fill="#868f97" text-anchor="middle">in plain language</text>
+<circle cx="330" cy="74" r="22" fill="#1b1b1e" stroke="#fff" stroke-opacity="0.12"/>
+<circle cx="330" cy="74" r="22" fill="#f2b84b" fill-opacity="0.18" stroke="#f2b84b" stroke-width="1.5" opacity="0"><animate attributeName="opacity" dur="8s" repeatCount="indefinite" keyTimes="0;0.2867;0.3242;0.9200;0.9575;1" values="0;0;1;1;0;0"/></circle>
+<circle cx="330" cy="74" r="22" fill="none" stroke="#f2b84b" stroke-width="2" opacity="0"><animate attributeName="r" dur="8s" repeatCount="indefinite" keyTimes="0;0.2867;0.3867;1" values="22;22;36;36"/><animate attributeName="opacity" dur="8s" repeatCount="indefinite" keyTimes="0;0.2867;0.3242;0.3492;0.3867;1" values="0;0;1;1;0;0"/></circle>
+<text x="330" y="79.5" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">2</text>
+<text x="330" y="126" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">AI proposes</text>
+<text x="330" y="147" font-size="12.5" fill="#868f97" text-anchor="middle">real Git actions</text>
+<circle cx="550" cy="74" r="22" fill="#1b1b1e" stroke="#fff" stroke-opacity="0.12"/>
+<circle cx="550" cy="74" r="22" fill="#ffa16c" fill-opacity="0.18" stroke="#ffa16c" stroke-width="1.5" opacity="0"><animate attributeName="opacity" dur="8s" repeatCount="indefinite" keyTimes="0;0.4933;0.5308;0.9200;0.9575;1" values="0;0;1;1;0;0"/></circle>
+<circle cx="550" cy="74" r="22" fill="none" stroke="#ffa16c" stroke-width="2" opacity="0"><animate attributeName="r" dur="8s" repeatCount="indefinite" keyTimes="0;0.4933;0.5933;1" values="22;22;36;36"/><animate attributeName="opacity" dur="8s" repeatCount="indefinite" keyTimes="0;0.4933;0.5308;0.5558;0.5933;1" values="0;0;1;1;0;0"/></circle>
+<text x="550" y="79.5" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">3</text>
+<text x="550" y="126" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">You approve</text>
+<text x="550" y="147" font-size="12.5" fill="#868f97" text-anchor="middle">with a full preview</text>
+<circle cx="770" cy="74" r="22" fill="#1b1b1e" stroke="#fff" stroke-opacity="0.12"/>
+<circle cx="770" cy="74" r="22" fill="#4ebe96" fill-opacity="0.18" stroke="#4ebe96" stroke-width="1.5" opacity="0"><animate attributeName="opacity" dur="8s" repeatCount="indefinite" keyTimes="0;0.7000;0.7375;0.9200;0.9575;1" values="0;0;1;1;0;0"/></circle>
+<circle cx="770" cy="74" r="22" fill="none" stroke="#4ebe96" stroke-width="2" opacity="0"><animate attributeName="r" dur="8s" repeatCount="indefinite" keyTimes="0;0.7000;0.8000;1" values="22;22;36;36"/><animate attributeName="opacity" dur="8s" repeatCount="indefinite" keyTimes="0;0.7000;0.7375;0.7625;0.8000;1" values="0;0;1;1;0;0"/></circle>
+<text x="770" y="79.5" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">4</text>
+<text x="770" y="126" font-size="15" font-weight="700" fill="#fff" text-anchor="middle">Git runs</text>
+<text x="770" y="147" font-size="12.5" fill="#868f97" text-anchor="middle">on your machine</text>
+</g><rect x="0.5" y="0.5" width="879" height="189" rx="20" fill="none" stroke="#fff" stroke-opacity="0.1"/></svg>
