@@ -179,6 +179,7 @@ rounded:
   sm: "6px"
   md: "10px"
   lg: "16px"
+  button: "8px"
   pill: "99px"
 spacing:
   xxs: "4px"
@@ -192,7 +193,7 @@ components:
     backgroundColor: "{colors.action-surface}"
     textColor: "{colors.action-ink}"
     typography: "{typography.body}"
-    rounded: "{rounded.pill}"
+    rounded: "{rounded.button}"
     padding: "7px 16px"
     height: "34px"
   button-primary-hover:
@@ -202,14 +203,14 @@ components:
     backgroundColor: "{colors.midnight-base}"
     textColor: "{colors.primary-text}"
     typography: "{typography.body}"
-    rounded: "{rounded.pill}"
+    rounded: "{rounded.button}"
     padding: "7px 16px"
     height: "34px"
   button-danger:
     backgroundColor: "{colors.danger-fill}"
     textColor: "{colors.on-danger}"
     typography: "{typography.body}"
-    rounded: "{rounded.pill}"
+    rounded: "{rounded.button}"
     padding: "7px 16px"
     height: "34px"
   input-default:
@@ -362,7 +363,7 @@ Declared once globally in `GitWeb/src/renderer/src/styles/global.css` under `@la
 Components are compact and decisive. Every control must expose a familiar affordance and a complete set of default, hover, focus, active, disabled, loading, and error states where applicable.
 
 ### Buttons
-- **Shape:** primary and semantic actions use the full pill (`99px`); compact icon and ghost controls use the small or medium radius (`6px` to `10px`).
+- **Shape:** primary, secondary and semantic actions use the button radius (`8px`) — a softened rectangle, never the full pill, which stays reserved for chips, badges, switches and progress tracks. Compact icon and ghost controls use the small or medium radius (`6px` to `10px`). A split button (action + attached menu trigger) squares the two inner corners where the halves meet and keeps the button radius on the outer ones.
 - **Primary:** Action Surface with black text, `7px 16px` padding, and a `34px` default height.
 - **Hover / Focus:** hover increases surface contrast; keyboard focus is a two-pixel solid Focus Border (Command Blue) outline, which must hold 3:1 against every surface it lands on — never a translucent ring. State transitions complete in `100ms` to `150ms`.
 - **Secondary / Ghost / Semantic:** secondary remains transparent with a quiet border; ghost controls recede to secondary text; danger variants are reserved for destructive actions and fill with Danger Fill under On Danger text (≥4.5:1 in every theme); Danger Red stays the text/icon hue.

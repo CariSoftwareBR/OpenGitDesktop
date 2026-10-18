@@ -7,6 +7,14 @@ const ptBR = {
     cloneUrlStartsWithDash: 'URL inválida: uma URL de repositório não pode começar com "-".',
     cloneUrlNotAllowed:
       'URL inválida: use https://, ssh://, git@host:dono/repo ou um caminho local. Transportes como "ext::" não são aceitos.',
+    optionLabel: {
+      baseBranch: 'Branch base',
+      sourceBranch: 'Branch de origem',
+      remoteBranch: 'Branch remota',
+      branchName: 'Nome de branch',
+      remoteName: 'Nome de remote',
+      newBranchName: 'Novo nome de branch'
+    },
     optionLikeValue: (label: string) => `${label} inválido: não pode começar com "-".`,
     labels: {
       commitRef: 'Referência de commit',
@@ -110,6 +118,14 @@ const en: MainMessages = {
     cloneUrlStartsWithDash: 'Invalid URL: a repository URL cannot start with "-".',
     cloneUrlNotAllowed:
       'Invalid URL: use https://, ssh://, git@host:owner/repo or a local path. Transports such as "ext::" are not accepted.',
+    optionLabel: {
+      baseBranch: 'Base branch',
+      sourceBranch: 'Source branch',
+      remoteBranch: 'Remote branch',
+      branchName: 'Branch name',
+      remoteName: 'Remote name',
+      newBranchName: 'New branch name'
+    },
     optionLikeValue: (label) => `Invalid ${label.toLowerCase()}: it cannot start with "-".`,
     labels: {
       commitRef: 'Commit reference',
@@ -211,6 +227,14 @@ const es: MainMessages = {
     cloneUrlStartsWithDash: 'URL no válida: una URL de repositorio no puede empezar con "-".',
     cloneUrlNotAllowed:
       'URL no válida: usa https://, ssh://, git@host:dueño/repo o una ruta local. No se aceptan transportes como "ext::".',
+    optionLabel: {
+      baseBranch: 'Rama base',
+      sourceBranch: 'Rama de origen',
+      remoteBranch: 'Rama remota',
+      branchName: 'Nombre de rama',
+      remoteName: 'Nombre de remote',
+      newBranchName: 'Nuevo nombre de rama'
+    },
     optionLikeValue: (label) => `${label} no válido: no puede empezar con "-".`,
     labels: {
       commitRef: 'Referencia de commit',

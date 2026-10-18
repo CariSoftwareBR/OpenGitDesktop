@@ -89,6 +89,11 @@ export interface RepoUpdateStatus {
   localChanges: number
   /** True when the local default branch can be advanced by a pure fast-forward. */
   canFastForward: boolean
+  /**
+   * Counts come from the remote-tracking refs as of the last fetch while a
+   * fresh fetch is still running — shown right away, but not acted upon.
+   */
+  refreshing?: boolean
 }
 
 export type RepoUpdateOutcome =

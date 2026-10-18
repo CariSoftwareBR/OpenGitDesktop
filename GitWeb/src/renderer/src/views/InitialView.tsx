@@ -47,6 +47,7 @@ type InitialMessages = Messages['initial']
 
 function FetchCheckBadge({ check }: { check?: RepoUpdateStatus }): JSX.Element | null {
   if (!check) return null
+  if (check.refreshing) return <Loader2 size={14} className="shrink-0 animate-spin text-tertiary-text" />
   switch (check.state) {
     case 'checking':
       return <Loader2 size={14} className="shrink-0 animate-spin text-tertiary-text" />
@@ -336,8 +337,11 @@ function InitialView(): JSX.Element {
   // already signed in.
   const hasGithubAccount = accountChecked ? Boolean(user) : null
 
-  const updatablePaths = recentRepos.map((r) => r.path).filter((path) => recentRepoChecks[path]?.canFastForward)
-  const selectedCount = selectedRepoPaths.filter((path) => recentRepoChecks[path]?.canFastForward).length
+  // A check still waiting on its fetch may be stale — only offer what was just measured.
+  const canUpdate = (path: string): boolean =>
+    Boolean(recentRepoChecks[path]?.canFastForward && !recentRepoChecks[path]?.refreshing)
+  const updatablePaths = recentRepos.map((r) => r.path).filter(canUpdate)
+  const selectedCount = selectedRepoPaths.filter(canUpdate).length
   const allUpdatableSelected = updatablePaths.length > 0 && selectedCount === updatablePaths.length
   const batchSummary = summarizeBatch(t, batchUpdateResults)
   // Kept visible during and after a run: `canFastForward` flips to false as
@@ -397,7 +401,7 @@ function InitialView(): JSX.Element {
   function renderRepoCard(repo: RecentRepository): JSX.Element {
     const check = repo.missing ? undefined : recentRepoChecks[repo.path]
     const result = batchUpdateResults[repo.path]
-    const selectable = Boolean(check?.canFastForward)
+    const selectable = Boolean(check?.canFastForward && !check.refreshing)
     const chips = check && check.state !== 'checking' ? repoStatusChips(t, check) : []
 
     return (
@@ -454,24 +458,31 @@ function InitialView(): JSX.Element {
                 <AlertTriangle size={12} aria-hidden />
                 {t.folderNotFound}
               </span>
+            ) : chips.length === 0 ? (
+              // Every card keeps this third line so the grid rows share one
+              // height; without counters it states the status in quiet text.
+              <span
+                className={`mt-1.5 truncate py-px text-[11px] leading-4 ${
+                  check?.state === 'failed' ? 'text-danger-red' : 'text-tertiary-text'
+                }`}
+                title={check?.message}
+              >
+                {check?.message ?? '\u00a0'}
+              </span>
             ) : (
-              // Empty for a clean, up-to-date repo — rendering the span anyway
-              // would leave a blank line's worth of padding.
-              chips.length > 0 && (
-                <span className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px] font-semibold leading-4 text-attention-orange">
-                  {chips.map((chip) => (
-                    <span
-                      key={chip.title}
-                      className="inline-flex items-center gap-1 rounded-pill bg-attention-orange-soft px-1.5 py-px tabular-nums"
-                      title={chip.title}
-                      aria-label={chip.title}
-                    >
-                      <chip.icon size={11} aria-hidden />
-                      {chip.value}
-                    </span>
-                  ))}
-                </span>
-              )
+              <span className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px] font-semibold leading-4 text-attention-orange">
+                {chips.map((chip) => (
+                  <span
+                    key={chip.title}
+                    className="inline-flex items-center gap-1 rounded-pill bg-attention-orange-soft px-1.5 py-px tabular-nums"
+                    title={chip.title}
+                    aria-label={chip.title}
+                  >
+                    <chip.icon size={11} aria-hidden />
+                    {chip.value}
+                  </span>
+                ))}
+              </span>
             )}
             {result && (
               <span className={`mt-0.5 text-caption ${outcomeClass(result.outcome)}`}>
@@ -496,7 +507,7 @@ function InitialView(): JSX.Element {
           >
             <FolderInput size={14} />
           </button>
-          {!repo.missing && check && check.state !== 'checking' && check.state !== 'noRemote' && (
+          {!repo.missing && check && check.state !== 'checking' && !check.refreshing && check.state !== 'noRemote' && (
             <button
               type="button"
               onClick={() => void fetchRecentRepo(repo.path)}

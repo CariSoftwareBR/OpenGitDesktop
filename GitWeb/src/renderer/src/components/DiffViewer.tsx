@@ -91,7 +91,7 @@ function HunkToolbar({
 }): JSX.Element {
   const t = useT().ui
   const action =
-    'rounded-pill px-2 py-0.5 text-caption font-medium transition-[background-color,transform] duration-100 hover:bg-hover-overlay active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50'
+    'rounded-sm px-2 py-0.5 text-caption font-medium transition-[background-color,transform] duration-100 hover:bg-hover-overlay active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50'
   return (
     <div className="flex items-center gap-3 border-t border-default-border bg-coal-raised py-1 pl-[105px] pr-3 font-sans">
       {hunkMode === 'stage' ? (

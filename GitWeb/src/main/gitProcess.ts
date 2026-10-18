@@ -457,8 +457,8 @@ export async function getUnstagedDiffAll(cwd: string): Promise<string> {
 }
 
 export async function getBranchDiff(cwd: string, base: string, head: string): Promise<string> {
-  assertNotOption(base, 'Branch base')
-  assertNotOption(head, 'Branch de origem')
+  assertNotOption(base, tMain().git.optionLabel.baseBranch)
+  assertNotOption(head, tMain().git.optionLabel.sourceBranch)
   const range = `${base}...${head}`
   const result = await readGit(['diff', range, '-U3'], cwd)
   throwOnFailure(result, ['diff', range])
@@ -566,8 +566,8 @@ export async function getBranches(cwd: string): Promise<BranchInfo[]> {
 }
 
 export async function createBranch(name: string, cwd: string, checkout: boolean, from?: string): Promise<void> {
-  assertNotOption(name, 'Nome de branch')
-  if (from) assertNotOption(from, 'Branch de origem')
+  assertNotOption(name, tMain().git.optionLabel.branchName)
+  if (from) assertNotOption(from, tMain().git.optionLabel.sourceBranch)
   const args = checkout ? ['checkout', '-b', name] : ['branch', name]
   if (from) args.push(from)
   throwOnFailure(await runGit(args, cwd), args)
@@ -589,7 +589,7 @@ export async function getRemoteBranches(cwd: string): Promise<string[]> {
 
 /** Creates the local branch tracking `origin/<name>` and switches to it. */
 export async function checkoutRemoteBranch(remoteBranch: string, cwd: string): Promise<void> {
-  assertNotOption(remoteBranch, 'Branch remota')
+  assertNotOption(remoteBranch, tMain().git.optionLabel.remoteBranch)
   const args = ['checkout', '--track', remoteBranch]
   throwOnFailure(await runGit(args, cwd), args)
 }
@@ -600,28 +600,28 @@ export async function checkoutRemoteBranch(remoteBranch: string, cwd: string): P
  * explicitly confirms losing those commits.
  */
 export async function deleteBranch(name: string, cwd: string, force: boolean): Promise<void> {
-  assertNotOption(name, 'Nome de branch')
+  assertNotOption(name, tMain().git.optionLabel.branchName)
   const args = ['branch', force ? '-D' : '-d', name]
   throwOnFailure(await runGit(args, cwd), args)
 }
 
 export async function renameBranch(oldName: string, newName: string, cwd: string): Promise<void> {
-  assertNotOption(oldName, 'Nome de branch')
-  assertNotOption(newName, 'Novo nome de branch')
+  assertNotOption(oldName, tMain().git.optionLabel.branchName)
+  assertNotOption(newName, tMain().git.optionLabel.newBranchName)
   const args = ['branch', '-m', oldName, newName]
   throwOnFailure(await runGit(args, cwd), args)
 }
 
 /** Removes the branch from origin (e.g. after its pull request was merged). */
 export async function deleteRemoteBranch(name: string, cwd: string): Promise<void> {
-  assertNotOption(name, 'Nome de branch')
+  assertNotOption(name, tMain().git.optionLabel.branchName)
   const extraEnv = await buildAuthEnv(await getRemoteUrl(cwd))
   const args = ['push', 'origin', '--delete', name]
   throwOnFailure(await runGit(args, cwd, { extraEnv }), args)
 }
 
 export async function switchBranch(name: string, cwd: string): Promise<void> {
-  assertNotOption(name, 'Nome de branch')
+  assertNotOption(name, tMain().git.optionLabel.branchName)
   throwOnFailure(await runGit(['checkout', name], cwd), ['checkout', name])
 }
 
@@ -723,7 +723,7 @@ export async function getCommitDiff(hash: string, path: string, cwd: string): Pr
 }
 
 export async function getRemoteUrl(cwd: string, remoteName = 'origin'): Promise<string | null> {
-  assertNotOption(remoteName, 'Nome de remote')
+  assertNotOption(remoteName, tMain().git.optionLabel.remoteName)
   const result = await readGit(['remote', 'get-url', remoteName], cwd)
   if (result.exitCode !== 0) return null
   return result.stdout.trim() || null
@@ -860,7 +860,8 @@ export async function getRepoUpdateStatus(
   cwd: string,
   options?: { fetch?: boolean }
 ): Promise<RepoUpdateStatus> {
-  const status = await getStatus(cwd)
+  // Both are read-only and skip the repo queue, so they can overlap.
+  const [status, remoteUrl] = await Promise.all([getStatus(cwd), getRemoteUrl(cwd)])
   const common = {
     branch: status.branch,
     defaultBranch: null as string | null,
@@ -875,7 +876,6 @@ export async function getRepoUpdateStatus(
     canFastForward: false
   }
 
-  const remoteUrl = await getRemoteUrl(cwd)
   if (!remoteUrl) {
     return { ...common, state: 'noRemote', message: tMain().git.noRemote }
   }
@@ -903,9 +903,14 @@ export async function getRepoUpdateStatus(
 
   const remoteRef = `refs/remotes/origin/${defaultBranch}`
   const localRef = `refs/heads/${defaultBranch}`
-  const vsHead = await countAheadBehind(cwd, 'HEAD', remoteRef)
-  const hasLocalDefault = await refExists(cwd, localRef)
-  const vsLocalDefault = hasLocalDefault ? await countAheadBehind(cwd, localRef, remoteRef) : null
+  // A missing local default just makes its rev-list fail (null), so all three
+  // can run at once instead of waiting on refExists first.
+  const [vsHead, hasLocalDefault, vsLocalDefaultRaw] = await Promise.all([
+    countAheadBehind(cwd, 'HEAD', remoteRef),
+    refExists(cwd, localRef),
+    countAheadBehind(cwd, localRef, remoteRef)
+  ])
+  const vsLocalDefault = hasLocalDefault ? vsLocalDefaultRaw : null
 
   const behindDefault = vsHead?.behind ?? 0
   const localDefaultBehind = vsLocalDefault?.behind ?? 0
@@ -1124,7 +1129,7 @@ export async function revertCommit(hash: string, cwd: string): Promise<GitResult
 }
 
 export async function mergeBranch(branchName: string, cwd: string): Promise<GitResult> {
-  assertNotOption(branchName, 'Nome de branch')
+  assertNotOption(branchName, tMain().git.optionLabel.branchName)
   return runGit(['merge', '--no-edit', branchName], cwd)
 }
 

@@ -169,6 +169,11 @@ function isHistoryRewritten(err: unknown): boolean {
 // Guards against a stale scan (from a previous mount of the recent-repos
 // list) overwriting fresher results if two scans overlap.
 let recentRepoScanGeneration = 0
+
+// A check still waiting on its fetch may be stale, so it never feeds a fast-forward.
+function isUpdatable(check: RepoUpdateStatus | undefined): boolean {
+  return Boolean(check?.canFastForward && !check.refreshing)
+}
 // Bumped on every open/close so in-flight status/log/diff refreshes for a
 // previous repo cannot overwrite the newly selected one.
 let repoOpenGeneration = 0
@@ -731,7 +736,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     set({
       selectedRepoPaths: recentRepos
         .map((r) => r.path)
-        .filter((path) => recentRepoChecks[path]?.canFastForward)
+        .filter((path) => isUpdatable(recentRepoChecks[path]))
     })
   },
 
@@ -744,7 +749,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
   // remote never aborts the run.
   updateSelectedRepos: async () => {
     const { selectedRepoPaths, recentRepoChecks } = get()
-    const targets = selectedRepoPaths.filter((path) => recentRepoChecks[path]?.canFastForward)
+    const targets = selectedRepoPaths.filter((path) => isUpdatable(recentRepoChecks[path]))
     if (targets.length === 0) return
 
     set({ isBatchUpdating: true, isBusy: true, error: null, batchUpdateResults: {} })

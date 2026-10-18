@@ -45,6 +45,8 @@
   --radius-md: 10px;
   --radius-lg: 16px;
   --radius-pill: 99px;
+  /* Buttons: softened rectangle, not a pill — chips and badges keep the pill. */
+  --radius-button: 8px;
 
   --text-display: 34px;
   --text-display--line-height: 0.95;
@@ -710,7 +712,7 @@
      fire for mouse clicks in Chromium, so without this the UI reads as
      unresponsive to anything but keyboard input. */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-pill bg-action-surface px-4 text-body font-medium text-action-ink transition-[transform,filter,background-color,box-shadow] duration-150 h-[34px] active:scale-[0.97];
+    @apply inline-flex items-center justify-center gap-1.5 rounded-button bg-action-surface px-4 text-body font-medium text-action-ink transition-[transform,filter,background-color,box-shadow] duration-150 h-[34px] active:scale-[0.97];
     box-shadow: var(--shadow-button);
     transition-timing-function: var(--ease-out-expo);
   }
@@ -721,7 +723,7 @@
     @apply brightness-90;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-pill border border-default-border bg-hover-overlay px-4 text-body font-medium text-primary-text transition-[background-color,border-color,transform] duration-150 h-[34px] hover:bg-primary-text/[0.08] hover:border-primary-text/25 active:scale-[0.97] active:bg-primary-text/15;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-button border border-default-border bg-hover-overlay px-4 text-body font-medium text-primary-text transition-[background-color,border-color,transform] duration-150 h-[34px] hover:bg-primary-text/[0.08] hover:border-primary-text/25 active:scale-[0.97] active:bg-primary-text/15;
     box-shadow: var(--shadow-raised);
     transition-timing-function: var(--ease-out-expo);
   }
@@ -729,7 +731,7 @@
     @apply inline-flex items-center justify-center gap-1.5 rounded-md bg-transparent px-2.5 text-body text-secondary-text transition-[background-color,color,transform] duration-100 h-[34px] hover:bg-hover-overlay hover:text-primary-text active:scale-[0.97] active:bg-primary-text/15;
   }
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-1.5 rounded-pill bg-danger-fill px-4 text-body font-medium text-on-danger transition-[background-color,filter,transform] duration-100 h-[34px] active:scale-[0.97] active:brightness-90;
+    @apply inline-flex items-center justify-center gap-1.5 rounded-button bg-danger-fill px-4 text-body font-medium text-on-danger transition-[background-color,filter,transform] duration-100 h-[34px] active:scale-[0.97] active:brightness-90;
   }
   .btn-danger:hover:not(:disabled) {
     @apply bg-danger-fill-hover;
@@ -947,7 +949,7 @@
      competing with the primary action. While generating, the label uses the
      agent shimmer instead. */
   .btn-agent {
-    @apply relative inline-flex h-7 items-center gap-1.5 overflow-hidden rounded-pill border border-command-blue/30 bg-command-blue-soft px-3 text-caption font-medium text-command-blue active:scale-[0.97];
+    @apply relative inline-flex h-7 items-center gap-1.5 overflow-hidden rounded-button border border-command-blue/30 bg-command-blue-soft px-3 text-caption font-medium text-command-blue active:scale-[0.97];
     box-shadow: var(--shadow-raised);
     transition:
       background-color 200ms ease-out,

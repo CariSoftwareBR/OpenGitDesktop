@@ -110,10 +110,13 @@ const LAST_COMMIT_ITEM =
 
 function LastCommitMenu({
   disabled,
+  muted,
   onUndo,
   onAmend
 }: {
   disabled: boolean
+  /** The attached commit button is disabled: match its dimmed look at rest so the pair reads as one object. */
+  muted: boolean
   onUndo: () => void
   onAmend: () => void
 }): JSX.Element {
@@ -163,7 +166,13 @@ function LastCommitMenu({
             toggle()
           }
         }}
-        className="flex size-[34px] items-center justify-center rounded-md text-tertiary-text transition-[background-color,color,transform] duration-100 hover:bg-hover-overlay hover:text-secondary-text active:scale-[0.97] disabled:opacity-40"
+        // Right half of the split commit button: square where it meets the
+        // commit button, rounded on the outside. No press scale, so the two
+        // halves never pull apart. While the commit half is disabled this one
+        // stays usable but dims to match it, lighting up on hover/focus.
+        className={`btn-primary rounded-l-none px-2.5 transition-opacity active:scale-100 ${
+          muted && !open ? 'opacity-40 hover:opacity-100 focus-visible:opacity-100' : ''
+        }`}
       >
         <MoreHorizontal size={16} aria-hidden />
       </button>
@@ -821,6 +830,9 @@ function ChangesView(): JSX.Element {
           ? t.commitAndPushTo(currentBranch)
           : t.commitTo(currentBranch)
 
+  const commitButtonDisabled =
+    isBusy || committing || generating || (!canConcludeMerge && (!summary.trim() || staged.length === 0))
+
   const commitDisabledReason = canConcludeMerge
     ? null
     : totalCount === 0
@@ -1279,13 +1291,13 @@ function ChangesView(): JSX.Element {
             </p>
           )}
 
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-px">
             <button
               type="button"
               onClick={handleCommit}
-              disabled={isBusy || committing || generating || (!canConcludeMerge && (!summary.trim() || staged.length === 0))}
+              disabled={commitButtonDisabled}
               aria-describedby={commitDisabledReason ? `${summaryId}-commit-hint` : undefined}
-              className={`btn-primary min-w-0 flex-1 justify-center overflow-hidden transition-colors duration-300 ${justCommitted ? 'bg-success-green!' : ''}`}
+              className={`btn-primary min-w-0 flex-1 justify-center overflow-hidden transition-colors duration-300 ${log.length > 0 ? 'rounded-r-none active:scale-100' : ''} ${justCommitted ? 'bg-success-green!' : ''}`}
             >
               {committing ? (
                 <>
@@ -1307,6 +1319,7 @@ function ChangesView(): JSX.Element {
             {log.length > 0 && (
               <LastCommitMenu
                 disabled={isBusy || committing}
+                muted={commitButtonDisabled}
                 onUndo={() => setConfirm({ type: 'undo' })}
                 onAmend={() => setConfirm({ type: 'amend' })}
               />
