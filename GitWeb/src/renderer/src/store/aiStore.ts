@@ -44,9 +44,15 @@ import {
 import { listModels, sendToolAwareChatRequest, sendChatRequest, abortChatRequest, type ChatMessage } from '../lib/ai/providers'
 import { prepareToolCall, executeToolCall, toolSeverity, type ToolPreview } from '../lib/ai/tools'
 import { useRepoStore } from './repoStore'
-import CREATE_PULL_REQUEST_SKILL from '../lib/ai/skills/create-pull-request.md?raw'
-import MERGE_PULL_REQUEST_SKILL from '../lib/ai/skills/merge-pull-request.md?raw'
-import REVIEW_PULL_REQUEST_SKILL from '../lib/ai/skills/review-pull-request.md?raw'
+import CREATE_PULL_REQUEST_SKILL_PT from '../lib/ai/skills/pt-BR/create-pull-request.md?raw'
+import MERGE_PULL_REQUEST_SKILL_PT from '../lib/ai/skills/pt-BR/merge-pull-request.md?raw'
+import REVIEW_PULL_REQUEST_SKILL_PT from '../lib/ai/skills/pt-BR/review-pull-request.md?raw'
+import CREATE_PULL_REQUEST_SKILL_EN from '../lib/ai/skills/en/create-pull-request.md?raw'
+import MERGE_PULL_REQUEST_SKILL_EN from '../lib/ai/skills/en/merge-pull-request.md?raw'
+import REVIEW_PULL_REQUEST_SKILL_EN from '../lib/ai/skills/en/review-pull-request.md?raw'
+import CREATE_PULL_REQUEST_SKILL_ES from '../lib/ai/skills/es/create-pull-request.md?raw'
+import MERGE_PULL_REQUEST_SKILL_ES from '../lib/ai/skills/es/merge-pull-request.md?raw'
+import REVIEW_PULL_REQUEST_SKILL_ES from '../lib/ai/skills/es/review-pull-request.md?raw'
 import GIT_WORKFLOW_SKILL_PT from '../lib/ai/skills/pt-BR/git-workflow.md?raw'
 import MERGE_BRANCH_SKILL_PT from '../lib/ai/skills/pt-BR/merge-branch.md?raw'
 import CODEOWNERS_SKILL_PT from '../lib/ai/skills/pt-BR/codeowners.md?raw'
@@ -67,6 +73,14 @@ import type { InvestigationFinding, InvestigationStep } from '../lib/ai/commitIn
 import { proposeFileFix } from '../lib/ai/proposeFix'
 import { formatAiError } from '../lib/ai/errors'
 import { getLocale, getT } from '../lib/i18n'
+
+// Same language as the rest of the prompt: small models follow a playbook far
+// better when it doesn't switch language mid-prompt.
+const PR_SKILLS: Record<AiLanguage, string[]> = {
+  'pt-BR': [CREATE_PULL_REQUEST_SKILL_PT, MERGE_PULL_REQUEST_SKILL_PT, REVIEW_PULL_REQUEST_SKILL_PT],
+  en: [CREATE_PULL_REQUEST_SKILL_EN, MERGE_PULL_REQUEST_SKILL_EN, REVIEW_PULL_REQUEST_SKILL_EN],
+  es: [CREATE_PULL_REQUEST_SKILL_ES, MERGE_PULL_REQUEST_SKILL_ES, REVIEW_PULL_REQUEST_SKILL_ES]
+}
 
 const SCM_SKILLS: Record<AiLanguage, Record<ScmSkillId, string>> = {
   'pt-BR': {
@@ -956,9 +970,7 @@ async function requestAssistantTurn(
       appSystemPrompt(getLocale()),
       language,
       useNative ? TOOL_RULES_SECTION : buildTextualToolsPrompt(TOOL_CATALOG),
-      includePrSkills ? CREATE_PULL_REQUEST_SKILL : '',
-      includePrSkills ? MERGE_PULL_REQUEST_SKILL : '',
-      includePrSkills ? REVIEW_PULL_REQUEST_SKILL : '',
+      ...(includePrSkills ? PR_SKILLS[getLocale()] : []),
       ...scmSkills,
       fileFacts,
       reasoning,
