@@ -76,7 +76,9 @@ function formatCommands(commands: string[]): string {
 }
 
 function quoteArg(arg: string): string {
-  return /[\s"'$`]/.test(arg) ? `"${arg.replace(/"/g, '\\"')}"` : arg
+  // POSIX single quotes: nothing inside is special, so only ' itself needs
+  // the close-escape-reopen dance. Backslashes and $ survive literally.
+  return /[\s"'$`\\]/.test(arg) ? `'${arg.replace(/'/g, "'\\''")}'` : arg
 }
 
 // Tool args are flat strings, so a list of paths arrives comma/newline separated.

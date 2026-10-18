@@ -56,7 +56,7 @@ function tryParseMalformedJson(content: string): { decisions: ConflictBlockDecis
   }
   if (decisions.length === 0) return null
 
-  const summaryMatch = content.match(/"summary"\s*:\s*"((?:\\.|[^"])*)"/s)
+  const summaryMatch = content.match(/"summary"\s*:\s*"((?:\\.|[^"\\])*)"/s)
   const summary = summaryMatch ? summaryMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim() : ''
   return { decisions, summary }
 }

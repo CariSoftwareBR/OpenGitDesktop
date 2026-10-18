@@ -37,8 +37,8 @@ function decodeJsonString(value: string): string {
 }
 
 function tryParseMalformedJson(content: string): GeneratedPrDraft | null {
-  const titleMatch = content.match(/"title"\s*:\s*"((?:\\.|[^"])*)"/s)
-  const bodyMatch = content.match(/"body"\s*:\s*"((?:\\.|[^"])*)"/s)
+  const titleMatch = content.match(/"title"\s*:\s*"((?:\\.|[^"\\])*)"/s)
+  const bodyMatch = content.match(/"body"\s*:\s*"((?:\\.|[^"\\])*)"/s)
   if (!titleMatch && !bodyMatch) return null
 
   const title = titleMatch ? decodeJsonString(titleMatch[1]).trim() : ''

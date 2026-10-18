@@ -37,8 +37,8 @@ function decodeJsonString(value: string): string {
 // AiCommitMessageService.TryParseMalformedJsonSuggestion so a broken
 // response still yields a usable message instead of an error.
 function tryParseMalformedJson(content: string): GeneratedCommitMessage | null {
-  const summaryMatch = content.match(/"summary"\s*:\s*"((?:\\.|[^"])*)"/s)
-  const descriptionMatch = content.match(/"description"\s*:\s*"((?:\\.|[^"])*)"/s)
+  const summaryMatch = content.match(/"summary"\s*:\s*"((?:\\.|[^"\\])*)"/s)
+  const descriptionMatch = content.match(/"description"\s*:\s*"((?:\\.|[^"\\])*)"/s)
   if (!summaryMatch && !descriptionMatch) return null
 
   const summary = summaryMatch ? decodeJsonString(summaryMatch[1]).trim() : ''
@@ -49,7 +49,7 @@ function tryParseMalformedJson(content: string): GeneratedCommitMessage | null {
     if (description) descriptionParts.push(description)
 
     const tail = content.slice((descriptionMatch.index ?? 0) + descriptionMatch[0].length)
-    for (const match of tail.matchAll(/"((?:\\.|[^"])*)"/gs)) {
+    for (const match of tail.matchAll(/"((?:\\.|[^"\\])*)"/gs)) {
       const value = decodeJsonString(match[1])
       if (!value.trim()) {
         if (descriptionParts.length > 0 && descriptionParts[descriptionParts.length - 1] !== '') descriptionParts.push('')
