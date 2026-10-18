@@ -1,0 +1,15 @@
+node_modules/
+out/
+dist/
+# build/ é o buildResources do electron-builder: entrada, não saída. Ignorá-lo
+# inteiro deixava os ícones fora do repositório, e o CI empacotava tudo com o
+# ícone padrão do Electron ("default Electron icon is used"). Precisa ser
+# build/* e não build/, porque o git não desce em um diretório excluído e as
+# exceções abaixo não teriam efeito.
+build/*
+!build/icon.png
+!build/icon.ico
+*.log
+*.tsbuildinfo
+.env
+.env.local

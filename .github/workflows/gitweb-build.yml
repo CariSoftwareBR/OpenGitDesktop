@@ -1,0 +1,88 @@
+name: GitWeb Build
+
+# Deliberately not on push to main: gitweb-auto-release already compiles and
+# packages the very same commit there, so keeping a push trigger here ran the
+# whole matrix twice per push and doubled the Actions bill for nothing.
+on:
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'GitWeb/**'
+      - '.github/workflows/gitweb-build.yml'
+  # Manual run: the only path that keeps the installers as artifacts.
+  # pull_request only proves the build works — see the upload step below.
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Ver a nota em gitweb-auto-release.yml: macOS custa 10x minutos.
+        os:
+          - windows-latest
+          - ubuntu-latest
+          # - macos-latest
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: GitWeb
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: GitWeb/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Package (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: npx electron-builder --linux --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Package (macOS)
+        if: matrix.os == 'macos-latest'
+        run: npx electron-builder --mac --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        run: npx electron-builder --win --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      # Only on a manual run. A full matrix upload is ~672 MB, and the private
+      # repo's Actions artifact quota is 500 MB — uploading on every push blew
+      # it and broke the release job that shares the same quota. Installers for
+      # every version live on the GitHub Release, which is not metered.
+      - name: Upload artifacts
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: gitweb-${{ matrix.os }}
+          path: |
+            GitWeb/dist/*.exe
+            GitWeb/dist/*.dmg
+            GitWeb/dist/*.zip
+            GitWeb/dist/*.AppImage
+            GitWeb/dist/*.deb
+            GitWeb/dist/latest*.yml
+            GitWeb/dist/*.blockmap
+          if-no-files-found: warn
+          retention-days: 5

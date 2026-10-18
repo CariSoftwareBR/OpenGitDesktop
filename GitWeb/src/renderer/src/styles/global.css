@@ -1,0 +1,1137 @@
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import 'tailwindcss';
+
+/* Design tokens sourced from DESIGN.md (GitWeb design system) —
+   colors, typography, radius, and elevation are copied from that file.
+   Monospace is an intentional addition for genuine code/diff content —
+   JetBrains Mono is used only there, never for UI chrome or labels. */
+@theme {
+  --font-sans: calibre, 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --color-midnight-base: #0a0a0b;
+  --color-obsidian-panel: #131315;
+  --color-coal-raised: #1b1b1e;
+  --color-hover-overlay: #ffffff0d;
+  --color-active-overlay: #479ffa14;
+  --color-primary-text: #ffffff;
+  --color-secondary-text: #868f97;
+  --color-tertiary-text: #999999;
+  --color-default-border: #ffffff14;
+  --color-focus-border: #479ffa;
+  --color-command-blue: #479ffa;
+  --color-command-blue-soft: #479ffa1f;
+  --color-attention-orange: #ffa16c;
+  --color-attention-orange-soft: #ffa16c1a;
+  --color-success-green: #4ebe96;
+  --color-success-green-soft: #4ebe961a;
+  --color-danger-red: #e15c5c;
+  --color-danger-red-soft: #261b1b;
+  --color-warning-amber: #f2b84b;
+  --color-warning-amber-soft: #f2b84b1f;
+  --color-action-surface: #e6e6e6;
+  --color-action-ink: #000000;
+  /* Switch knob stays light in every theme — must not follow action-surface,
+     which flips to dark ink on light canvases for primary buttons. */
+  --color-switch-thumb: #e6e6e6;
+
+  /* Radius scale overridden to match DESIGN.md exactly (sm/md/lg), plus a
+     pill token for the full-round buttons the system calls for. */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 99px;
+
+  --text-display: 34px;
+  --text-display--line-height: 0.95;
+  --text-display--letter-spacing: -0.04em;
+  --text-headline: 22px;
+  --text-headline--line-height: 1.2;
+  --text-headline--letter-spacing: -0.02em;
+  --text-metric: 18px;
+  --text-metric--line-height: 1.2;
+  --text-metric--letter-spacing: -0.02em;
+  --text-title: 16px;
+  --text-title--line-height: 1.3;
+  --text-title--letter-spacing: -0.02em;
+  --text-body: 14px;
+  --text-body--line-height: 1.5;
+  --text-caption: 12px;
+  --text-caption--line-height: 1.45;
+  --text-label: 10px;
+  --text-label--line-height: 1.5;
+  --text-label--letter-spacing: 0.08em;
+
+  --shadow-floating: 0 12px 44px -12px rgba(0, 0, 0, 0.8);
+  --shadow-subtle-edge: 0 1px 0 rgba(0, 0, 0, 0.85);
+  --shadow-command-glow: 0 0 20px rgba(71, 159, 250, 0.06);
+  /* Raised controls (status cluster, cards, primary buttons): a one-pixel
+     top highlight plus a short, soft drop — reads as machined, not floating. */
+  --shadow-raised: inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-button: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 1px 2px rgba(0, 0, 0, 0.5);
+  --color-selection: #479ffa4d;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Scrollbar thumbs — remapped per theme so light/HC never inherit white-on-white. */
+  --color-scrollbar-thumb: #ffffff29;
+  --color-scrollbar-thumb-hover: #ffffff52;
+  --color-modal-scrim: #00000099;
+  /* Filled destructive buttons carry --color-on-danger text, so the fill is
+     its own role: danger-red stays the brighter text/icon hue, and the fill is
+     stepped down until white clears 4.5:1 (4.9:1, hover 5.9:1). */
+  --color-danger-fill: #c24848;
+  --color-danger-fill-hover: #ad3e3e;
+  /* Text-field edge: 3:1 against both the field fill and the panel around it
+     (WCAG 1.4.11), so an empty input is findable without hovering. */
+  --color-field-border: #ffffff57;
+  /* Diff inks. Code sits on tinted rows (success/danger/command soft), which
+     costs the plain semantic hues contrast in some themes, so the diff gets its
+     own ink per role — all ≥4.5:1 on their row in every theme. The gutter is a
+     step quieter than context code but still readable (line numbers are what
+     reviewers cite). Removed lines keep Danger Red, which already passes. */
+  --color-diff-add-ink: #4ebe96;
+  --color-diff-hunk-ink: #479ffa;
+  --color-diff-meta-ink: #999999;
+  --color-diff-gutter-ink: #858585;
+  --color-danger-quiet: #c24848;
+  --color-danger-quiet-hover: #ad3e3e;
+  --color-on-danger: #ffffff;
+}
+
+/* Theme variants — additive on top of the @theme block above, which stays
+   the untouched dark baseline and the fallback when no data-theme attribute
+   is present yet. Every color role keeps its semantic meaning across
+   variants (command = interaction, success/danger/warning/attention keep
+   their hue family); only lightness/chroma is recomposed per surface, never
+   mechanically inverted. Contrast was computed against WCAG 2.2 AA (4.5:1
+   body text, 3:1 large text/controls) for light/dark, and pushed well past
+   that (6.5:1–14:1) for the two high-contrast variants. `data-theme` itself
+   is set by app logic that resolves `prefers-color-scheme` /
+   `prefers-contrast` plus a manual override — that wiring is separate,
+   follow-up engineering work; this file only defines what each mode looks
+   like once selected. */
+
+/* Light — same semantic roles, recomposed for a light canvas rather than
+   inverted: neutrals get a warm near-white base (not sterile white) and
+   every semantic hue is deepened enough to carry as text at AA on that
+   base; the primary button flips to a dark "ink" surface so it still
+   reads as the strongest tonal object in the room. */
+[data-theme='light'] {
+  --color-midnight-base: #f6f5f3;
+  --color-obsidian-panel: #ffffff;
+  --color-coal-raised: #ececea;
+  --color-hover-overlay: #00000009;
+  --color-active-overlay: #1f6fe014;
+  --color-primary-text: #14171a;
+  --color-secondary-text: #5b6570;
+  --color-tertiary-text: #69727d;
+  --color-default-border: #00000014;
+  --color-focus-border: #1f6fe0;
+  --color-command-blue: #1f6fe0;
+  --color-command-blue-soft: #1f6fe014;
+  --color-attention-orange: #b5590f;
+  --color-attention-orange-soft: #b5590f14;
+  --color-success-green: #157a55;
+  --color-success-green-soft: #157a5514;
+  --color-danger-red: #c22b2b;
+  --color-danger-red-soft: #fbe9e9;
+  --color-warning-amber: #8a5a00;
+  --color-warning-amber-soft: #8a5a0014;
+  --color-action-surface: #262b30;
+  --color-action-ink: #ffffff;
+  --color-switch-thumb: #ffffff;
+  --shadow-subtle-edge: 0 1px 2px rgba(0, 0, 0, 0.16);
+  --shadow-command-glow: 0 0 20px rgba(31, 111, 224, 0.1);
+  --shadow-raised: 0 1px 2px rgba(20, 23, 26, 0.06), 0 0 0 0.5px rgba(20, 23, 26, 0.04);
+  --shadow-button: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 1px 2px rgba(20, 23, 26, 0.25);
+  --shadow-floating: 0 12px 40px -12px rgba(20, 23, 26, 0.28), 0 2px 6px rgba(20, 23, 26, 0.06);
+  --color-selection: #1f6fe02e;
+  --color-scrollbar-thumb: #00000029;
+  --color-scrollbar-thumb-hover: #00000052;
+  --color-modal-scrim: #14171a99;
+  --color-danger-fill: #c22b2b;
+  --color-danger-fill-hover: #a82424;
+  --color-field-border: #0000006b;
+  --color-diff-add-ink: #136f4d;
+  --color-diff-hunk-ink: #1b5fc1;
+  --color-diff-meta-ink: #646d78;
+  --color-diff-gutter-ink: #646d78;
+  --color-danger-quiet: #a34b4b;
+  --color-danger-quiet-hover: #8f3e3e;
+  --color-on-danger: #ffffff;
+}
+
+/* Dark, high contrast — pure black canvas; every role that used to lean on
+   a subtle tonal step or a low-alpha overlay now leans on an always-visible
+   border or a brightened, more saturated hue instead, because that subtlety
+   is exactly what a high-contrast user can't rely on. */
+[data-theme='dark-hc'] {
+  --color-midnight-base: #000000;
+  --color-obsidian-panel: #000000;
+  --color-coal-raised: #0d0d0d;
+  --color-hover-overlay: #ffffff26;
+  --color-active-overlay: #7fc4ff26;
+  --color-primary-text: #ffffff;
+  --color-secondary-text: #e6e6e6;
+  --color-tertiary-text: #cfcfcf;
+  --color-default-border: #ffffff66;
+  --color-focus-border: #7fc4ff;
+  --color-command-blue: #7fc4ff;
+  --color-command-blue-soft: #7fc4ff33;
+  --color-attention-orange: #ffb366;
+  --color-attention-orange-soft: #ffb36633;
+  --color-success-green: #5be8ac;
+  --color-success-green-soft: #5be8ac33;
+  --color-danger-red: #ff6b6b;
+  --color-danger-red-soft: #3a1414;
+  --color-warning-amber: #ffd166;
+  --color-warning-amber-soft: #ffd16633;
+  --color-action-surface: #f0f0f0;
+  --color-action-ink: #000000;
+  --color-switch-thumb: #f0f0f0;
+  --shadow-command-glow: 0 0 24px rgba(127, 196, 255, 0.18);
+  --shadow-raised: none;
+  --shadow-button: none;
+  --color-selection: #7fc4ff4d;
+  --color-scrollbar-thumb: #ffffff66;
+  --color-scrollbar-thumb-hover: #ffffff99;
+  --color-modal-scrim: #000000cc;
+  --color-danger-fill: #ff6b6b;
+  --color-danger-fill-hover: #ff8585;
+  --color-field-border: #ffffff66;
+  --color-diff-add-ink: #5be8ac;
+  --color-diff-hunk-ink: #7fc4ff;
+  --color-diff-meta-ink: #cfcfcf;
+  --color-diff-gutter-ink: #cfcfcf;
+  --color-danger-quiet: #ff6b6b;
+  --color-danger-quiet-hover: #ff8585;
+  --color-on-danger: #000000;
+}
+
+/* Light, high contrast — pure white canvas, same always-visible-border
+   principle, semantic hues driven dark enough to clear 6.5:1+ rather than
+   the ~4.5–6:1 the plain light theme targets. */
+[data-theme='light-hc'] {
+  --color-midnight-base: #ffffff;
+  --color-obsidian-panel: #ffffff;
+  --color-coal-raised: #f2f2f2;
+  --color-hover-overlay: #00000026;
+  --color-active-overlay: #0050b326;
+  --color-primary-text: #000000;
+  --color-secondary-text: #1a1a1a;
+  --color-tertiary-text: #333333;
+  --color-default-border: #00000066;
+  --color-focus-border: #0050b3;
+  --color-command-blue: #0050b3;
+  --color-command-blue-soft: #0050b31a;
+  --color-attention-orange: #8a3d00;
+  --color-attention-orange-soft: #8a3d001a;
+  --color-success-green: #0b6b46;
+  --color-success-green-soft: #0b6b461a;
+  --color-danger-red: #a30000;
+  --color-danger-red-soft: #f7dede;
+  --color-warning-amber: #7a4b00;
+  --color-warning-amber-soft: #7a4b001a;
+  --color-action-surface: #202020;
+  --color-action-ink: #ffffff;
+  --color-switch-thumb: #ffffff;
+  --shadow-subtle-edge: 0 1px 2px rgba(0, 0, 0, 0.22);
+  --shadow-command-glow: 0 0 24px rgba(0, 80, 179, 0.14);
+  --shadow-raised: none;
+  --shadow-button: none;
+  --color-selection: #0050b333;
+  --color-scrollbar-thumb: #00000066;
+  --color-scrollbar-thumb-hover: #00000099;
+  --color-modal-scrim: #000000b3;
+  --color-danger-fill: #a30000;
+  --color-danger-fill-hover: #8a0000;
+  --color-field-border: #0000006b;
+  --color-diff-add-ink: #0b6b46;
+  --color-diff-hunk-ink: #0050b3;
+  --color-diff-meta-ink: #333333;
+  --color-diff-gutter-ink: #333333;
+  --color-danger-quiet: #a30000;
+  --color-danger-quiet-hover: #8a0000;
+  --color-on-danger: #ffffff;
+}
+
+/* Data-viz tokens (Dashboard only). Charts are the one place colour encodes
+   identity rather than action/state, so they get their own categorical set —
+   validated with the dataviz validator against the real panel surfaces
+   (#131315 dark: all checks pass; #ffffff light: pass, with three slots under
+   3:1, so every categorical mark ships with a visible text label). Dark and
+   light are separate steps of the same hues, never an automatic flip. */
+:root {
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
+  --viz-5: #d55181;
+  --viz-6: #008300;
+  --viz-7: #9085e9;
+  --viz-8: #e66767;
+  --viz-other: #5d5d5a;
+  /* Text on a filled categorical mark (Dashboard initials): whichever of black
+     or white clears 4.5:1 on that slot's fill. */
+  --viz-1-ink: #000000;
+  --viz-2-ink: #000000;
+  --viz-3-ink: #000000;
+  --viz-4-ink: #000000;
+  --viz-5-ink: #000000;
+  --viz-6-ink: #ffffff;
+  --viz-7-ink: #000000;
+  --viz-8-ink: #000000;
+  /* Sequential blue, low → high; the low end recedes toward the dark surface. */
+  --viz-seq-1: #104281;
+  --viz-seq-2: #1c5cab;
+  --viz-seq-3: #2a78d6;
+  --viz-seq-4: #5598e7;
+  --viz-seq-5: #86b6ef;
+  --viz-grid: #ffffff12;
+  --viz-axis: #ffffff24;
+}
+
+[data-theme='light'],
+[data-theme='light-hc'] {
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-3: #1baf7a;
+  --viz-4: #eda100;
+  --viz-5: #e87ba4;
+  --viz-6: #008300;
+  --viz-7: #4a3aa7;
+  --viz-8: #e34948;
+  --viz-other: #b5b4ae;
+  --viz-6-ink: #ffffff;
+  --viz-7-ink: #ffffff;
+  --viz-seq-1: #cde2fb;
+  --viz-seq-2: #9ec5f4;
+  --viz-seq-3: #6da7ec;
+  --viz-seq-4: #3987e5;
+  --viz-seq-5: #1c5cab;
+  --viz-grid: #0000000f;
+  --viz-axis: #00000024;
+}
+
+@keyframes viz-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes viz-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes viz-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* A restrained moving highlight for whatever an agent is working on right now
+   — the investigation's active filename, and the chat's own busy labels. The
+   surrounding row stays stable, so the motion signals work without making the
+   whole progress line visually noisy. */
+@keyframes agent-busy-shimmer {
+  0% {
+    background-position: 160% 0;
+  }
+  100% {
+    background-position: -60% 0;
+  }
+}
+
+/* "Gerar com Agente" while the agent writes: a comet of light orbits the
+   tile's edge, a soft glow breathes around it, and the wand keeps casting. */
+@property --agent-orbit {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes agent-orbit {
+  to {
+    --agent-orbit: 360deg;
+  }
+}
+
+@keyframes agent-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 transparent,
+      0 0 8px 0 color-mix(in srgb, var(--color-command-blue) 25%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px var(--color-command-blue-soft),
+      0 0 16px 2px color-mix(in srgb, var(--color-command-blue) 45%, transparent);
+  }
+}
+
+@keyframes agent-cast {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(-18deg) scale(1.1);
+  }
+  50% {
+    transform: rotate(6deg) scale(1.02);
+  }
+  75% {
+    transform: rotate(-10deg) scale(1.08);
+  }
+}
+
+/* The one authored shell moment: switching tabs brings the incoming view up
+   from a hair below while it fades in, so navigation feels like a focus pull
+   rather than a hard cut. (No blur: filtering a whole view — long file lists,
+   large diffs — repaints the entire subtree every frame.) It starts almost fully visible — never a
+   blank frame — and the global reduced-motion rule removes it. */
+@keyframes view-in {
+  0% {
+    opacity: 0.001;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes update-sweep {
+  from {
+    background-position: -60% 0;
+  }
+  to {
+    background-position: 160% 0;
+  }
+}
+
+@keyframes rise-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* The assistant's standby emblem: a slow ring of Command Blue that breathes
+   around the icon, telling the operator the agent is present but idle. */
+@keyframes emblem-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 var(--color-command-blue-soft),
+      var(--shadow-raised);
+  }
+  50% {
+    box-shadow:
+      0 0 0 6px transparent,
+      var(--shadow-raised);
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* The New Pull Request wizard's phase transitions: content slides in from
+   the direction the user is moving (forward = from the right, back = from
+   the left), and a field briefly rings blue right after AI fills it in, so
+   the automatic generation reads as an action instead of a silent value
+   swap. */
+@keyframes wizard-step-in-forward {
+  0% {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes wizard-step-in-back {
+  0% {
+    opacity: 0;
+    transform: translateX(-18px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes wizard-panel-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wizard-field-flash {
+  0% {
+    box-shadow: 0 0 0 3px var(--color-command-blue-soft);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+/* Chat reasoning-effort slider: the thumb and fill glide on a smooth
+   exponential ease-out, the thumb gives a small scale pulse with a soft ring
+   when it lands, passed stops shrink away, and the level name
+   slides in from the side the user moved toward (reusing the wizard's
+   directional keyframes). The global reduced-motion rule collapses all of it. */
+@keyframes effort-thumb-pop {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 var(--color-command-blue-soft);
+  }
+  35% {
+    transform: scale(1.28);
+    box-shadow: 0 0 0 6px var(--color-command-blue-soft);
+  }
+  70% {
+    transform: scale(0.94);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@keyframes effort-panel-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.effort-glide {
+  transition:
+    left 420ms cubic-bezier(0.22, 1, 0.36, 1),
+    width 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.effort-stop {
+  transform: translate(-50%, -50%) scale(1);
+  transition:
+    transform 260ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 200ms ease-out;
+}
+
+.effort-stop-passed {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0);
+}
+
+.effort-thumb-pop {
+  animation: effort-thumb-pop 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.effort-label-in-forward {
+  display: inline-block;
+  animation: wizard-step-in-forward 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.effort-label-in-back {
+  display: inline-block;
+  animation: wizard-step-in-back 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.effort-zap-pop {
+  animation: pop 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.effort-panel-in {
+  animation: effort-panel-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.effort-reset svg {
+  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.effort-reset:not(:disabled):hover svg {
+  transform: rotate(-140deg);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-midnight-base text-primary-text font-sans text-body antialiased;
+    margin: 0;
+    /* Inter's open digits and single-storey "a" read cleaner at 12–14px. */
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    caret-color: var(--color-command-blue);
+  }
+
+  ::selection {
+    background-color: var(--color-selection);
+  }
+
+  .font-mono {
+    font-variant-ligatures: none;
+    font-feature-settings: 'tnum';
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus-border);
+    outline-offset: 1px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Application scrollbar (DESIGN.md §4) — every scrollable surface uses
+     this instead of the OS default, in both axes. The standard properties
+     are scoped to engines without ::-webkit-scrollbar: in Chromium,
+     declaring scrollbar-width/scrollbar-color switches off the styled
+     webkit bar and brings back the native one, arrow buttons included. */
+  @supports not selector(::-webkit-scrollbar) {
+    html {
+      scrollbar-width: thin;
+      scrollbar-color: var(--color-scrollbar-thumb) transparent;
+    }
+  }
+
+  ::-webkit-scrollbar-button {
+    display: none;
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-scrollbar-thumb);
+    border-radius: 8px;
+    background-clip: padding-box;
+    border: 2px solid transparent;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--color-scrollbar-thumb-hover);
+  }
+
+  /* Reduced motion: keep brief color/opacity feedback so state changes stay
+     readable, but collapse decorative motion (scale, keyframed pop, layout
+     easing). Spinners stay animated — their motion *is* the busy signal. */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      transition-duration: 50ms !important;
+      transition-delay: 0ms !important;
+    }
+
+    *:not(.animate-spin),
+    *:not(.animate-spin)::before,
+    *:not(.animate-spin)::after {
+      animation-name: none !important;
+    }
+
+    *:active {
+      transform: none !important;
+    }
+  }
+}
+
+@layer components {
+  .agent-busy-shimmer {
+    background: linear-gradient(100deg, var(--color-secondary-text) 22%, var(--color-primary-text) 46%, var(--color-command-blue) 54%, var(--color-secondary-text) 78%);
+    background-size: 220% 100%;
+    /* impeccable-disable-next-line gradient-text: the sweep is the busy signal itself, requested product motion */
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: agent-busy-shimmer 1.8s linear infinite;
+  }
+
+  /* All interactive controls get an immediate press response (scale +
+     brightness) on top of their hover state — :focus-visible alone doesn't
+     fire for mouse clicks in Chromium, so without this the UI reads as
+     unresponsive to anything but keyboard input. */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-pill bg-action-surface px-4 text-body font-medium text-action-ink transition-[transform,filter,background-color,box-shadow] duration-150 h-[34px] active:scale-[0.97];
+    box-shadow: var(--shadow-button);
+    transition-timing-function: var(--ease-out-expo);
+  }
+  .btn-primary:hover:not(:disabled) {
+    @apply bg-primary-text;
+  }
+  .btn-primary:active:not(:disabled) {
+    @apply brightness-90;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-pill border border-default-border bg-hover-overlay px-4 text-body font-medium text-primary-text transition-[background-color,border-color,transform] duration-150 h-[34px] hover:bg-primary-text/[0.08] hover:border-primary-text/25 active:scale-[0.97] active:bg-primary-text/15;
+    box-shadow: var(--shadow-raised);
+    transition-timing-function: var(--ease-out-expo);
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md bg-transparent px-2.5 text-body text-secondary-text transition-[background-color,color,transform] duration-100 h-[34px] hover:bg-hover-overlay hover:text-primary-text active:scale-[0.97] active:bg-primary-text/15;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-pill bg-danger-fill px-4 text-body font-medium text-on-danger transition-[background-color,filter,transform] duration-100 h-[34px] active:scale-[0.97] active:brightness-90;
+  }
+  .btn-danger:hover:not(:disabled) {
+    @apply bg-danger-fill-hover;
+  }
+  .btn-clear-chat-confirm {
+    background-color: var(--color-danger-quiet);
+    color: var(--color-on-danger);
+  }
+  .btn-clear-chat-confirm:hover:not(:disabled) {
+    background-color: var(--color-danger-quiet-hover);
+  }
+  button:disabled {
+    @apply opacity-40 pointer-events-none;
+  }
+
+  .field {
+    @apply w-full rounded-sm border border-field-border bg-midnight-base px-3 py-2.5 text-body text-primary-text placeholder:text-tertiary-text outline-none transition-colors duration-150;
+  }
+  .field:hover {
+    @apply border-primary-text/50;
+  }
+  .field:focus,
+  .field:focus-within {
+    @apply border-command-blue ring-[3px] ring-command-blue-soft;
+  }
+
+  .card {
+    @apply rounded-lg border border-default-border bg-obsidian-panel p-5 text-secondary-text;
+    box-shadow: var(--shadow-raised);
+  }
+
+  /* Shared row treatment for lists (files, commits, stashes, PRs, menu
+     items): a short rounded accent pill on the leading edge makes
+     hover/selection unmistakable while the fill tint stays restrained.
+     The pill grows from the row's middle, so moving the selection reads as
+     motion instead of a flicker. `--row-accent` lets a row recolor it
+     (conflicts use Warning Amber). */
+  .list-row {
+    @apply relative flex cursor-pointer items-center gap-2 rounded-sm px-2.5 py-2 transition-colors duration-100 hover:bg-hover-overlay active:bg-primary-text/10;
+  }
+  .list-row::before {
+    content: '';
+    position: absolute;
+    left: 1px;
+    top: 50%;
+    width: 3px;
+    height: 60%;
+    max-height: 22px;
+    border-radius: 99px;
+    background-color: var(--row-accent, var(--color-command-blue));
+    transform: translateY(-50%) scaleY(0);
+    opacity: 0;
+    transition:
+      transform 220ms var(--ease-out-expo),
+      opacity 150ms ease-out;
+    pointer-events: none;
+  }
+  .list-row:hover::before {
+    background-color: var(--color-primary-text);
+    opacity: 0.18;
+    transform: translateY(-50%) scaleY(0.55);
+  }
+  .list-row.is-selected {
+    @apply bg-active-overlay;
+  }
+  .list-row.is-selected::before {
+    background-color: var(--row-accent, var(--color-command-blue));
+    opacity: 1;
+    transform: translateY(-50%) scaleY(1);
+  }
+
+  /* Shell view transition — applied to each routed view's root. */
+  .view-enter > * {
+    animation: view-in 280ms var(--ease-out-expo) backwards;
+  }
+
+  .rise-in {
+    animation: rise-in 420ms var(--ease-out-expo) backwards;
+  }
+
+  /* Tab strip indicator: a rounded bar that grows from the tab's center. */
+  .tab-indicator {
+    position: relative;
+  }
+  .tab-indicator::after {
+    content: '';
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    bottom: 0;
+    height: 2px;
+    border-radius: 99px 99px 0 0;
+    background-color: var(--color-command-blue);
+    transform: scaleX(0);
+    opacity: 0;
+    transition:
+      transform 320ms var(--ease-out-expo),
+      opacity 160ms ease-out;
+  }
+  .tab-indicator[aria-current='page']::after {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+
+  /* Start-screen action tiles. Two pointer-tracked layers sit under the
+     content: a soft Command Blue spotlight on the face, and a one-pixel edge
+     light (a masked border ring) that brightens only near the cursor. Both
+     are hover feedback, not ambient glow, and fade out when the pointer
+     leaves. The tiles also arrive in a short stagger. */
+  .action-tile {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-color: var(--color-default-border);
+    background-color: var(--color-obsidian-panel);
+    transition:
+      transform 300ms var(--ease-out-expo),
+      border-color 200ms ease-out,
+      background-color 200ms ease-out;
+    animation: rise-in 560ms var(--ease-out-expo) backwards;
+  }
+  .action-tile:nth-child(2) {
+    animation-delay: 50ms;
+  }
+  .action-tile:nth-child(3) {
+    animation-delay: 100ms;
+  }
+  .action-tile:nth-child(4) {
+    animation-delay: 150ms;
+  }
+  .action-tile::before,
+  .action-tile::after {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 300ms ease-out;
+  }
+  .action-tile::before {
+    inset: 0;
+    z-index: -1;
+    background: radial-gradient(
+      280px circle at var(--mx, 50%) var(--my, 0%),
+      var(--color-command-blue-soft),
+      transparent 70%
+    );
+  }
+  .action-tile::after {
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: radial-gradient(
+      160px circle at var(--mx, 50%) var(--my, 0%),
+      color-mix(in srgb, var(--color-command-blue) 45%, transparent),
+      transparent 70%
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+  }
+  .action-tile:hover:not(:disabled) {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--color-primary-text) 14%, transparent);
+  }
+  .action-tile:hover:not(:disabled)::before,
+  .action-tile:hover:not(:disabled)::after,
+  .action-tile.is-active::before {
+    opacity: 1;
+  }
+  .action-tile.is-active {
+    border-color: color-mix(in srgb, var(--color-command-blue) 60%, transparent);
+    background-color: var(--color-active-overlay);
+  }
+  .action-tile:active:not(:disabled) {
+    transform: translateY(0) scale(0.99);
+  }
+
+  /* Recent-repository cards: hover tints the edge and the icon tile toward
+     Command Blue (the card opens the repo). No overflow clipping here — the
+     "move to folder" menu is absolutely positioned inside the card. */
+  .repo-card {
+    border-color: var(--color-default-border);
+    background-color: var(--color-obsidian-panel);
+    transition:
+      background-color 200ms ease-out,
+      border-color 200ms ease-out,
+      box-shadow 200ms ease-out;
+  }
+  .repo-card:hover {
+    border-color: color-mix(in srgb, var(--color-command-blue) 35%, transparent);
+    background-color: color-mix(in srgb, var(--color-command-blue) 4%, var(--color-obsidian-panel));
+  }
+  .repo-card-icon {
+    border-color: var(--color-default-border);
+    background-color: var(--color-coal-raised);
+    color: var(--color-secondary-text);
+    transition:
+      background-color 250ms ease-out,
+      border-color 250ms ease-out,
+      color 250ms ease-out,
+      transform 300ms var(--ease-out-expo);
+  }
+  .repo-card:hover .repo-card-icon {
+    border-color: color-mix(in srgb, var(--color-command-blue) 40%, transparent);
+    background-color: var(--color-command-blue-soft);
+    color: var(--color-command-blue);
+    transform: scale(1.05);
+  }
+
+  /* "Gerar com Agente" — the one control that hands a field to the AI. A
+     tonal Command Blue pill; on hover a single light sheen sweeps across it
+     and the sparkle turns, so the AI entry point feels alive without
+     competing with the primary action. While generating, the label uses the
+     agent shimmer instead. */
+  .btn-agent {
+    @apply relative inline-flex h-7 items-center gap-1.5 overflow-hidden rounded-pill border border-command-blue/30 bg-command-blue-soft px-3 text-caption font-medium text-command-blue active:scale-[0.97];
+    box-shadow: var(--shadow-raised);
+    transition:
+      background-color 200ms ease-out,
+      border-color 200ms ease-out,
+      transform 150ms var(--ease-out-expo);
+  }
+  .btn-agent::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 30%,
+      color-mix(in srgb, var(--color-command-blue) 28%, transparent) 50%,
+      transparent 70%
+    );
+    transform: translateX(-120%);
+    pointer-events: none;
+  }
+  .btn-agent:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--color-command-blue) 60%, transparent);
+    background-color: color-mix(in srgb, var(--color-command-blue) 18%, transparent);
+  }
+  .btn-agent:hover:not(:disabled)::after {
+    transform: translateX(120%);
+    transition: transform 750ms var(--ease-out-expo);
+  }
+  .btn-agent > svg {
+    transition: transform 400ms var(--ease-out-expo);
+  }
+  .btn-agent:hover:not(:disabled) > svg:not(.animate-spin) {
+    transform: rotate(-14deg) scale(1.12);
+  }
+  /* Icon-only variant: a square tile sized like the other icon buttons. */
+  .btn-agent-icon {
+    @apply size-8 justify-center rounded-md px-0;
+  }
+  /* Generating: the button is disabled, but it's the busy signal, so it stays
+     fully lit instead of fading out like other disabled controls. */
+  .btn-agent-icon.is-generating {
+    opacity: 1;
+    border-color: transparent;
+    background-color: color-mix(in srgb, var(--color-command-blue) 16%, transparent);
+    animation: agent-glow 2.4s ease-in-out infinite;
+  }
+  .btn-agent-icon.is-generating::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    padding: 1.5px;
+    border-radius: inherit;
+    background: conic-gradient(
+      from var(--agent-orbit),
+      transparent 0deg,
+      color-mix(in srgb, var(--color-command-blue) 25%, transparent) 180deg,
+      var(--color-command-blue) 300deg,
+      #fff 350deg,
+      transparent 360deg
+    );
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+    animation: agent-orbit 1.6s linear infinite;
+    pointer-events: none;
+  }
+  .btn-agent-icon.is-generating > svg {
+    animation: agent-cast 1.6s ease-in-out infinite;
+    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-command-blue) 70%, transparent));
+  }
+  /* Reduced motion strips the keyframes; keep a steady lit ring instead. */
+  @media (prefers-reduced-motion: reduce) {
+    .btn-agent-icon.is-generating {
+      border-color: var(--color-command-blue);
+    }
+  }
+
+  /* About: the app's mark on a raised tile, held by one faint concentric
+     ring — structure, not glow. */
+  .about-emblem {
+    @apply relative flex size-[72px] items-center justify-center rounded-lg border border-default-border bg-obsidian-panel text-command-blue;
+    box-shadow: var(--shadow-raised), var(--shadow-command-glow);
+  }
+  .about-emblem::before {
+    content: '';
+    position: absolute;
+    inset: -9px;
+    border-radius: 22px;
+    border: 1px solid var(--color-default-border);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  /* About's download bar: fills smoothly between progress ticks; while the
+     download runs a single light sweeps along the filled part, and it turns
+     Success Green once the update is ready. */
+  .update-track {
+    @apply h-2 w-full overflow-hidden rounded-full bg-hover-overlay;
+  }
+  .update-fill {
+    @apply relative h-full overflow-hidden rounded-full bg-command-blue;
+    transition:
+      width 450ms var(--ease-out-expo),
+      background-color 300ms ease-out;
+  }
+  .update-fill[data-state='active']::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, #fff 35%, transparent) 50%,
+      transparent 100%
+    );
+    background-size: 40% 100%;
+    background-repeat: no-repeat;
+    animation: update-sweep 1.6s ease-in-out infinite;
+  }
+  .update-fill[data-state='done'] {
+    @apply bg-success-green;
+  }
+
+  /* Empty-state medallion: one icon on a raised tile — used for every
+     "nothing here yet" state so they share a single voice. */
+  .empty-medallion {
+    @apply flex size-11 items-center justify-center rounded-md border border-default-border bg-coal-raised text-secondary-text;
+    box-shadow: var(--shadow-raised);
+  }
+
+  .ai-emblem {
+    @apply flex size-12 items-center justify-center rounded-lg border border-command-blue/30 bg-command-blue-soft text-command-blue;
+    animation: emblem-breathe 3.2s ease-in-out infinite;
+  }
+
+  .kbd {
+    @apply inline-flex min-w-5 items-center justify-center rounded-[4px] border border-default-border bg-midnight-base px-1.5 py-0.5 font-mono text-label text-primary-text;
+    box-shadow: inset 0 -1px 0 var(--color-default-border);
+  }
+
+  .count-badge {
+    @apply inline-flex h-4 min-w-4 items-center justify-center rounded-pill bg-hover-overlay px-1 text-[10px] font-semibold tabular-nums text-secondary-text;
+    letter-spacing: 0;
+  }
+
+  .chip-command {
+    @apply inline-flex items-center gap-1 rounded-pill border border-command-blue/20 bg-command-blue-soft px-2.5 py-0.5 text-label uppercase text-command-blue;
+  }
+  .chip-danger {
+    @apply inline-flex items-center gap-1 rounded-pill border border-danger-red/30 bg-danger-red-soft px-2.5 py-0.5 text-label uppercase text-danger-red;
+  }
+  .chip-success {
+    @apply inline-flex items-center gap-1 rounded-pill border border-success-green/20 bg-success-green-soft px-2.5 py-0.5 text-label uppercase text-success-green;
+  }
+  .chip-warning {
+    @apply inline-flex items-center gap-1 rounded-pill border border-warning-amber/20 bg-warning-amber-soft px-2.5 py-0.5 text-label uppercase text-warning-amber;
+  }
+  .chip-attention {
+    @apply inline-flex items-center gap-1 rounded-pill border border-attention-orange/20 bg-attention-orange-soft px-2.5 py-0.5 text-label uppercase text-attention-orange;
+  }
+  /* Chips set 10px caps on a tinted fill, which costs the light theme's blue,
+     orange and green about a full contrast step — their ink is deepened here
+     (same hue) to hold 4.5:1 on panel, canvas and raised surfaces. */
+  [data-theme='light'] .chip-command {
+    color: #1b5fc1;
+  }
+  [data-theme='light'] .chip-attention {
+    color: #9b4c0d;
+  }
+  [data-theme='light'] .chip-success {
+    color: #136f4d;
+  }
+
+  /* Compact icon buttons keep their drawn size but get a 24×24 minimum pointer
+     target (WCAG 2.5.8) from an invisible, centered hit area. */
+  .hit-area {
+    position: relative;
+  }
+  .hit-area::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 24px);
+    height: max(100%, 24px);
+    transform: translate(-50%, -50%);
+  }
+}

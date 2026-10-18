@@ -1,0 +1,256 @@
+name: GitWeb Auto Release
+
+# Patch release on pushes to main/master that touch GitWeb — only after the
+# typecheck and the test suite pass, since the tag is pushed before packaging
+# and a tag is what users' auto-updater ends up seeing.
+# Skips the bot's own "chore(gitweb): release …" commits to avoid a loop, and
+# any push whose head commit says "[skip release]" (docs, CI tweaks, work that
+# should ship together with the next change).
+# Manual minor/major: still use `npm run release:minor` / `release:major` locally
+# (those push a tag and the tag workflow publishes).
+#
+# Important: only the tag is pushed — the release commit is NOT pushed to
+# main/master. That avoids racing developers (non-fast-forward) when CI
+# bumps the version while someone is committing locally. Versioning still
+# uses the latest tag; the release job builds from the tagged SHA.
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'GitWeb/**'
+      - '.github/workflows/gitweb-auto-release.yml'
+
+concurrency:
+  group: gitweb-auto-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: "${{ !startsWith(github.event.head_commit.message, 'chore(gitweb): release') && !contains(github.event.head_commit.message, '[skip release]') }}"
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      sha: ${{ steps.ver.outputs.sha }}
+      previous_tag: ${{ steps.ver.outputs.previous_tag }}
+    defaults:
+      run:
+        working-directory: GitWeb
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: GitWeb/package-lock.json
+
+      # Gate: nothing gets tagged or published unless this passes.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Bump patch version and push tag
+        id: ver
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch --tags origin
+
+          CURRENT="$(node -p "require('./package.json').version")"
+          LATEST_TAG="$(git tag -l 'v*.*.*' --sort=-v:refname | head -n1 || true)"
+          BASE="${LATEST_TAG#v}"
+          if [[ -z "$BASE" ]]; then
+            BASE="$CURRENT"
+          fi
+
+          IFS=. read -r MAJOR MINOR PATCH <<< "$BASE"
+          NEXT="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          TAG="v${NEXT}"
+
+          echo "Current package.json=$CURRENT latest_tag=${LATEST_TAG:-none} -> next=$NEXT"
+
+          # Bump files without relying on `npm version` git integration (fragile in monorepos / CI).
+          node <<EOF
+          const fs = require('fs')
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'))
+          pkg.version = '${NEXT}'
+          fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n')
+          EOF
+          npm install --package-lock-only --ignore-scripts
+
+          git add package.json package-lock.json
+          git commit -m "chore(gitweb): release ${NEXT}"
+          git tag "$TAG"
+          SHA="$(git rev-parse HEAD)"
+
+          echo "version=${NEXT}" >> "$GITHUB_OUTPUT"
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "previous_tag=${LATEST_TAG}" >> "$GITHUB_OUTPUT"
+          echo "Prepared ${TAG} at ${SHA} (previous=${LATEST_TAG:-none})"
+
+          # Push only the tag. The tagged commit object is reachable via the
+          # tag for the release build; skipping the branch push keeps main
+          # free of bot commits that would reject developers' pushes.
+          git push origin "refs/tags/${TAG}"
+
+      # Create the release as a draft before the matrix starts, so the three
+      # platform jobs upload into an existing release instead of racing to
+      # create the same one. The release job fills in the notes and publishes.
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.ver.outputs.version }}" \
+            --draft \
+            --title "GitWeb v${{ steps.ver.outputs.version }}" \
+            --notes "Empacotando…"
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        # macOS está fora porque o runner custa 10x minutos (contra 2x do
+        # Windows e 1x do Linux) e sozinho respondia por ~75% da fatura, que
+        # estourou o orçamento do Actions. Os steps de Package (macOS) seguem
+        # abaixo intactos: para voltar a publicar .dmg, basta descomentar a
+        # linha do macos-latest aqui.
+        os:
+          - windows-latest
+          - ubuntu-latest
+          # - macos-latest
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: GitWeb
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: GitWeb/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      # --publish always sends the installers and the latest*.yml auto-update
+      # metadata straight to the draft release that `prepare` created. Routing
+      # them through Actions artifacts instead cost ~672 MB per run against a
+      # 500 MB quota, and once that quota ran out the release job happily
+      # published v0.1.17 with no assets at all.
+      - name: Package (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: npx electron-builder --linux --publish always
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package (macOS)
+        if: matrix.os == 'macos-latest'
+        run: npx electron-builder --mac --publish always
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        run: npx electron-builder --win --publish always
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release:
+    needs: [prepare, build]
+    # Publish whatever platforms succeeded — don't block Windows/macOS on a Linux packaging glitch.
+    if: ${{ always() && needs.prepare.result == 'success' && needs.build.result != 'cancelled' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+
+      - name: Generate release notes
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          PREV_TAG: ${{ needs.prepare.outputs.previous_tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          {
+            echo "## O que mudou"
+            echo ""
+            if [[ -n "${PREV_TAG}" ]]; then
+              NOTES="$(git log --format='- %s' "${PREV_TAG}..HEAD" --no-merges \
+                | grep -v '^\- chore(gitweb): release ' || true)"
+            else
+              NOTES="$(git log -1 --format='- %s' HEAD \
+                | grep -v '^\- chore(gitweb): release ' || true)"
+            fi
+            if [[ -z "${NOTES}" ]]; then
+              echo "- Patch automático (sem commits de produto desde a tag anterior)."
+            else
+              echo "${NOTES}"
+            fi
+            echo ""
+            echo "---"
+            echo ""
+            if [[ -n "${PREV_TAG}" ]]; then
+              echo "**Changelog completo:** [GitWeb Release](https://github.com/${REPO}/compare/${PREV_TAG}...${TAG})"
+            else
+              echo "**Tag:** [GitWeb Release](https://github.com/${REPO}/releases/tag/${TAG})"
+            fi
+          } > release-notes.md
+          echo "----- release-notes.md -----"
+          cat release-notes.md
+
+      # The platform jobs already uploaded the assets to the draft; this only
+      # writes the notes and flips it to published. This job runs on always(),
+      # so refuse to publish an empty release — that is exactly how v0.1.17
+      # shipped with no installers. Leaving it as a draft keeps the tag
+      # recoverable via the manual re-run in gitweb-release.yml.
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          COUNT="$(gh release view "$TAG" --json assets -q '.assets | length')"
+          if [[ "$COUNT" -eq 0 ]]; then
+            echo "Nenhum asset em $TAG — mantendo como draft em vez de publicar vazia." >&2
+            exit 1
+          fi
+          echo "$COUNT assets em $TAG; publicando."
+          gh release edit "$TAG" \
+            --title "GitWeb $TAG" \
+            --notes-file release-notes.md \
+            --draft=false
