@@ -345,6 +345,34 @@ export const TOOL_CATALOG: ToolDefinition[] = [
     parameters: { type: 'object', properties: {}, required: [] }
   },
   {
+    name: 'list_unmerged_branches',
+    description:
+      'Compara cada branch (locais e as remotas sem cópia local) com a branch principal e diz quais ainda têm trabalho que não chegou nela e quais já estão integradas — inclusive as integradas por squash ou rebase merge, que o git sozinho ainda vê como "não mergeadas". Use quando o usuário perguntar o que falta mergear, o que já está na main ou quais branches podem ser apagadas. Usa as refs do último fetch: se o usuário quiser dados atuais do remoto, chame fetch_all antes.',
+    parameters: {
+      type: 'object',
+      properties: {
+        base_branch: {
+          type: 'string',
+          description: 'Branch com a qual comparar (ex: main, develop). Padrão: a branch padrão do remote (origin/main na maioria dos repositórios).'
+        }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'delete_merged_branches',
+    description:
+      'Apaga branches LOCAIS cujo trabalho já está todo na branch base (mergeadas, ou integradas por squash/rebase). Passe exatamente as branches que o usuário pediu — nunca acrescente outras por conta própria. Se o usuário pedir "todas as que já estão na main", chame list_unmerged_branches antes e passe só as que ela marcou como integradas. A tool recusa a chamada inteira se alguma branch tiver commits fora da base, for a atual, for só remota ou for protegida (main, master e a branch padrão nunca são apagadas). Não apaga nada no remoto.',
+    parameters: {
+      type: 'object',
+      properties: {
+        branch_names: { type: 'string', description: 'Branches locais a apagar, separadas por vírgula ou quebra de linha (ex: "feature/a, fix/b").' },
+        base_branch: { type: 'string', description: 'Branch base usada na verificação. Padrão: a branch padrão do remote.' }
+      },
+      required: ['branch_names']
+    }
+  },
+  {
     name: 'check_all_repos',
     description: 'Verifica em todos os repositórios recentes se há atualizações remotas pendentes.',
     parameters: { type: 'object', properties: {}, required: [] }
@@ -430,7 +458,8 @@ CRITICAL RULES:
 5. If the previous tool was cancelled by the user, do NOT immediately retry. Ask what they want instead.
 6. Never end a response with only a stated intention ("I'll check...", "now I'll push...") and no tool call attached. If you're about to do something, attach the tool call for it in that same response — don't describe it and stop. The only reason to end a response without a tool call is because you're asking the user a question you need their answer to before continuing.
 7. The approval card the app shows for each tool call IS the yes/no question. Never ask for permission in text ("Do you want me to run...?", "Should I...?") — call the tool and let the user approve or cancel it. You have no terminal: never offer to run commands in one, and never hand the user commands or buttons for something one of your tools does.
-8. NEVER run, suggest or teach destructive Git commands, not even as a "manual step": push --force / --force-with-lease, reset --hard, checkout -- . / restore . over uncommitted work, filter-branch / filter-repo / BFG, rebase of pushed commits, clean -f / -fd / -fdx, stash drop / clear, branch -D, deleting remote branches, reflog expire, gc --prune=now, deleting .git or re-cloning. A misread of the situation must never cost the user their repository. If only such a command would fix the problem, stop, explain what you found and the risk, and offer the safe alternatives that exist.`
+8. NEVER run, suggest or teach destructive Git commands, not even as a "manual step": push --force / --force-with-lease, reset --hard, checkout -- . / restore . over uncommitted work, filter-branch / filter-repo / BFG, rebase of pushed commits, clean -f / -fd / -fdx, stash drop / clear, branch -D (other than through delete_merged_branches, rule 9), deleting remote branches, reflog expire, gc --prune=now, deleting .git or re-cloning. A misread of the situation must never cost the user their repository. If only such a command would fix the problem, stop, explain what you found and the risk, and offer the safe alternatives that exist.
+9. The ONLY way to delete branches is the delete_merged_branches tool, which re-verifies that each branch's work is already on the base and never deletes main, master or the default branch. Pass exactly the branches the user asked for — never add others on your own — and never try to delete a protected branch.`
 
 // Only sent to providers that rejected a native `tools` array — teaching this
 // textual format alongside native tools makes models blend the two and emit

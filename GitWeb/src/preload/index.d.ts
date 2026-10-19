@@ -1,5 +1,7 @@
 import type {
+  BranchDeletionResult,
   BranchInfo,
+  BranchIntegrationReport,
   CloneOutcome,
   CloneProgress,
   CommitDetails,
@@ -85,6 +87,8 @@ export interface Api {
     stashPatch: (cwd: string, ref: string) => Promise<string>
     revertCommit: (hash: string, cwd: string) => Promise<GitResult>
     remoteBranches: (cwd: string) => Promise<string[]>
+    branchIntegration: (cwd: string, base?: string) => Promise<BranchIntegrationReport>
+    deleteIntegratedBranches: (cwd: string, names: string[], base?: string) => Promise<BranchDeletionResult[]>
     checkoutRemoteBranch: (remoteBranch: string, cwd: string) => Promise<SwitchBranchResult>
     deleteBranch: (name: string, cwd: string, force: boolean) => Promise<void>
     renameBranch: (oldName: string, newName: string, cwd: string) => Promise<void>

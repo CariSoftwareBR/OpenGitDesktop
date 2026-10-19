@@ -32,6 +32,55 @@ export interface BranchInfo {
   isCurrent: boolean
 }
 
+/**
+ * - merged: every commit of the branch is reachable from the base.
+ * - equivalent: it has commits of its own, but their changes already landed on
+ *   the base under other hashes (squash or rebase merge) — git alone still
+ *   reports these as "not merged".
+ * - unmerged: it carries work the base does not have.
+ */
+export type BranchIntegrationState = 'merged' | 'equivalent' | 'unmerged'
+
+export interface BranchIntegration {
+  /** Short name: "feature/x" for a local branch, "origin/feature/x" for a remote one. */
+  name: string
+  /** A remote-tracking branch with no local branch of the same name. */
+  remoteOnly: boolean
+  isCurrent: boolean
+  /** Upstream of a local branch ("origin/feature/x"), or null when it was never published. */
+  upstream: string | null
+  /** The upstream is configured but no longer exists on the remote (deleted after a merge, usually). */
+  upstreamGone: boolean
+  /** Commits on the branch that are not reachable from the base. */
+  ahead: number
+  /** Commits on the base that the branch does not have. */
+  behind: number
+  /** Short hash of the branch tip — enough to recreate it after a delete. */
+  tip: string
+  lastCommitDate: string
+  lastCommitSummary: string
+  state: BranchIntegrationState
+  /** For 'equivalent': the base commit that carries the same changes. */
+  equivalentCommit?: string
+}
+
+export interface BranchIntegrationReport {
+  /** The ref everything was compared against, e.g. "origin/main" or "main". */
+  base: string
+  /** Branch names that can never be deleted through the agent (lowercase). */
+  protectedNames: string[]
+  branches: BranchIntegration[]
+}
+
+export interface BranchDeletionResult {
+  name: string
+  deleted: boolean
+  /** Tip before the delete, for `git branch <name> <tip>` if it was a mistake. */
+  tip?: string
+  /** Why it was refused or failed. */
+  reason?: string
+}
+
 export interface GitIdentity {
   name: string | null
   email: string | null

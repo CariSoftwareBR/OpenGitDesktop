@@ -10,6 +10,7 @@ import {
   createBranch,
   checkoutRemoteBranch,
   deleteBranch,
+  deleteIntegratedBranches,
   deleteRemoteBranch,
   forcePushBranch,
   getRemoteBranches,
@@ -22,6 +23,7 @@ import {
   fetchRemote,
   getBranchDiff,
   getBranches,
+  getBranchIntegration,
   getCommitDetails,
   getCommitDiff,
   getCommitFiles,
@@ -176,6 +178,10 @@ export function registerIpcHandlers(): void {
   )
   handle('git:switchBranch', (_e, name: string, cwd: string) => switchBranch(name, cwd))
   handle('git:remoteBranches', (_e, cwd: string) => getRemoteBranches(cwd))
+  handle('git:branchIntegration', (_e, cwd: string, base?: string) => getBranchIntegration(cwd, base))
+  handle('git:deleteIntegratedBranches', (_e, cwd: string, names: string[], base?: string) =>
+    deleteIntegratedBranches(cwd, names, base)
+  )
   handle('git:checkoutRemoteBranch', (_e, remoteBranch: string, cwd: string) => checkoutRemoteBranch(remoteBranch, cwd))
   handle('git:deleteBranch', (_e, name: string, cwd: string, force: boolean) => deleteBranch(name, cwd, force))
   handle('git:renameBranch', (_e, oldName: string, newName: string, cwd: string) => renameBranch(oldName, newName, cwd))

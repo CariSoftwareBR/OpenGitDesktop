@@ -4,7 +4,7 @@ import { usePullRequestStore } from '../../store/pullRequestStore'
 import { getActiveAiConfig } from '../../store/aiStore'
 import { generateCommitMessage } from './commitMessage'
 import { generateConflictResolution } from './conflictResolution'
-import { isConflicted, type StatusEntry } from '../../../../shared/git'
+import { isConflicted, type BranchIntegration, type BranchIntegrationReport, type StatusEntry } from '../../../../shared/git'
 import { parseConflictBlocks, renderResolvedWithChoices, type ConflictBlock, type ConflictResolutionChoice } from '../conflicts'
 import type { ToolCallRequest } from '../../../../shared/aiChat'
 import { getFmt, getT } from '../i18n'
@@ -25,7 +25,7 @@ export interface ToolPrepareResult {
 }
 
 // Public, remote-visible, or not automatically undoable.
-const DANGER_TOOLS = new Set(['merge_pull_request', 'merge_branch', 'push', 'review_pull_request'])
+const DANGER_TOOLS = new Set(['merge_pull_request', 'merge_branch', 'push', 'review_pull_request', 'delete_merged_branches'])
 const WRITE_TOOLS = new Set([
   'commit',
   'undo_last_commit',
@@ -88,6 +88,51 @@ function parsePathList(raw: string): string[] {
     .map((p) => p.trim().replace(/\\/g, '/').replace(/^\.\//, ''))
     .filter(Boolean)
   return [...new Set(paths)]
+}
+
+function parseBranchList(raw: string): string[] {
+  return [...new Set(raw.split(/[\n,]/).map((b) => b.trim()).filter(Boolean))]
+}
+
+function describeBranch(b: BranchIntegration): string {
+  const t = getT().tools
+  const tags = [
+    b.isCurrent && t.tagCurrent,
+    b.remoteOnly && t.tagRemoteOnly,
+    !b.remoteOnly && !b.upstream && t.tagNotPublished,
+    b.upstreamGone && t.tagUpstreamGone
+  ].filter(Boolean)
+  return `- ${b.name}${tags.length > 0 ? ` [${tags.join(', ')}]` : ''}`
+}
+
+// Grouped so the model can answer "what is still missing from main" and
+// "what can go" straight from the sections, without re-deriving states.
+function formatIntegrationReport(report: BranchIntegrationReport): string {
+  const t = getT().tools
+  if (report.branches.length === 0) return t.noOtherBranches(report.base)
+
+  const byRecent = (x: BranchIntegration, y: BranchIntegration): number => y.lastCommitDate.localeCompare(x.lastCommitDate)
+  const unmerged = report.branches.filter((b) => b.state === 'unmerged').sort(byRecent)
+  const equivalent = report.branches.filter((b) => b.state === 'equivalent').sort(byRecent)
+  const merged = report.branches.filter((b) => b.state === 'merged').sort(byRecent)
+
+  const lines = [t.integrationBaseLine(report.base)]
+  if (unmerged.length > 0) {
+    lines.push('', t.unmergedSection(unmerged.length))
+    for (const b of unmerged) {
+      lines.push(`${describeBranch(b)} — ${t.aheadBehindBase(b.ahead, b.behind)} · ${t.lastCommitLine(b.lastCommitDate, b.lastCommitSummary)}`)
+    }
+  }
+  if (equivalent.length > 0) {
+    lines.push('', t.equivalentSection(equivalent.length))
+    for (const b of equivalent) lines.push(`${describeBranch(b)} — ${t.equivalentIn(b.equivalentCommit ?? '?')}`)
+  }
+  if (merged.length > 0) {
+    lines.push('', t.mergedSection(merged.length))
+    for (const b of merged) lines.push(`${describeBranch(b)} — ${t.lastCommitLine(b.lastCommitDate, b.lastCommitSummary)}`)
+  }
+  lines.push('', t.protectedLine(report.protectedNames.join(', ')))
+  return lines.join('\n')
 }
 
 function normalizePath(path: string): string {
@@ -770,6 +815,55 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
     case 'list_branches_all_repos':
       return { preview: { headline: t.listBranchesAllHeadline, fields: [] }, resolvedArgs: a }
 
+    case 'list_unmerged_branches':
+      return {
+        preview: {
+          headline: t.unmergedHeadline,
+          fields: [{ label: t.integrationBase, value: a.base_branch || t.remoteDefaultBranch }]
+        },
+        resolvedArgs: a
+      }
+
+    case 'delete_merged_branches': {
+      const requested = parseBranchList(a.branch_names ?? '')
+      if (requested.length === 0) throw new Error(t.paramRequired('branch_names'))
+      const repoPath = await requireCurrentRepo()
+      const report = await window.api.git.branchIntegration(repoPath, a.base_branch || undefined)
+      const local = new Map(report.branches.filter((b) => !b.remoteOnly).map((b) => [b.name, b]))
+      const protectedNames = new Set(report.protectedNames)
+
+      // All or nothing: the card must list exactly what was asked, so one bad
+      // name refuses the call instead of silently shrinking the list. The
+      // main process repeats these checks right before deleting.
+      const refused: string[] = []
+      for (const name of requested) {
+        const info = local.get(name)
+        if (protectedNames.has(name.toLowerCase())) refused.push(t.refuseProtected(name))
+        else if (!info) refused.push(t.refuseNotLocal(name))
+        else if (info.isCurrent) refused.push(t.refuseCurrent(name))
+        else if (info.state === 'unmerged') refused.push(t.refuseUnmerged(name, info.ahead, report.base))
+      }
+      if (refused.length > 0) throw new Error(t.deleteRefused(refused.join('\n')))
+
+      const describe = (name: string): string => {
+        const b = local.get(name)!
+        return b.state === 'equivalent' ? `• ${name} — ${t.equivalentIn(b.equivalentCommit ?? '?')}` : `• ${name} — ${t.stateMerged}`
+      }
+      return {
+        preview: {
+          headline: t.deleteBranchesHeadline(requested.length),
+          fields: [
+            { label: t.integrationBase, value: report.base },
+            { label: t.branchesToDelete(requested.length), value: requested.map(describe).join('\n') },
+            { label: t.commands, value: formatCommands(requested.map((n) => `git branch -D ${quoteArg(n)}`)) }
+          ],
+          warning: t.deleteBranchesWarning
+        },
+        // Pin the base the card showed, so execute verifies against the same one.
+        resolvedArgs: { branch_names: requested.join('\n'), base_branch: report.base }
+      }
+    }
+
     case 'check_all_repos':
       return { preview: { headline: t.checkAllHeadline, fields: [] }, resolvedArgs: a }
 
@@ -1270,6 +1364,22 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string> {
           lines.push(t.repoError(r.name, err instanceof Error ? err.message : String(err)))
         }
       }
+      return lines.join('\n')
+    }
+
+    case 'list_unmerged_branches': {
+      const report = await window.api.git.branchIntegration(await requireCurrentRepo(), a.base_branch || undefined)
+      return formatIntegrationReport(report)
+    }
+
+    case 'delete_merged_branches': {
+      const repoPath = await requireCurrentRepo()
+      const results = await window.api.git.deleteIntegratedBranches(repoPath, parseBranchList(a.branch_names ?? ''), a.base_branch || undefined)
+      await repo.refreshBranches()
+      const lines = results.map((r) =>
+        r.deleted ? t.branchDeletedLine(r.name, r.tip ?? '?') : t.branchNotDeletedLine(r.name, r.reason ?? t.unknownReason)
+      )
+      if (!results.some((r) => r.deleted)) throw new Error(lines.join('\n'))
       return lines.join('\n')
     }
 

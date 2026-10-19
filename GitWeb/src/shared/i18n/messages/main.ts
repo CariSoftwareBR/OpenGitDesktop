@@ -28,6 +28,13 @@ const ptBR = {
     noRemote: 'Repositório sem remote configurado.',
     fetchFailed: 'Falha ao buscar do remote.',
     noDefaultBranchDetected: 'Não foi possível determinar o branch padrão do remote.',
+    baseBranchNotFound: (branch: string) => `Branch base "${branch}" não encontrada (nem local, nem em origin).`,
+    protectedBranch: (branch: string) => `"${branch}" é uma branch protegida e nunca pode ser apagada pelo assistente.`,
+    notALocalBranch: (branch: string) => `"${branch}" não é uma branch local deste repositório.`,
+    cannotDeleteCurrent: (branch: string) => `"${branch}" é a branch atual — troque de branch antes de apagá-la.`,
+    branchNotIntegrated: (branch: string, ahead: number, base: string) =>
+      `"${branch}" tem ${ahead} commit(s) que não estão em ${base} — não foi apagada.`,
+    deleteBranchFailed: (branch: string) => `Falha ao apagar "${branch}".`,
     behindDefault: (count: number, branch: string) => `${count} commit(s) atrás de origin/${branch}.`,
     noLocalDefaultToAdvance: (branch: string) =>
       ` Não existe um branch "${branch}" local para avançar — abra o repositório e faça checkout dele, ou um pull no branch atual.`,
@@ -137,6 +144,13 @@ const en: MainMessages = {
     noRemote: 'Repository has no remote configured.',
     fetchFailed: 'Failed to fetch from the remote.',
     noDefaultBranchDetected: "Could not determine the remote's default branch.",
+    baseBranchNotFound: (branch: string) => `Base branch "${branch}" not found (neither locally nor on origin).`,
+    protectedBranch: (branch: string) => `"${branch}" is a protected branch and can never be deleted by the assistant.`,
+    notALocalBranch: (branch: string) => `"${branch}" is not a local branch of this repository.`,
+    cannotDeleteCurrent: (branch: string) => `"${branch}" is the current branch — switch to another one before deleting it.`,
+    branchNotIntegrated: (branch: string, ahead: number, base: string) =>
+      `"${branch}" has ${ahead} commit(s) that are not on ${base} — it was not deleted.`,
+    deleteBranchFailed: (branch: string) => `Failed to delete "${branch}".`,
     behindDefault: (count, branch) => `${count} commit(s) behind origin/${branch}.`,
     noLocalDefaultToAdvance: (branch) =>
       ` There is no local "${branch}" branch to advance — open the repository and check it out, or pull on the current branch.`,
@@ -244,6 +258,13 @@ const es: MainMessages = {
     noRemote: 'El repositorio no tiene un remoto configurado.',
     fetchFailed: 'Error al obtener del remoto.',
     noDefaultBranchDetected: 'No se pudo determinar la rama predeterminada del remoto.',
+    baseBranchNotFound: (branch: string) => `Rama base "${branch}" no encontrada (ni local ni en origin).`,
+    protectedBranch: (branch: string) => `"${branch}" es una rama protegida y el asistente nunca puede borrarla.`,
+    notALocalBranch: (branch: string) => `"${branch}" no es una rama local de este repositorio.`,
+    cannotDeleteCurrent: (branch: string) => `"${branch}" es la rama actual — cambia a otra rama antes de borrarla.`,
+    branchNotIntegrated: (branch: string, ahead: number, base: string) =>
+      `"${branch}" tiene ${ahead} commit(s) que no están en ${base} — no se borró.`,
+    deleteBranchFailed: (branch: string) => `No se pudo borrar "${branch}".`,
     behindDefault: (count, branch) => `${count} commit(s) por detrás de origin/${branch}.`,
     noLocalDefaultToAdvance: (branch) =>
       ` No existe una rama "${branch}" local para avanzar — abre el repositorio y haz checkout de ella, o un pull en la rama actual.`,

@@ -178,6 +178,8 @@ function installBrowserApiStub(): void {
       stashPatch: async () => '',
       revertCommit: async () => ({ stdout: '', stderr: '', exitCode: 0 }),
       remoteBranches: async () => [],
+      branchIntegration: async () => ({ base: 'origin/main', protectedNames: ['main', 'master'], branches: [] }),
+      deleteIntegratedBranches: async () => [],
       checkoutRemoteBranch: async () => ({ switched: true as const }),
       deleteBranch: async () => undefined,
       renameBranch: async () => undefined,

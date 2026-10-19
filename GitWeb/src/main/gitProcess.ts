@@ -3,7 +3,10 @@ import { shell } from 'electron'
 import { lstat, readFile, rm, writeFile, mkdir, access, realpath } from 'fs/promises'
 import { join, dirname, basename, resolve, sep, normalize } from 'path'
 import type {
+  BranchDeletionResult,
   BranchInfo,
+  BranchIntegration,
+  BranchIntegrationReport,
   ClonePhase,
   CloneOutcome,
   CloneProgress,
@@ -959,6 +962,200 @@ export async function getRepoUpdateStatus(
     localDefaultAhead,
     canFastForward
   }
+}
+
+// Explicit base first as typed, then the remote's view of it (what PRs merge
+// into), then the local branch. Without a remote, falls back to main/master.
+async function resolveIntegrationBase(cwd: string, requested?: string): Promise<{ ref: string; label: string }> {
+  const wanted = requested?.trim()
+  if (wanted) assertNotOption(wanted, tMain().git.optionLabel.baseBranch)
+  const names = wanted ? [wanted] : [(await resolveDefaultBranch(cwd)) ?? 'main', 'master']
+
+  for (const name of names) {
+    for (const ref of [`refs/remotes/origin/${name}`, `refs/heads/${name}`, `refs/remotes/${name}`]) {
+      if (await refExists(cwd, ref)) return { ref, label: ref.replace(/^refs\/(heads|remotes)\//, '') }
+    }
+  }
+  throw new Error(tMain().git.baseBranchNotFound(names[0]))
+}
+
+// `git patch-id` hashes a diff independently of the commit carrying it, so the
+// same changes hash the same after a squash or rebase merge. --verbatim, not
+// --stable: --stable ignores whitespace, which would call a branch whose
+// remaining changes are whitespace-only "integrated" — and let it be deleted.
+// Returns patch-id → commit hash (all zeros when fed a plain diff).
+async function patchIds(cwd: string, patch: string): Promise<Map<string, string>> {
+  const ids = new Map<string, string>()
+  if (!patch.trim()) return ids
+  const result = await runGit(['patch-id', '--verbatim'], cwd, { serialize: false, stdin: patch })
+  if (result.exitCode !== 0) return ids
+  for (const line of result.stdout.split('\n')) {
+    const [id, commit] = line.trim().split(/\s+/)
+    if (id && commit) ids.set(id, commit)
+  }
+  return ids
+}
+
+// How far back on the base to look for a squash/rebase of a branch. A branch
+// forked thousands of commits ago would otherwise pull a huge `log -p`.
+const EQUIVALENCE_SCAN_LIMIT = 500
+
+/**
+ * Which branches (local, plus remote ones never checked out here) still carry
+ * work the base branch lacks. Pure reads against the refs as of the last
+ * fetch. A branch whose commits git does not find on the base is still
+ * reported as 'equivalent' when its changes landed there by squash or rebase.
+ */
+export async function getBranchIntegration(cwd: string, base?: string): Promise<BranchIntegrationReport> {
+  const baseRef = await resolveIntegrationBase(cwd, base)
+  const baseShort = baseRef.label.replace(/^origin\//, '')
+
+  const result = await readGit(
+    [
+      'for-each-ref',
+      `--format=%(refname)${FS}%(refname:short)${FS}%(HEAD)${FS}%(symref)${FS}%(upstream:short)${FS}%(upstream:track)${FS}%(objectname:short)${FS}%(committerdate:short)${FS}%(subject)`,
+      'refs/heads',
+      'refs/remotes'
+    ],
+    cwd
+  )
+  throwOnFailure(result, ['for-each-ref'])
+
+  const refs = result.stdout
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [ref, name, head, symref, upstream, track, tip, date, subject] = line.split(FS)
+      return { ref, name, head, symref, upstream, track, tip, date, subject }
+    })
+  const localNames = new Set(refs.filter((r) => r.ref.startsWith('refs/heads/')).map((r) => r.name))
+
+  const candidates = refs.filter((r) => {
+    if (r.symref || r.ref === baseRef.ref) return false
+    if (r.ref.startsWith('refs/heads/')) return r.name !== baseShort
+    // Remote: skip the remote's copy of the base and anything already covered
+    // by a local branch of the same name.
+    const branchName = r.name.slice(r.name.indexOf('/') + 1)
+    return branchName !== baseShort && !localNames.has(branchName)
+  })
+
+  // Several branches usually fork from the same base commit — scan it once.
+  const baseScans = new Map<string, Promise<Map<string, string>>>()
+  const basePatchIds = (mergeBase: string): Promise<Map<string, string>> => {
+    let scan = baseScans.get(mergeBase)
+    if (!scan) {
+      scan = readGit(
+        ['log', '-p', '--no-merges', '--no-color', '--no-ext-diff', `--max-count=${EQUIVALENCE_SCAN_LIMIT}`, `${mergeBase}..${baseRef.ref}`],
+        cwd
+      ).then((r) => (r.exitCode === 0 ? patchIds(cwd, r.stdout) : new Map()))
+      baseScans.set(mergeBase, scan)
+    }
+    return scan
+  }
+
+  const findEquivalent = async (ref: string, ahead: number): Promise<string | undefined> => {
+    const mergeBase = await readGit(['merge-base', baseRef.ref, ref], cwd)
+    if (mergeBase.exitCode !== 0) return undefined // unrelated histories
+    const onBase = await basePatchIds(mergeBase.stdout.trim())
+    if (onBase.size === 0) return undefined
+
+    // Squash merge: the branch's whole diff matches one base commit.
+    const whole = await readGit(['diff', '--no-color', '--no-ext-diff', mergeBase.stdout.trim(), ref], cwd)
+    for (const id of (await patchIds(cwd, whole.stdout)).keys()) {
+      if (onBase.has(id)) return onBase.get(id)
+    }
+
+    // Rebase merge / cherry-pick: each commit has its own twin on the base.
+    // Needs every commit of the branch — a capped log could miss the one
+    // without a twin — so very long branches just stay 'unmerged'.
+    if (ahead > EQUIVALENCE_SCAN_LIMIT) return undefined
+    const own = await readGit(['log', '-p', '--no-merges', '--no-color', '--no-ext-diff', `${baseRef.ref}..${ref}`], cwd)
+    const ownIds = [...(await patchIds(cwd, own.stdout)).keys()]
+    if (ownIds.length > 0 && ownIds.every((id) => onBase.has(id))) return onBase.get(ownIds[ownIds.length - 1])
+    return undefined
+  }
+
+  const inspect = async (r: (typeof candidates)[number]): Promise<BranchIntegration> => {
+    const counts = await countAheadBehind(cwd, r.ref, baseRef.ref)
+    const ahead = counts?.ahead ?? 0
+    const equivalentCommit = ahead > 0 ? await findEquivalent(r.ref, ahead) : undefined
+    return {
+      name: r.name,
+      remoteOnly: r.ref.startsWith('refs/remotes/'),
+      isCurrent: r.head === '*',
+      upstream: r.upstream || null,
+      upstreamGone: r.track === '[gone]',
+      ahead,
+      behind: counts?.behind ?? 0,
+      tip: r.tip,
+      lastCommitDate: r.date,
+      lastCommitSummary: r.subject,
+      state: ahead === 0 ? 'merged' : equivalentCommit ? 'equivalent' : 'unmerged',
+      equivalentCommit: equivalentCommit?.slice(0, 7)
+    }
+  }
+
+  // A few at a time: a repo with dozens of branches would otherwise spawn
+  // several git processes per branch all at once.
+  const branches: BranchIntegration[] = new Array(candidates.length)
+  let next = 0
+  const worker = async (): Promise<void> => {
+    while (next < candidates.length) {
+      const index = next++
+      branches[index] = await inspect(candidates[index])
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(6, candidates.length) }, worker))
+
+  const defaultBranch = await resolveDefaultBranch(cwd)
+  const protectedNames = [...new Set([...ALWAYS_PROTECTED_BRANCHES, baseShort, defaultBranch].filter(Boolean).map((n) => n!.toLowerCase()))]
+  return { base: baseRef.label, protectedNames, branches }
+}
+
+// Never deletable through the agent, whatever it was asked — on top of the
+// base and the remote's default branch, which are added per repo.
+const ALWAYS_PROTECTED_BRANCHES = ['main', 'master']
+
+/**
+ * The agent's only way to delete branches. Re-checks everything here, right
+ * before deleting, instead of trusting what the approval card showed: only
+ * local branches, never a protected one or the current one, and only when
+ * their work is already on the base (merged, or squash/rebase-equivalent).
+ * Anything else is refused per branch, never deleted.
+ */
+export async function deleteIntegratedBranches(
+  cwd: string,
+  names: string[],
+  base?: string
+): Promise<BranchDeletionResult[]> {
+  const t = tMain().git
+  const report = await getBranchIntegration(cwd, base)
+  const local = new Map(report.branches.filter((b) => !b.remoteOnly).map((b) => [b.name, b]))
+  const protectedNames = new Set(report.protectedNames)
+
+  const results: BranchDeletionResult[] = []
+  for (const name of [...new Set(names.map((n) => n.trim()).filter(Boolean))]) {
+    const info = local.get(name)
+    let reason: string | undefined
+    if (protectedNames.has(name.toLowerCase())) reason = t.protectedBranch(name)
+    else if (!info) reason = t.notALocalBranch(name)
+    else if (info.isCurrent) reason = t.cannotDeleteCurrent(name)
+    else if (info.state === 'unmerged') reason = t.branchNotIntegrated(name, info.ahead, report.base)
+    if (reason || !info) {
+      results.push({ name, deleted: false, reason })
+      continue
+    }
+
+    // -D, not -d: -d checks against HEAD/upstream rather than the base, and
+    // rejects squash-merged branches outright. Integration was verified above.
+    const result = await runGit(['branch', '-D', name], cwd)
+    results.push(
+      result.exitCode === 0
+        ? { name, deleted: true, tip: info.tip }
+        : { name, deleted: false, reason: firstErrorLine(result.stderr, t.deleteBranchFailed(name)) }
+    )
+  }
+  return results
 }
 
 /**

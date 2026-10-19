@@ -1,6 +1,8 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type {
+  BranchDeletionResult,
   BranchInfo,
+  BranchIntegrationReport,
   CloneOutcome,
   CloneProgress,
   CommitDetails,
@@ -136,6 +138,10 @@ const api = {
     stashPatch: (cwd: string, ref: string): Promise<string> => invoke('git:stashPatch', cwd, ref),
     revertCommit: (hash: string, cwd: string): Promise<GitResult> => invoke('git:revertCommit', hash, cwd),
     remoteBranches: (cwd: string): Promise<string[]> => invoke('git:remoteBranches', cwd),
+    branchIntegration: (cwd: string, base?: string): Promise<BranchIntegrationReport> =>
+      invoke('git:branchIntegration', cwd, base),
+    deleteIntegratedBranches: (cwd: string, names: string[], base?: string): Promise<BranchDeletionResult[]> =>
+      invoke('git:deleteIntegratedBranches', cwd, names, base),
     checkoutRemoteBranch: (remoteBranch: string, cwd: string): Promise<SwitchBranchResult> =>
       invoke('git:checkoutRemoteBranch', remoteBranch, cwd),
     deleteBranch: (name: string, cwd: string, force: boolean): Promise<void> =>
