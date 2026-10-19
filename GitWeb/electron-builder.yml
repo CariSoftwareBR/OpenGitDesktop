@@ -49,7 +49,12 @@ linux:
     - deb
   category: Development
   maintainer: CariSoftwareBR <63272749+paulocarinhena@users.noreply.github.com>
-  icon: build/icon.png
+  # Diretório com um PNG por tamanho (NxN.png), instalados em
+  # /usr/share/icons/hicolor/NxN/apps. Com só o build/icon.png de 1024px o .deb
+  # instalava apenas hicolor/1024x1024, que o tema hicolor não lista (vai até
+  # 512x512): o lookup de "Icon=opengitdesktop" falhava e o dock/menu mostrava
+  # o ícone genérico.
+  icon: build/icons
   # O Electron usa o "desktopName" do package.json como WM_CLASS/app_id da
   # janela. Sem ele, e sem o .desktop ter exatamente esse nome, o dock não liga
   # a janela aberta ao atalho e mostra o ícone genérico do Electron.
