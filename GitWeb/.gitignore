@@ -9,6 +9,8 @@ dist/
 build/*
 !build/icon.png
 !build/icon.ico
+# Ícones do Linux, um PNG por tamanho (ver linux.icon no electron-builder.yml).
+!build/icons/
 *.log
 *.tsbuildinfo
 .env
