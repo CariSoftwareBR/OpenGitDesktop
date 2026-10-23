@@ -24,6 +24,7 @@ import type { AppSettings } from '../shared/settings'
 import type { Locale } from '../shared/i18n/locales'
 import type { DeviceFlowPollResult, DeviceFlowStart, OAuthAppInfo } from '../shared/githubAuth'
 import type {
+  BranchRules,
   CreatePullRequestInput,
   GitHubRepoSummary,
   GitHubUser,
@@ -31,7 +32,8 @@ import type {
   PullRequest,
   PullRequestComment,
   PullRequestFile,
-  PullRequestState
+  PullRequestState,
+  PullRequestStatus
 } from '../shared/github'
 import type { UpdateStatus } from '../shared/updates'
 
@@ -226,6 +228,10 @@ const api = {
       invoke('github:listPullRequests', host, owner, repo, state),
     getPullRequest: (host: string, owner: string, repo: string, number: number): Promise<PullRequest> =>
       invoke('github:getPullRequest', host, owner, repo, number),
+    getBranchRules: (host: string, owner: string, repo: string, branch: string): Promise<BranchRules> =>
+      invoke('github:getBranchRules', host, owner, repo, branch),
+    getPullRequestStatus: (host: string, owner: string, repo: string, number: number): Promise<PullRequestStatus> =>
+      invoke('github:getPullRequestStatus', host, owner, repo, number),
     createPullRequest: (
       host: string,
       owner: string,

@@ -5,6 +5,7 @@ const ptBR = {
     create_pull_request: 'Criar pull request',
     list_pull_requests: 'Listar pull requests',
     read_pull_request: 'Ler pull request',
+    check_pull_request_status: 'Status do pull request',
     read_commit: 'Ler commit',
     list_commits: 'Listar commits',
     merge_pull_request: 'Mergear pull request',
@@ -75,6 +76,36 @@ const ptBR = {
   includeFiles: 'Incluir arquivos',
   includeDiffs: 'Incluir diffs',
   includeComments: 'Incluir comentários',
+  prStatusHeadline: (n: number) => `Verificar status do PR #${n} (checks e reviews)`,
+  mergeStateMeaning: (state: string) =>
+    (
+      ({
+        clean: 'Pronto para merge: checks e reviews exigidos estão ok.',
+        has_hooks: 'Pronto para merge (o repositório tem hooks de pré-recebimento).',
+        unstable: 'Pode ser mergeado, mas há checks não obrigatórios falhando ou em andamento.',
+        blocked: 'Bloqueado pelas regras da branch: falta review aprovada ou algum check obrigatório ainda não passou.',
+        behind: 'Bloqueado: a branch base avançou e o PR precisa ser atualizado com ela antes do merge.',
+        dirty: 'Bloqueado por conflitos com a branch base.',
+        draft: 'É um rascunho (draft): precisa ser marcado como "Ready for review" no GitHub.',
+        merged: 'Já foi mergeado.',
+        closed: 'Está fechado.'
+      }) as Record<string, string>
+    )[state] ?? 'O GitHub ainda está calculando se dá para mergear; consulte de novo em alguns segundos.',
+  checksSummary: (total: number, passed: number, running: number, failed: number) =>
+    total === 0
+      ? 'Checks: nenhum check ou status reportado para o último commit do PR.'
+      : `Checks (${total}): ${passed} ok, ${running} em andamento, ${failed} com falha`,
+  checksUnreadable: (reason: string) => `Não foi possível ler todos os checks: ${reason}`,
+  reviewDecisionLine: (decision: string) =>
+    `Decisão de review do GitHub: ${({ APPROVED: 'aprovado', CHANGES_REQUESTED: 'mudanças pedidas — bloqueia o merge', REVIEW_REQUIRED: 'ainda falta aprovação exigida', NOT_REQUIRED: 'nenhuma review é exigida' } as Record<string, string>)[decision] ?? decision} (${decision})`,
+  reviewsUnreadable: (reason: string) => `Reviews: não foi possível ler (${reason}) — não dá para afirmar quantas aprovações há.`,
+  requiredTag: 'obrigatório',
+  requiredChecksMissing: (names: string) => `Checks obrigatórios que ainda não reportaram resultado: ${names}`,
+  requiredChecksUnknown: 'Não foi possível ler quais checks as regras da branch exigem.',
+  reviewsSummary: (approvals: number, required: number | null) =>
+    required === null
+      ? `Reviews: ${approvals} aprovação(ões)`
+      : `Reviews: ${approvals} aprovação(ões) de ${required} exigida(s)`,
 
   commitNotFound: (ref: string) => `Commit "${ref}" não encontrado neste repositório.`,
   readCommitHeadline: (hash: string) => `Ler commit ${hash}`,
@@ -384,6 +415,7 @@ const en: M = {
     create_pull_request: 'Create pull request',
     list_pull_requests: 'List pull requests',
     read_pull_request: 'Read pull request',
+    check_pull_request_status: 'Pull request status',
     read_commit: 'Read commit',
     list_commits: 'List commits',
     merge_pull_request: 'Merge pull request',
@@ -451,6 +483,34 @@ const en: M = {
   includeFiles: 'Include files',
   includeDiffs: 'Include diffs',
   includeComments: 'Include comments',
+  prStatusHeadline: (n) => `Check status of PR #${n} (checks and reviews)`,
+  mergeStateMeaning: (state) =>
+    (
+      ({
+        clean: 'Ready to merge: required checks and reviews are satisfied.',
+        has_hooks: 'Ready to merge (the repository has pre-receive hooks).',
+        unstable: 'Can be merged, but some non-required checks are failing or still running.',
+        blocked: 'Blocked by branch rules: an approving review is missing or a required check has not passed yet.',
+        behind: 'Blocked: the base branch moved ahead and the PR must be updated with it before merging.',
+        dirty: 'Blocked by conflicts with the base branch.',
+        draft: 'It is a draft: it must be marked "Ready for review" on GitHub.',
+        merged: 'Already merged.',
+        closed: 'It is closed.'
+      }) as Record<string, string>
+    )[state] ?? 'GitHub is still computing whether it can be merged; check again in a few seconds.',
+  checksSummary: (total, passed, running, failed) =>
+    total === 0
+      ? "Checks: no check or status reported for the PR's latest commit."
+      : `Checks (${total}): ${passed} passed, ${running} running, ${failed} failed`,
+  checksUnreadable: (reason) => `Could not read every check: ${reason}`,
+  reviewDecisionLine: (decision) =>
+    `GitHub review decision: ${({ APPROVED: 'approved', CHANGES_REQUESTED: 'changes requested — blocks the merge', REVIEW_REQUIRED: 'a required approval is still missing', NOT_REQUIRED: 'no review is required' } as Record<string, string>)[decision] ?? decision} (${decision})`,
+  reviewsUnreadable: (reason) => `Reviews: could not be read (${reason}) — the number of approvals is unknown.`,
+  requiredTag: 'required',
+  requiredChecksMissing: (names) => `Required checks that have not reported a result yet: ${names}`,
+  requiredChecksUnknown: 'Could not read which checks the branch rules require.',
+  reviewsSummary: (approvals, required) =>
+    required === null ? `Reviews: ${approvals} approval(s)` : `Reviews: ${approvals} of ${required} required approval(s)`,
 
   commitNotFound: (ref) => `Commit "${ref}" not found in this repository.`,
   readCommitHeadline: (hash) => `Read commit ${hash}`,
@@ -747,6 +807,7 @@ const es: M = {
     create_pull_request: 'Crear pull request',
     list_pull_requests: 'Listar pull requests',
     read_pull_request: 'Leer pull request',
+    check_pull_request_status: 'Estado del pull request',
     read_commit: 'Leer commit',
     list_commits: 'Listar commits',
     merge_pull_request: 'Fusionar pull request',
@@ -815,6 +876,36 @@ const es: M = {
   includeFiles: 'Incluir archivos',
   includeDiffs: 'Incluir diffs',
   includeComments: 'Incluir comentarios',
+  prStatusHeadline: (n) => `Verificar estado de la PR #${n} (checks y reviews)`,
+  mergeStateMeaning: (state) =>
+    (
+      ({
+        clean: 'Lista para fusionar: los checks y reviews exigidos están bien.',
+        has_hooks: 'Lista para fusionar (el repositorio tiene hooks de pre-recepción).',
+        unstable: 'Se puede fusionar, pero hay checks no obligatorios fallando o en curso.',
+        blocked: 'Bloqueada por las reglas de la rama: falta una review aprobada o algún check obligatorio aún no pasó.',
+        behind: 'Bloqueada: la rama base avanzó y la PR debe actualizarse con ella antes de fusionar.',
+        dirty: 'Bloqueada por conflictos con la rama base.',
+        draft: 'Es un borrador (draft): hay que marcarla como "Ready for review" en GitHub.',
+        merged: 'Ya está fusionada.',
+        closed: 'Está cerrada.'
+      }) as Record<string, string>
+    )[state] ?? 'GitHub todavía está calculando si se puede fusionar; vuelve a consultar en unos segundos.',
+  checksSummary: (total, passed, running, failed) =>
+    total === 0
+      ? 'Checks: no hay checks ni estados reportados para el último commit de la PR.'
+      : `Checks (${total}): ${passed} ok, ${running} en curso, ${failed} con fallo`,
+  checksUnreadable: (reason) => `No se pudieron leer todos los checks: ${reason}`,
+  reviewDecisionLine: (decision) =>
+    `Decisión de review de GitHub: ${({ APPROVED: 'aprobada', CHANGES_REQUESTED: 'cambios pedidos — bloquea el merge', REVIEW_REQUIRED: 'todavía falta una aprobación exigida', NOT_REQUIRED: 'no se exige ninguna review' } as Record<string, string>)[decision] ?? decision} (${decision})`,
+  reviewsUnreadable: (reason) => `Reviews: no se pudieron leer (${reason}) — no se sabe cuántas aprobaciones hay.`,
+  requiredTag: 'obligatorio',
+  requiredChecksMissing: (names) => `Checks obligatorios que aún no reportaron resultado: ${names}`,
+  requiredChecksUnknown: 'No se pudo leer qué checks exigen las reglas de la rama.',
+  reviewsSummary: (approvals, required) =>
+    required === null
+      ? `Reviews: ${approvals} aprobación(es)`
+      : `Reviews: ${approvals} de ${required} aprobación(es) exigida(s)`,
 
   commitNotFound: (ref) => `No se encontró el commit "${ref}" en este repositorio.`,
   readCommitHeadline: (hash) => `Leer commit ${hash}`,

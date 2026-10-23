@@ -99,6 +99,7 @@ const ptBR = {
   github: {
     notAuthenticated: (host: string) => `Você não está autenticado em ${host}. Entre com o GitHub e tente de novo.`,
     requestRejected: (status: number) => `GitHub recusou a solicitação (${status}).`,
+    checkRunsTruncated: (shown: number, total: number) => `só os primeiros ${shown} de ${total} check runs foram lidos`,
     tokenRequired: 'Informe um token.',
     deviceFlowGithubOnly:
       'OAuth Device Flow só é suportado em github.com. Para GitHub Enterprise, use um Personal Access Token.',
@@ -215,6 +216,7 @@ const en: MainMessages = {
   github: {
     notAuthenticated: (host) => `You are not signed in to ${host}. Sign in with GitHub and try again.`,
     requestRejected: (status) => `GitHub rejected the request (${status}).`,
+    checkRunsTruncated: (shown, total) => `only the first ${shown} of ${total} check runs were read`,
     tokenRequired: 'Enter a token.',
     deviceFlowGithubOnly:
       'OAuth Device Flow is only supported on github.com. For GitHub Enterprise, use a Personal Access Token.',
@@ -330,6 +332,7 @@ const es: MainMessages = {
   github: {
     notAuthenticated: (host) => `No has iniciado sesión en ${host}. Inicia sesión con GitHub e inténtalo de nuevo.`,
     requestRejected: (status) => `GitHub rechazó la solicitud (${status}).`,
+    checkRunsTruncated: (shown, total) => `solo se leyeron los primeros ${shown} de ${total} check runs`,
     tokenRequired: 'Introduce un token.',
     deviceFlowGithubOnly:
       'OAuth Device Flow solo es compatible con github.com. Para GitHub Enterprise, usa un Personal Access Token.',

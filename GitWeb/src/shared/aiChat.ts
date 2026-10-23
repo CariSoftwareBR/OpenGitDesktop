@@ -106,6 +106,18 @@ export const TOOL_CATALOG: ToolDefinition[] = [
     }
   },
   {
+    name: 'check_pull_request_status',
+    description:
+      'Consulta no GitHub, ao vivo, se um pull request já pode ser mergeado: estado de merge (mergeable_state), checks/CI do último commit (em andamento, ok, falhou), reviews e quais checks e aprovações as regras da branch exigem. Use quando o merge vier bloqueado pelas regras de proteção, quando o usuário perguntar se os checks já passaram ou se o PR "já liberou", e antes de tentar o merge de novo.',
+    parameters: {
+      type: 'object',
+      properties: {
+        pull_request_number: { type: 'number', description: 'Número do PR (ex: 123).' }
+      },
+      required: ['pull_request_number']
+    }
+  },
+  {
     name: 'read_commit',
     description:
       'Lê os detalhes de um commit do repositório aberto: autor, data, mensagem completa, arquivos alterados e, opcionalmente, o diff. Use esta tool (e não read_pull_request) quando o usuário falar em commit. Se o usuário citar um arquivo específico, chame com include_diff="true" e path=<arquivo> — o diff do commit inteiro é truncado e pode cortar justamente o arquivo pedido. Padrão: o último commit (HEAD).',

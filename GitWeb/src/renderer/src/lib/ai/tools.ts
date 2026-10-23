@@ -4,6 +4,8 @@ import { usePullRequestStore } from '../../store/pullRequestStore'
 import { getActiveAiConfig } from '../../store/aiStore'
 import { generateCommitMessage } from './commitMessage'
 import { generateConflictResolution } from './conflictResolution'
+import { formatPullRequestStatus } from './prStatus'
+import { directPushBlock } from '../branchProtection'
 import { isConflicted, type BranchIntegration, type BranchIntegrationReport, type StatusEntry } from '../../../../shared/git'
 import { parseConflictBlocks, renderResolvedWithChoices, type ConflictBlock, type ConflictResolutionChoice } from '../conflicts'
 import type { ToolCallRequest } from '../../../../shared/aiChat'
@@ -304,6 +306,16 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       }
     }
 
+    case 'check_pull_request_status': {
+      const number = Number(a.pull_request_number)
+      if (!number) throw new Error(t.paramRequired('pull_request_number'))
+      const { owner, repo } = requireGitHubRemote()
+      return {
+        preview: { headline: t.prStatusHeadline(number), fields: [{ label: 'Remote', value: `${owner}/${repo}` }] },
+        resolvedArgs: a
+      }
+    }
+
     case 'read_commit': {
       const ref = a.ref || 'HEAD'
       const repoPath = await requireCurrentRepo()
@@ -536,6 +548,13 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       const status = await window.api.git.status(repoPath)
       if (status.entries.some(isConflicted)) {
         throw new Error(t.unresolvedConflicts)
+      }
+      // Before the approval card, so the model hears it and can offer
+      // create_branch instead of the user approving a commit that cannot land.
+      const block = await directPushBlock(status)
+      if (block) {
+        const { branch, rules } = block
+        throw new Error(getT().stores.protectedBranchBlocked(branch, rules.requiresPullRequest, (rules.requiredChecks ?? []).join(', ')))
       }
 
       const staged: StatusEntry[] = []
@@ -1062,6 +1081,12 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string> {
       }
 
       return lines.join('\n')
+    }
+
+    case 'check_pull_request_status': {
+      const { host, owner, repo: repoName } = requireGitHubRemote()
+      const status = await window.api.github.getPullRequestStatus(host, owner, repoName, Number(a.pull_request_number))
+      return formatPullRequestStatus(status, t)
     }
 
     case 'read_commit': {

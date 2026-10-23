@@ -1,16 +1,21 @@
-import { apiBaseForHost, credentialKey, nextPageUrl } from '../shared/githubRemote'
+import { apiBaseForHost, credentialKey, graphqlUrlForHost, nextPageUrl } from '../shared/githubRemote'
 import { getSecret, saveSecret, deleteSecret } from './credentials'
 import { httpFetch } from './httpFetch'
 import { tMain } from './i18n'
 import type {
+  BranchRules,
   CreatePullRequestInput,
   GitHubRepoSummary,
   GitHubUser,
   MergeMethod,
   PullRequest,
+  PullRequestCheck,
   PullRequestComment,
   PullRequestFile,
-  PullRequestState
+  PullRequestReviewSummary,
+  PullRequestState,
+  PullRequestStatus,
+  ReviewDecision
 } from '../shared/github'
 
 // Every GitHub REST call runs here, in main, so the access token never crosses
@@ -40,11 +45,16 @@ async function requireToken(host: string): Promise<string> {
   return token
 }
 
-async function request<T>(host: string, path: string, token: string, init?: RequestInit): Promise<T> {
-  return (await send<T>(`${apiBaseForHost(host)}${path}`, token, init)).data
+async function request<T>(host: string, path: string, token: string, init?: RequestInit, timeoutMs?: number): Promise<T> {
+  return (await send<T>(`${apiBaseForHost(host)}${path}`, token, init, timeoutMs)).data
 }
 
-async function send<T>(url: string, token: string, init?: RequestInit): Promise<{ data: T; next: string | null }> {
+async function send<T>(
+  url: string,
+  token: string,
+  init?: RequestInit,
+  timeoutMs?: number
+): Promise<{ data: T; next: string | null }> {
   const response = await httpFetch(url, {
     // GitHub answers GETs with "Cache-Control: private, max-age=60" and
     // Chromium's net.fetch honours it, so without this a list re-read right
@@ -62,7 +72,7 @@ async function send<T>(url: string, token: string, init?: RequestInit): Promise<
       'Cache-Control': 'no-cache',
       ...init?.headers
     }
-  })
+  }, timeoutMs ? { timeoutMs } : undefined)
 
   if (!response.ok) {
     let message = tMain().github.requestRejected(response.status)
@@ -87,6 +97,18 @@ async function send<T>(url: string, token: string, init?: RequestInit): Promise<
   const next = nextPageUrl(response.headers.get('link'))
   if (response.status === 204) return { data: undefined as T, next }
   return { data: (await response.json()) as T, next }
+}
+
+/** GraphQL answers 200 even on failure, with the reasons in `errors`. */
+async function graphql<T>(host: string, token: string, query: string, variables: Record<string, unknown>): Promise<T> {
+  const { data } = await send<{ data?: T; errors?: { message: string }[] }>(graphqlUrlForHost(host), token, {
+    method: 'POST',
+    body: JSON.stringify({ query, variables })
+  })
+  if (data.errors?.length || !data.data) {
+    throw new GitHubApiError(data.errors?.map((e) => e.message).join(' — ') || tMain().github.requestRejected(200), 200)
+  }
+  return data.data
 }
 
 /**
@@ -275,6 +297,194 @@ export async function getPullRequest(
     if (retried) return toPullRequest(retried)
   }
   return toPullRequest(pr)
+}
+
+interface ApiCheckRun {
+  name: string
+  status: string
+  conclusion: string | null
+  html_url: string | null
+  started_at: string | null
+}
+
+interface ApiCommitStatus {
+  context: string
+  state: 'pending' | 'success' | 'failure' | 'error'
+  target_url: string | null
+}
+
+interface ApiRule {
+  type: string
+  parameters?: {
+    required_status_checks?: { context: string }[]
+    required_approving_review_count?: number
+  }
+}
+
+interface ApiBranchProtection {
+  required_pull_request_reviews?: { required_approving_review_count?: number } | null
+}
+
+interface ApiBranch {
+  protection?: {
+    required_status_checks?: { contexts?: string[]; checks?: { context: string }[] } | null
+  }
+}
+
+/**
+ * What the branch demands of changes headed into it. Requirements may come
+ * from rulesets, classic protection, or both; any of the reads may be refused
+ * (the protection endpoint is admin-only), so this never throws and leaves
+ * null for what no read could establish.
+ */
+async function readBranchRules(
+  host: string,
+  token: string,
+  owner: string,
+  repo: string,
+  branchName: string,
+  timeoutMs?: number
+): Promise<BranchRules> {
+  const base = `/repos/${owner}/${repo}`
+  const branch = branchName.split('/').map(encodeURIComponent).join('/')
+  const [rules, branchInfo, protection] = await Promise.allSettled([
+    request<ApiRule[]>(host, `${base}/rules/branches/${branch}`, token, undefined, timeoutMs),
+    request<ApiBranch>(host, `${base}/branches/${branch}`, token, undefined, timeoutMs),
+    // Admin-only: the one place classic protection states its review rule.
+    request<ApiBranchProtection>(host, `${base}/branches/${branch}/protection`, token, undefined, timeoutMs)
+  ])
+
+  let requiresPullRequest = false
+  let requiredChecks: string[] | null = null
+  let requiredApprovals: number | null = null
+  if (rules.status === 'fulfilled') {
+    requiredChecks = []
+    for (const rule of rules.value) {
+      if (rule.type === 'required_status_checks') {
+        requiredChecks.push(...(rule.parameters?.required_status_checks ?? []).map((c) => c.context))
+      } else if (rule.type === 'pull_request') {
+        requiresPullRequest = true
+        const count = rule.parameters?.required_approving_review_count ?? 0
+        requiredApprovals = Math.max(requiredApprovals ?? 0, count)
+      }
+    }
+  }
+  if (branchInfo.status === 'fulfilled') {
+    const classic = branchInfo.value.protection?.required_status_checks
+    const contexts = [...(classic?.contexts ?? []), ...(classic?.checks ?? []).map((c) => c.context)]
+    requiredChecks = [...(requiredChecks ?? []), ...contexts]
+  }
+  if (protection.status === 'fulfilled' && protection.value.required_pull_request_reviews) {
+    requiresPullRequest = true
+    const count = protection.value.required_pull_request_reviews.required_approving_review_count ?? 0
+    requiredApprovals = Math.max(requiredApprovals ?? 0, count)
+  }
+
+  return { requiresPullRequest, requiredChecks: requiredChecks ? [...new Set(requiredChecks)] : null, requiredApprovals }
+}
+
+// Asked on every commit, in front of the user: a slow or absent network must
+// cost a few seconds, not the 30 s default, before the commit goes ahead.
+const BRANCH_RULES_TIMEOUT_MS = 5_000
+
+export async function getBranchRules(host: string, owner: string, repo: string, branch: string): Promise<BranchRules> {
+  return readBranchRules(host, await requireToken(host), owner, repo, branch, BRANCH_RULES_TIMEOUT_MS)
+}
+
+/**
+ * Everything that decides whether the merge button is green: mergeable_state,
+ * the head commit's check runs and commit statuses, the reviews, and what the
+ * base branch requires. Each side read is allowed to fail on its own — a
+ * fine-grained token without "Checks" access must still get the reviews back.
+ */
+export async function getPullRequestStatus(
+  host: string,
+  owner: string,
+  repo: string,
+  number: number
+): Promise<PullRequestStatus> {
+  const pr = await getPullRequest(host, owner, repo, number)
+  const token = await requireToken(host)
+  const base = `/repos/${owner}/${repo}`
+
+  const pendingRules = readBranchRules(host, token, owner, repo, pr.baseRef)
+  const [runs, statuses, reviews, decision] = await Promise.allSettled([
+    request<{ total_count: number; check_runs: ApiCheckRun[] }>(host, `${base}/commits/${pr.headSha}/check-runs?per_page=100`, token),
+    request<{ statuses: ApiCommitStatus[] }>(host, `${base}/commits/${pr.headSha}/status?per_page=100`, token),
+    requestAll<{ user: { login: string } | null; state: string }>(host, `${base}/pulls/${number}/reviews?per_page=100`, token),
+    graphql<{ repository: { pullRequest: { reviewDecision: Exclude<ReviewDecision, 'NOT_REQUIRED'> | null } | null } | null }>(
+      host,
+      token,
+      'query($owner: String!, $repo: String!, $number: Int!) { repository(owner: $owner, name: $repo) { pullRequest(number: $number) { reviewDecision } } }',
+      { owner, repo, number }
+    )
+  ])
+
+  const checks: PullRequestCheck[] = []
+  const checkErrors: string[] = []
+  if (runs.status === 'fulfilled') {
+    // A workflow triggered by both push and pull_request leaves one run per
+    // event on the same commit, under the same name; the newest is the one
+    // that counts. A run not started yet (null) is newer than any started one.
+    const newest = new Map<string, ApiCheckRun>()
+    for (const r of runs.value.check_runs) {
+      const kept = newest.get(r.name)
+      const newer = !kept || (kept.started_at !== null && (r.started_at === null || r.started_at > kept.started_at))
+      if (newer) newest.set(r.name, r)
+    }
+    for (const r of newest.values()) {
+      checks.push({ name: r.name, status: r.status, conclusion: r.conclusion, url: r.html_url })
+    }
+    if (runs.value.total_count > runs.value.check_runs.length) {
+      checkErrors.push(tMain().github.checkRunsTruncated(runs.value.check_runs.length, runs.value.total_count))
+    }
+  } else {
+    checkErrors.push(String(runs.reason?.message ?? runs.reason))
+  }
+  // The combined status already holds only the latest state per context.
+  if (statuses.status === 'fulfilled') {
+    for (const s of statuses.value.statuses) {
+      const pending = s.state === 'pending'
+      checks.push({
+        name: s.context,
+        status: pending ? 'in_progress' : 'completed',
+        conclusion: pending ? null : s.state,
+        url: s.target_url
+      })
+    }
+  } else {
+    checkErrors.push(String(statuses.reason?.message ?? statuses.reason))
+  }
+
+  // Reviews come oldest first. A plain comment does not withdraw an earlier
+  // approval or change request, so it only counts when it is all there is.
+  const latestReview = new Map<string, PullRequestReviewSummary>()
+  if (reviews.status === 'fulfilled') {
+    for (const r of reviews.value) {
+      if (!r.user || r.state === 'PENDING') continue
+      const previous = latestReview.get(r.user.login)
+      if (r.state === 'COMMENTED' && previous && previous.state !== 'COMMENTED') continue
+      latestReview.set(r.user.login, { authorLogin: r.user.login, state: r.state })
+    }
+  }
+  const reviewsError = reviews.status === 'rejected' ? String(reviews.reason?.message ?? reviews.reason) : null
+
+  let reviewDecision: ReviewDecision | null = null
+  if (decision.status === 'fulfilled' && decision.value.repository?.pullRequest) {
+    reviewDecision = decision.value.repository.pullRequest.reviewDecision ?? 'NOT_REQUIRED'
+  }
+  const rules = await pendingRules
+
+  return {
+    pr,
+    checks,
+    checksError: checkErrors.length > 0 ? checkErrors.join(' — ') : null,
+    reviews: [...latestReview.values()],
+    reviewsError,
+    reviewDecision,
+    requiredChecks: rules.requiredChecks,
+    requiredApprovals: rules.requiredApprovals
+  }
 }
 
 export async function createPullRequest(

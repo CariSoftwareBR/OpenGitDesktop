@@ -208,6 +208,7 @@ const PR_TOOL_NAMES = new Set([
   'create_pull_request',
   'list_pull_requests',
   'read_pull_request',
+  'check_pull_request_status',
   'merge_pull_request',
   'review_pull_request',
   'comment_pull_request',

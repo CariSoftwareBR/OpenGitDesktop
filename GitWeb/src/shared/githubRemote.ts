@@ -34,6 +34,11 @@ export function apiBaseForHost(host: string): string {
   return normalizeHost(host) === 'github.com' ? 'https://api.github.com' : `https://${normalizeHost(host)}/api/v3`
 }
 
+/** GraphQL lives beside REST on github.com but not under /api/v3 on Enterprise Server. */
+export function graphqlUrlForHost(host: string): string {
+  return normalizeHost(host) === 'github.com' ? 'https://api.github.com/graphql' : `https://${normalizeHost(host)}/api/graphql`
+}
+
 // Key used to persist a GitHub token (PAT or OAuth) via the secure credential
 // store — shared so main (git CLI auth injection) and renderer (REST API
 // login) always resolve the same secret for a given host.

@@ -289,6 +289,12 @@ export function registerIpcHandlers(): void {
   handle('github:getPullRequest', (_e, host: string, owner: string, repo: string, number: number) =>
     githubApi.getPullRequest(host, owner, repo, number)
   )
+  handle('github:getBranchRules', (_e, host: string, owner: string, repo: string, branch: string) =>
+    githubApi.getBranchRules(host, owner, repo, branch)
+  )
+  handle('github:getPullRequestStatus', (_e, host: string, owner: string, repo: string, number: number) =>
+    githubApi.getPullRequestStatus(host, owner, repo, number)
+  )
   handle('github:createPullRequest', (_e, host: string, owner: string, repo: string, input: CreatePullRequestInput) =>
     githubApi.createPullRequest(host, owner, repo, input)
   )

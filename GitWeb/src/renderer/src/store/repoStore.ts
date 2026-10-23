@@ -22,6 +22,7 @@ import {
 } from '../lib/recentRepoScan'
 import { useAppSettingsStore } from './appSettingsStore'
 import { getT } from '../lib/i18n'
+import { directPushBlock } from '../lib/branchProtection'
 import { extractHunkPatch, parseFileDiff } from '../../../shared/patch'
 
 type ViewName = 'changes' | 'history' | 'stash' | 'pullRequests' | 'dashboard' | 'settings' | 'about'
@@ -614,6 +615,15 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     if (!currentRepoPath) return
     set({ isBusy: true, error: null })
     try {
+      // Never commit onto a branch that would refuse the push: the commit
+      // would be stranded locally, ahead of a remote it can never reach.
+      const block = await directPushBlock(get().status)
+      if (block) {
+        const { branch, rules } = block
+        set({ error: getT().stores.protectedBranchBlocked(branch, rules.requiresPullRequest, (rules.requiredChecks ?? []).join(', ')) })
+        return
+      }
+
       await window.api.git.commit(summary, description, currentRepoPath)
       set({ selectedFile: null, diffText: '' })
       await Promise.all([get().refreshStatus(), get().refreshLog()])

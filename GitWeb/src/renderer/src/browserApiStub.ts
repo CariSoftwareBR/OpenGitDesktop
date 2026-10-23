@@ -261,6 +261,12 @@ function installBrowserApiStub(): void {
       getPullRequest: async () => {
         throw new Error(GITHUB_UNAVAILABLE)
       },
+      getBranchRules: async () => {
+        throw new Error(GITHUB_UNAVAILABLE)
+      },
+      getPullRequestStatus: async () => {
+        throw new Error(GITHUB_UNAVAILABLE)
+      },
       createPullRequest: async () => {
         throw new Error(GITHUB_UNAVAILABLE)
       },

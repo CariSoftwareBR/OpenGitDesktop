@@ -9,3 +9,4 @@
    - Comentarios con una objeción abierta ("cambia esto antes", "no estoy de acuerdo") → señálalos antes del merge.
 3. Método: `merge`, salvo que el usuario haya pedido `squash` o `rebase`, o la conversación ya use uno de ellos. Si no, no preguntes.
 4. Llama a `merge_pull_request` en esa misma respuesta. La tarjeta de aprobación ya avisa que no se puede deshacer — sin pregunta extra. Nunca escribas "voy a fusionarlo ahora" y te detengas.
+5. Merge rechazado por las reglas de protección (reviews o checks obligatorios), o el usuario pregunta si los checks ya pasaron / si la PR "ya se liberó" → `check_pull_request_status`. Di qué falta todavía (check en curso, check con fallo, aprobación). Solo llama a `merge_pull_request` otra vez cuando el estado sea `clean`, `unstable` o `has_hooks`.

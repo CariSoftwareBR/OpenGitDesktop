@@ -53,13 +53,21 @@ async function writeStore(store: SecretMap): Promise<void> {
   }
 }
 
-export async function saveSecret(key: string, value: string): Promise<void> {
-  if (!safeStorage.isEncryptionAvailable()) {
+// The synchronous safeStorage calls are deprecated since Electron 45 and gone
+// in 46. The async ones read blobs the sync API wrote, so stored tokens and
+// keys survive the switch without a migration step.
+async function requireEncryption(): Promise<void> {
+  if (!(await safeStorage.isAsyncEncryptionAvailable())) {
     throw new Error('OS-level secret encryption is not available on this machine')
   }
+}
+
+export async function saveSecret(key: string, value: string): Promise<void> {
+  await requireEncryption()
+  const blob = (await safeStorage.encryptStringAsync(value)).toString('base64')
   return withLock(STORE_LOCK_KEY, async () => {
     const store = await readStore()
-    store[key] = safeStorage.encryptString(value).toString('base64')
+    store[key] = blob
     await writeStore(store)
   })
 }
@@ -69,16 +77,26 @@ export async function getSecret(key: string): Promise<string | null> {
     const store = await readStore()
     const blob = store[key]
     if (!blob) return null
-    if (!safeStorage.isEncryptionAvailable()) {
-      throw new Error('OS-level secret encryption is not available on this machine')
-    }
+    await requireEncryption()
+    let decrypted: { result: string; shouldReEncrypt: boolean }
     try {
-      return safeStorage.decryptString(Buffer.from(blob, 'base64'))
+      decrypted = await safeStorage.decryptStringAsync(Buffer.from(blob, 'base64'))
     } catch (err) {
       throw new Error(
         `Failed to decrypt secret "${key}": ${err instanceof Error ? err.message : String(err)}`
       )
     }
+    // The OS key rotated (or a stronger one exists): store the secret again
+    // under it. Best effort — the value already read is what matters now.
+    if (decrypted.shouldReEncrypt) {
+      try {
+        store[key] = (await safeStorage.encryptStringAsync(decrypted.result)).toString('base64')
+        await writeStore(store)
+      } catch {
+        // keep the old blob; it still decrypts
+      }
+    }
+    return decrypted.result
   })
 }
 
