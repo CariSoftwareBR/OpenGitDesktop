@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -31,7 +31,7 @@ import ErrorExplainButton from '../components/ErrorExplainButton'
 import { groupChatMessages, type ChatRenderItem } from '../lib/ai/chatGrouping'
 import { captureDust, prefersReducedMotion } from '../lib/disintegrate'
 import { isEmptyInvestigationMarkdown } from '../lib/ai/commitInvestigation'
-import { toolSeverity, type ToolSeverity } from '../lib/ai/tools'
+import { toolSeverity, type ToolPreview, type ToolSeverity } from '../lib/ai/tools'
 import { openAiSettings } from '../lib/openAiSettings'
 import { useAiUi } from '../lib/useAiUi'
 
@@ -70,13 +70,30 @@ function BranchQuickReplies(): JSX.Element | null {
           key={b.name}
           onClick={() => sendMessage(b.name)}
           disabled={isBusy}
-          className="btn-secondary h-7 gap-1 px-2.5 text-caption"
+          className="btn-secondary h-7 min-w-0 max-w-full gap-1 px-2.5 text-caption"
+          title={b.name}
         >
-          <GitBranch size={11} /> {b.name}
+          <GitBranch size={11} className="shrink-0" /> <span className="truncate">{b.name}</span>
         </button>
       ))}
     </div>
   )
+}
+
+type PreviewFieldGroup = { block: true; field: ToolPreview['fields'][number] } | { block: false; fields: ToolPreview['fields'] }
+
+// Consecutive one-line fields share one label/value grid, so their values
+// line up and wrap inside their own column however narrow the panel gets; a
+// multi-line value (a command, a file list) breaks the run with a full-width block.
+function groupPreviewFields(fields: ToolPreview['fields']): PreviewFieldGroup[] {
+  const groups: PreviewFieldGroup[] = []
+  for (const field of fields) {
+    const last = groups[groups.length - 1]
+    if (field.value.includes('\n')) groups.push({ block: true, field })
+    else if (last && !last.block) last.fields.push(field)
+    else groups.push({ block: false, fields: [field] })
+  }
+  return groups
 }
 
 function ToolCallCard({ messageId, uiCall }: { messageId: string; uiCall: import('../store/aiStore').UiToolCall }): JSX.Element {
@@ -92,27 +109,31 @@ function ToolCallCard({ messageId, uiCall }: { messageId: string; uiCall: import
   const isReadPullRequest = uiCall.call.name === 'read_pull_request'
 
   return (
-    <div className={`rounded-md border bg-coal-raised p-3 text-body transition-colors duration-200 ${borderColor}`}>
-      <div className="flex items-center gap-2 font-medium text-primary-text">
-        {uiCall.status === 'running' && <Loader2 size={13} className="shrink-0 animate-spin text-secondary-text" />}
+    <div className={`@container min-w-0 rounded-md border bg-coal-raised p-3 text-body transition-colors duration-200 ${borderColor}`}>
+      <div className="flex items-start gap-2 font-medium text-primary-text">
+        {uiCall.status === 'running' && <Loader2 size={13} className="mt-[3px] shrink-0 animate-spin text-secondary-text" />}
         {uiCall.status === 'pending' && severity === 'danger' && (
-          <AlertTriangle size={13} className="shrink-0 text-danger-red" aria-hidden />
+          <AlertTriangle size={13} className="mt-[3px] shrink-0 text-danger-red" aria-hidden />
         )}
-        {uiCall.preview.headline}
+        <span className="min-w-0 [overflow-wrap:anywhere]">{uiCall.preview.headline}</span>
       </div>
-      {uiCall.preview.fields.map((f) =>
-        f.value.includes('\n') ? (
-          <div key={f.label} className="mt-2 text-caption">
-            <div className="mb-1 text-secondary-text">{f.label}</div>
-            <div className="rounded-md border border-default-border bg-midnight-base px-2.5 py-2 text-body text-primary-text">
-              <Markdown text={f.value} />
+      {groupPreviewFields(uiCall.preview.fields).map((group, index) =>
+        group.block ? (
+          <div key={group.field.label} className="mt-2.5 text-caption">
+            <div className="mb-1 text-secondary-text">{group.field.label}</div>
+            <div className="min-w-0 overflow-x-auto rounded-md border border-default-border bg-midnight-base px-2.5 py-2 text-body text-primary-text">
+              <Markdown text={group.field.value} />
             </div>
           </div>
         ) : (
-          <div key={f.label} className="mt-1 flex justify-between gap-3 text-caption text-secondary-text">
-            <span>{f.label}</span>
-            <span className="whitespace-pre-wrap text-right text-primary-text">{f.value}</span>
-          </div>
+          <dl key={index} className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-caption">
+            {group.fields.map((f) => (
+              <Fragment key={f.label}>
+                <dt className="text-secondary-text">{f.label}</dt>
+                <dd className="min-w-0 whitespace-pre-wrap text-primary-text [overflow-wrap:anywhere]">{f.value}</dd>
+              </Fragment>
+            ))}
+          </dl>
         )
       )}
       {uiCall.preview.warning && (
@@ -122,17 +143,23 @@ function ToolCallCard({ messageId, uiCall }: { messageId: string; uiCall: import
           }`}
           role="status"
         >
-          <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {uiCall.preview.warning}
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+          <span className="min-w-0 [overflow-wrap:anywhere]">{uiCall.preview.warning}</span>
         </div>
       )}
 
       {uiCall.status === 'pending' && (
-        <div className="mt-2.5 flex flex-wrap gap-2">
-          <button onClick={() => approveToolCall(messageId, uiCall.call.id)} className={approveClass}>
-            <Check size={13} /> {approveLabel}
-          </button>
-          <button onClick={() => cancelToolCall(messageId, uiCall.call.id)} className="btn-ghost h-8 px-3">
+        // Compact on the right when the card is wide; in a narrow panel they
+        // share the row, and stack full-width once their labels no longer fit.
+        <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-default-border pt-3">
+          <button
+            onClick={() => cancelToolCall(messageId, uiCall.call.id)}
+            className="btn-secondary h-8 flex-auto px-3 @[22rem]:flex-none"
+          >
             <X size={13} /> {ui.toolCancel}
+          </button>
+          <button onClick={() => approveToolCall(messageId, uiCall.call.id)} className={`${approveClass} flex-auto @[22rem]:flex-none`}>
+            <Check size={13} /> {approveLabel}
           </button>
         </div>
       )}
@@ -202,7 +229,7 @@ function ThinkingBubble(): JSX.Element {
   return (
     <div className="flex items-start gap-2">
       <ChatAvatar role="assistant" />
-      <div className="flex items-center gap-2 rounded-lg border border-default-border bg-obsidian-panel px-3.5 py-2.5 text-body">
+      <div className="flex items-center pt-[3px] text-body">
         <span className="agent-busy-shimmer leading-[22px]" role="status">
           {ui.chatThinking}
         </span>
@@ -375,7 +402,9 @@ function AiChatView(): JSX.Element {
   // moves it, clicking an actual button in it still works normally.
   function handleHeaderMouseDown(e: React.MouseEvent<HTMLDivElement>): void {
     if (!floating) return
-    if ((e.target as HTMLElement).closest('button')) return
+    // The effort popover lives inside the header too: dragging its slider must
+    // not drag the window.
+    if ((e.target as HTMLElement).closest('button, input, [role="dialog"]')) return
     e.preventDefault()
     const startX = e.clientX
     const startY = e.clientY
@@ -470,7 +499,7 @@ function AiChatView(): JSX.Element {
         />
       )}
       <div
-        className={`flex items-center gap-1 border-b border-default-border p-2 ${floating ? 'cursor-move' : ''}`}
+        className={`relative flex min-w-0 items-center gap-1 border-b border-default-border p-2 ${floating ? 'cursor-move' : ''}`}
         onMouseDown={handleHeaderMouseDown}
       >
             <button
@@ -590,11 +619,11 @@ function AiChatView(): JSX.Element {
               {displayItems.map((item, itemIdx) =>
                 item.kind === 'group' ? (
                   // Same row shape as an assistant message (avatar gutter +
-                  // 85% column) so the group card lines up with the bubbles
+                  // full column) so the group card lines up with the replies
                   // and tool cards above and below it.
                   <div key={item.id} className="flex items-start gap-2">
                     <ChatAvatar role="assistant" />
-                    <div className="flex min-w-0 max-w-[85%] flex-1 flex-col items-start gap-2">
+                    <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
                       <ToolRunGroup
                         toolName={item.toolName}
                         steps={item.steps}
@@ -610,7 +639,9 @@ function AiChatView(): JSX.Element {
                   >
                     <ChatAvatar role={item.message.role === 'user' ? 'user' : 'assistant'} />
                     <div
-                      className={`flex min-w-0 max-w-[85%] flex-col gap-2 ${item.message.role === 'user' ? 'items-end' : 'items-start'}`}
+                      className={`flex min-w-0 flex-col gap-2 ${
+                        item.message.role === 'user' ? 'max-w-[85%] items-end' : 'flex-1 items-start'
+                      }`}
                     >
                       {item.message.investigation && (
                         <InvestigationRunGroup
@@ -623,11 +654,15 @@ function AiChatView(): JSX.Element {
                       {item.message.content &&
                         !(item.message.investigation && isEmptyInvestigationMarkdown(item.message.content)) &&
                         (item.message.role === 'user' ? (
-                          <div className="whitespace-pre-wrap rounded-lg border border-command-blue/30 bg-command-blue-soft px-3 py-2 text-body text-primary-text">
+                          <div className="min-w-0 max-w-full whitespace-pre-wrap rounded-lg border border-command-blue/30 bg-command-blue-soft px-3 py-2 text-body text-primary-text [overflow-wrap:anywhere]">
                             {item.message.content}
                           </div>
                         ) : (
-                          <div className="rounded-lg border border-default-border bg-midnight-base px-3 py-2 text-body text-primary-text">
+                          // Replies are plain prose on the panel, no box: the user's
+                          // bubble and the tool cards are what stand out. pt-[3px]
+                          // centers the first line on the avatar; max-w-full keeps
+                          // a wide code block or table scrolling inside the column.
+                          <div className="min-w-0 max-w-full pt-[3px] text-body leading-relaxed text-primary-text">
                             <Markdown text={item.message.content} />
                           </div>
                         ))}

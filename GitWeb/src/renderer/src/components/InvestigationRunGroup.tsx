@@ -141,7 +141,7 @@ function InvestigationRunGroup({
                 <li key={finding.id} className="flex min-w-0 flex-col gap-1 rounded-sm border border-default-border px-2 py-1.5">
                   <div className="flex min-w-0 items-start gap-2">
                     <Bug size={13} className="mt-0.5 shrink-0 text-danger-red" aria-hidden />
-                    <span className="min-w-0 flex-1 text-caption text-primary-text">
+                    <span className="min-w-0 flex-1 text-caption text-primary-text [overflow-wrap:anywhere]">
                       <span className="font-medium">[{finding.priority}]</span> {finding.path}
                       {finding.line != null ? `:${finding.line}` : ''} — {finding.claim}
                     </span>
@@ -166,7 +166,7 @@ function InvestigationRunGroup({
             : problemPaths.map((path) => (
                 <li key={path} className="flex min-w-0 items-center gap-2 rounded-sm px-1 py-0.5 text-caption text-primary-text" title={path}>
                   <Bug size={13} className="shrink-0 text-danger-red" aria-hidden />
-                  <span className="min-w-0 break-words">{path}</span>
+                  <span className="min-w-0 [overflow-wrap:anywhere]">{path}</span>
                 </li>
               ))}
         </ul>

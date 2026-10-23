@@ -13,7 +13,7 @@ function renderBlock(text: string, markdown: boolean | undefined, colorClass: st
       <Markdown text={text} />
     </div>
   ) : (
-    <div className={`whitespace-pre-wrap font-mono text-caption ${colorClass}`}>{text}</div>
+    <div className={`whitespace-pre-wrap font-mono text-caption [overflow-wrap:anywhere] ${colorClass}`}>{text}</div>
   )
 }
 

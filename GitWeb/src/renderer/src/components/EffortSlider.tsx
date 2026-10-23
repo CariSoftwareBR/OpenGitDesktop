@@ -44,7 +44,9 @@ function EffortSlider({ disabled }: { disabled?: boolean }): JSX.Element | null 
   }
 
   return (
-    <div className="relative shrink-0" ref={ref}>
+    // Not `relative`: the popover anchors to the chat header instead, so it
+    // can shrink to the panel's width rather than run off its right edge.
+    <div className="shrink-0" ref={ref}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -65,7 +67,7 @@ function EffortSlider({ disabled }: { disabled?: boolean }): JSX.Element | null 
         <div
           role="dialog"
           aria-label={ui.chatEffort}
-          className="effort-panel-in absolute left-0 top-[calc(100%+6px)] z-30 w-[300px] origin-top rounded-lg border border-default-border bg-coal-raised p-4 shadow-floating"
+          className="effort-panel-in absolute left-2 top-[calc(100%+6px)] z-30 w-[min(300px,calc(100cqw-1rem))] origin-top rounded-lg border border-default-border bg-coal-raised p-4 shadow-floating"
         >
           <div className="flex items-start gap-2">
             <Brain
