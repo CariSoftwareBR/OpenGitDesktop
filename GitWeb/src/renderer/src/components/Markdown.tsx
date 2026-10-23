@@ -144,7 +144,7 @@ function markdownComponents(
       ),
     ul: ({ children }) => <ul className="ml-4 mt-1.5 list-disc space-y-1 [&:first-child]:mt-0">{children}</ul>,
     ol: ({ children }) => <ol className="ml-4 mt-1.5 list-decimal space-y-1 [&:first-child]:mt-0">{children}</ol>,
-    li: ({ children }) => <li>{children}</li>,
+    li: ({ children }) => <li className="[overflow-wrap:anywhere]">{children}</li>,
     h1: ({ children }) => <h1 className="mt-2 text-title font-semibold text-primary-text [&:first-child]:mt-0">{children}</h1>,
     h2: ({ children }) => <h2 className="mt-2 text-title font-semibold text-primary-text [&:first-child]:mt-0">{children}</h2>,
     h3: ({ children }) => <h3 className="mt-2 font-semibold text-primary-text [&:first-child]:mt-0">{children}</h3>,

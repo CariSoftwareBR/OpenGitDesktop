@@ -884,7 +884,7 @@ async function buildUiToolCalls(calls: ToolCallRequest[]): Promise<UiToolCall[]>
       } catch (err) {
         return {
           call,
-          preview: { headline: call.name, fields: [], severity: 'read' },
+          preview: { headline: getT().tools.label[call.name] ?? call.name, fields: [], severity: 'read' },
           resolvedArgs: call.arguments,
           status: 'failed',
           result: err instanceof Error ? err.message : String(err)
