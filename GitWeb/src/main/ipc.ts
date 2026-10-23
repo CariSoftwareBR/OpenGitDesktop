@@ -24,6 +24,8 @@ import {
   getBranchDiff,
   getBranches,
   getBranchIntegration,
+  getBranchDeleteCheck,
+  deleteCheckedBranch,
   getCommitDetails,
   getCommitDiff,
   getCommitFiles,
@@ -184,6 +186,10 @@ export function registerIpcHandlers(): void {
   )
   handle('git:checkoutRemoteBranch', (_e, remoteBranch: string, cwd: string) => checkoutRemoteBranch(remoteBranch, cwd))
   handle('git:deleteBranch', (_e, name: string, cwd: string, force: boolean) => deleteBranch(name, cwd, force))
+  handle('git:branchDeleteCheck', (_e, cwd: string, name: string) => getBranchDeleteCheck(cwd, name))
+  handle('git:deleteCheckedBranch', (_e, cwd: string, name: string, expectedTip: string) =>
+    deleteCheckedBranch(cwd, name, expectedTip)
+  )
   handle('git:renameBranch', (_e, oldName: string, newName: string, cwd: string) => renameBranch(oldName, newName, cwd))
   handle('git:deleteRemoteBranch', (_e, name: string, cwd: string) => deleteRemoteBranch(name, cwd))
   handle('git:log', (_e, cwd: string, limit?: number, path?: string) => getLog(cwd, limit, path))

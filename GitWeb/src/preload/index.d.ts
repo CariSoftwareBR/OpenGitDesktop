@@ -1,6 +1,7 @@
 import type {
   BranchDeletionResult,
   BranchInfo,
+  BranchDeleteCheck,
   BranchIntegrationReport,
   CloneOutcome,
   CloneProgress,
@@ -93,6 +94,8 @@ export interface Api {
     deleteIntegratedBranches: (cwd: string, names: string[], base?: string) => Promise<BranchDeletionResult[]>
     checkoutRemoteBranch: (remoteBranch: string, cwd: string) => Promise<SwitchBranchResult>
     deleteBranch: (name: string, cwd: string, force: boolean) => Promise<void>
+    branchDeleteCheck: (cwd: string, name: string) => Promise<BranchDeleteCheck>
+    deleteCheckedBranch: (cwd: string, name: string, expectedTip: string) => Promise<void>
     renameBranch: (oldName: string, newName: string, cwd: string) => Promise<void>
     deleteRemoteBranch: (name: string, cwd: string) => Promise<void>
 

@@ -72,6 +72,21 @@ export interface BranchIntegrationReport {
   branches: BranchIntegration[]
 }
 
+/** What deleting one local branch would lose, checked against the base before asking. */
+export interface BranchDeleteCheck {
+  /** The ref the branch was compared against, e.g. "origin/main". */
+  base: string
+  branch: BranchIntegration
+  /** For 'unmerged': the commits missing from the base, newest first (capped). */
+  missingCommits: { hash: string; date: string; summary: string }[]
+  /**
+   * Commits on neither the base nor the branch's upstream: what a delete
+   * would actually lose. Null when there is no upstream (never published, or
+   * deleted on the remote) — then every missing commit lives only here.
+   */
+  localOnly: number | null
+}
+
 export interface BranchDeletionResult {
   name: string
   deleted: boolean

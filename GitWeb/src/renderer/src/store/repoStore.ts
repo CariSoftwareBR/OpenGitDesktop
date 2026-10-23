@@ -136,6 +136,8 @@ interface RepoState {
   restoreBranchStash: () => Promise<void>
   dismissBranchStashHint: () => void
   deleteBranch: (name: string, force: boolean) => Promise<boolean>
+  /** Deletes a branch the user confirmed after its delete check; false when it failed. */
+  deleteCheckedBranch: (name: string, expectedTip: string) => Promise<boolean>
   renameBranch: (oldName: string, newName: string) => Promise<void>
   forcePush: () => Promise<void>
   dismissForcePush: () => void
@@ -1037,6 +1039,22 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       if (!force && /not fully merged/i.test(message)) return false
       set({ error: message })
       return true
+    } finally {
+      set({ isBusy: false })
+    }
+  },
+
+  deleteCheckedBranch: async (name: string, expectedTip: string) => {
+    const { currentRepoPath } = get()
+    if (!currentRepoPath) return false
+    set({ isBusy: true, error: null })
+    try {
+      await window.api.git.deleteCheckedBranch(currentRepoPath, name, expectedTip)
+      await get().refreshBranches()
+      return true
+    } catch (err) {
+      set({ error: describeError(err) })
+      return false
     } finally {
       set({ isBusy: false })
     }
