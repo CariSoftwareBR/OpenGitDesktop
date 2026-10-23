@@ -302,3 +302,15 @@ export function sameRepoStatus(a: RepoStatus | null, b: RepoStatus | null): bool
 export function isHistoryRewrittenMessage(message: string): boolean {
   return allTranslations((m) => m.main.git.historyRewritten).some((text) => message.includes(text))
 }
+
+/**
+ * The branch on origin a push from here lands on, or null when the push goes
+ * somewhere else. `git push` follows the upstream, which need not share the
+ * local name (main tracking origin/master) or even live on origin (a fork's
+ * remote); with none yet, the app publishes the branch to origin as is.
+ */
+export function pushTargetBranch(status: Pick<RepoStatus, 'branch' | 'upstream'>): string | null {
+  if (!status.branch) return null
+  if (!status.upstream) return status.branch
+  return status.upstream.startsWith('origin/') ? status.upstream.slice('origin/'.length) : null
+}

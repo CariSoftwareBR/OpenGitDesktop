@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { apiBaseForHost, credentialKey, nextPageUrl, parseGitHubRemote } from '../src/shared/githubRemote'
+import { apiBaseForHost, credentialKey, graphqlUrlForHost, nextPageUrl, parseGitHubRemote } from '../src/shared/githubRemote'
 
 describe('parseGitHubRemote', () => {
   it('parses https and ssh remotes', () => {
@@ -18,6 +18,8 @@ describe('parseGitHubRemote', () => {
 
   it('uses /api/v3 for enterprise hosts and a case-insensitive credential key', () => {
     expect(apiBaseForHost('ghe.example.com')).toBe('https://ghe.example.com/api/v3')
+    expect(graphqlUrlForHost('github.com')).toBe('https://api.github.com/graphql')
+    expect(graphqlUrlForHost('ghe.example.com')).toBe('https://ghe.example.com/api/graphql')
     expect(credentialKey('GitHub.com')).toBe(credentialKey('github.com'))
   })
 })

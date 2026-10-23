@@ -9,3 +9,4 @@ Use quando o usuário pedir para mesclar (merge) um pull request.
    - Comentários com objeção em aberto ("muda isso antes", "não concordo") → aponte-os antes do merge.
 3. Método: `merge`, a não ser que o usuário tenha pedido `squash` ou `rebase`, ou a conversa já use um deles. Fora isso, não pergunte.
 4. Chame `merge_pull_request` nessa mesma resposta. O card de aprovação já avisa que não dá para desfazer — sem pergunta extra. Nunca escreva "vou mesclar agora" e pare.
+5. Merge recusado por regras de proteção (revisões ou checks obrigatórios), ou o usuário perguntou se os checks já passaram / se o PR "já liberou" → `check_pull_request_status`. Diga o que ainda falta (check em andamento, check com falha, aprovação). Só chame `merge_pull_request` de novo quando o estado for `clean`, `unstable` ou `has_hooks`.

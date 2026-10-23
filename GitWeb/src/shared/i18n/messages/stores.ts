@@ -5,6 +5,15 @@ const ptBR = {
   fileTruncated: '… (arquivo truncado)',
   emptyNewFile: '(arquivo novo vazio)',
   pushFailedAfterCommit: (error: string) => `Commit criado, mas o push falhou: ${error}`,
+  protectedBranchBlocked: (branch: string, requiresPullRequest: boolean, checks: string) => {
+    const reasons =
+      requiresPullRequest && checks
+        ? `exigem pull request e os checks ${checks}`
+        : requiresPullRequest
+          ? 'exigem pull request'
+          : `exigem que os checks ${checks} passem antes`
+    return `"${branch}" não aceita commit direto: as regras do repositório no GitHub ${reasons}, então o push seria recusado. Crie uma branch para estas alterações (elas vão junto), faça o commit nela e abra um pull request.`
+  },
   fileChangedSinceDiff: 'O arquivo mudou desde que o diff foi exibido. Confira o diff atualizado e tente de novo.',
   cannotReadHunks: 'Não foi possível ler os hunks deste diff.',
   invalidHunk: 'Hunk inválido.',
@@ -64,6 +73,15 @@ const en: M = {
   fileTruncated: '… (file truncated)',
   emptyNewFile: '(empty new file)',
   pushFailedAfterCommit: (error) => `Commit created, but the push failed: ${error}`,
+  protectedBranchBlocked: (branch, requiresPullRequest, checks) => {
+    const reasons =
+      requiresPullRequest && checks
+        ? `require a pull request and the checks ${checks}`
+        : requiresPullRequest
+          ? 'require a pull request'
+          : `require the checks ${checks} to pass first`
+    return `"${branch}" does not take direct commits: the repository rules on GitHub ${reasons}, so the push would be rejected. Create a branch for these changes (they come along), commit there and open a pull request.`
+  },
   fileChangedSinceDiff: 'The file changed since the diff was shown. Check the updated diff and try again.',
   cannotReadHunks: 'Could not read the hunks of this diff.',
   invalidHunk: 'Invalid hunk.',
@@ -120,6 +138,15 @@ const es: M = {
   fileTruncated: '… (archivo truncado)',
   emptyNewFile: '(archivo nuevo vacío)',
   pushFailedAfterCommit: (error) => `Commit creado, pero el push falló: ${error}`,
+  protectedBranchBlocked: (branch, requiresPullRequest, checks) => {
+    const reasons =
+      requiresPullRequest && checks
+        ? `exigen pull request y los checks ${checks}`
+        : requiresPullRequest
+          ? 'exigen pull request'
+          : `exigen que los checks ${checks} pasen antes`
+    return `"${branch}" no acepta commits directos: las reglas del repositorio en GitHub ${reasons}, así que el push sería rechazado. Crea una rama para estos cambios (se van con ella), haz el commit en ella y abre un pull request.`
+  },
   fileChangedSinceDiff: 'El archivo cambió desde que se mostró el diff. Revisa el diff actualizado e inténtalo de nuevo.',
   cannotReadHunks: 'No se pudieron leer los hunks de este diff.',
   invalidHunk: 'Hunk no válido.',

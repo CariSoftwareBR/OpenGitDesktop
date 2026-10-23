@@ -23,6 +23,7 @@ import type { AppSettings } from '../shared/settings'
 import type { Locale } from '../shared/i18n/locales'
 import type { DeviceFlowPollResult, DeviceFlowStart, OAuthAppInfo } from '../shared/githubAuth'
 import type {
+  BranchRules,
   CreatePullRequestInput,
   GitHubRepoSummary,
   GitHubUser,
@@ -30,7 +31,8 @@ import type {
   PullRequest,
   PullRequestComment,
   PullRequestFile,
-  PullRequestState
+  PullRequestState,
+  PullRequestStatus
 } from '../shared/github'
 import type { UpdateStatus } from '../shared/updates'
 
@@ -147,6 +149,8 @@ export interface Api {
 
     listPullRequests: (host: string, owner: string, repo: string, state: PullRequestState) => Promise<PullRequest[]>
     getPullRequest: (host: string, owner: string, repo: string, number: number) => Promise<PullRequest>
+    getBranchRules: (host: string, owner: string, repo: string, branch: string) => Promise<BranchRules>
+    getPullRequestStatus: (host: string, owner: string, repo: string, number: number) => Promise<PullRequestStatus>
     createPullRequest: (
       host: string,
       owner: string,

@@ -34,6 +34,9 @@ import { useMenuKeyboard } from '../lib/useMenuKeyboard'
 import DiffViewer from '../components/DiffViewer'
 import ConflictResolver from '../components/ConflictResolver'
 import ConfirmDialog from '../components/ConfirmDialog'
+import ProtectedBranchDialog from '../components/ProtectedBranchDialog'
+import { directPushBlock } from '../lib/branchProtection'
+import type { BranchRules } from '../../../shared/github'
 import FileContextMenu, { type FileContextMenuTarget } from '../components/FileContextMenu'
 import { basename } from '../lib/path'
 import { isConflicted, type StatusEntry } from '../../../shared/git'
@@ -296,6 +299,8 @@ function ChangesView(): JSX.Element {
   const discardPaths = useRepoStore((s) => s.discardPaths)
   const ignorePatterns = useRepoStore((s) => s.ignorePatterns)
   const commitChanges = useRepoStore((s) => s.commitChanges)
+  const createBranch = useRepoStore((s) => s.createBranch)
+  const [protectedBlock, setProtectedBlock] = useState<{ branch: string; rules: BranchRules } | null>(null)
   const undoLastCommit = useRepoStore((s) => s.undoLastCommit)
   const amendCommit = useRepoStore((s) => s.amendCommit)
   const applyHunk = useRepoStore((s) => s.applyHunk)
@@ -562,6 +567,14 @@ function ChangesView(): JSX.Element {
     setCommitting(true)
     setAiError(null)
     try {
+      // Asked here as well as in the store so the answer is a dialog that
+      // offers the way out, not just an error banner.
+      const block = await directPushBlock(status)
+      if (block) {
+        setProtectedBlock(block)
+        return
+      }
+
       // Snapshot the staged rows before committing. When they leave the list
       // the snapshot freezes in their place (layout effect below), and they
       // only turn to dust once the whole operation — push included — is done.
@@ -1407,6 +1420,17 @@ function ChangesView(): JSX.Element {
         </div>
       </div>
 
+      <ProtectedBranchDialog
+        block={protectedBlock}
+        existingBranches={branches.map((b) => b.name)}
+        onCancel={() => setProtectedBlock(null)}
+        onCreateBranch={(name) => {
+          setProtectedBlock(null)
+          // checkout -b keeps the working tree and the index: the staged files
+          // and the message typed so far are all still there on the new branch.
+          void createBranch(name, true)
+        }}
+      />
       <ConfirmDialog
         open={confirm?.type === 'abort'}
         title={t.abortMergeTitle}

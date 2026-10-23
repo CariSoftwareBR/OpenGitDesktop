@@ -55,6 +55,51 @@ export interface PullRequestComment {
   createdAt: string
 }
 
+/** A check run or a commit status on the PR's head commit, in one shape. */
+export interface PullRequestCheck {
+  name: string
+  /** 'queued' | 'in_progress' | 'completed' (commit statuses: 'pending' maps to 'in_progress'). */
+  status: string
+  /** 'success' | 'failure' | 'neutral' | 'skipped' | 'cancelled' | 'timed_out' | 'error' | …; null while running. */
+  conclusion: string | null
+  url: string | null
+}
+
+export interface PullRequestReviewSummary {
+  authorLogin: string
+  /** 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED' */
+  state: string
+}
+
+/** What a branch demands before changes land on it (rulesets + classic protection). */
+export interface BranchRules {
+  /** Changes may only arrive through a pull request. */
+  requiresPullRequest: boolean
+  /** Null when neither rulesets nor protection could be read. */
+  requiredChecks: string[] | null
+  requiredApprovals: number | null
+}
+
+/** GraphQL's reviewDecision, with its "no review rule applies" null spelled out. */
+export type ReviewDecision = 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | 'NOT_REQUIRED'
+
+/** What decides whether a PR can be merged right now. */
+export interface PullRequestStatus {
+  pr: PullRequest
+  checks: PullRequestCheck[]
+  /** Set when the checks or statuses could not be read (e.g. a token without that permission). */
+  checksError: string | null
+  /** Latest review per reviewer. */
+  reviews: PullRequestReviewSummary[]
+  /** Set when the reviews could not be read — an empty list then means "unknown", not "no approvals". */
+  reviewsError: string | null
+  /** GitHub's own verdict on reviews, readable without admin; null when it could not be read. */
+  reviewDecision: ReviewDecision | null
+  /** From branch protection and rulesets on the base branch; null when unreadable. */
+  requiredChecks: string[] | null
+  requiredApprovals: number | null
+}
+
 export interface CreatePullRequestInput {
   title: string
   body: string
