@@ -1,11 +1,23 @@
+import { create } from 'zustand'
 import { useRepoStore } from '../store/repoStore'
 
 export const AI_SETTINGS_SECTION_ID = 'configuracoes-ia'
 
-/** Opens Settings and scrolls to the unified AI section. */
-export function openAiSettings(): void {
+export type SettingsTab = 'general' | 'ai' | 'appearance'
+
+/** The Settings tab on screen; kept across visits so returning lands where the user left. */
+export const useSettingsTabStore = create<{ tab: SettingsTab; setTab: (tab: SettingsTab) => void }>((set) => ({
+  tab: 'general',
+  setTab: (tab) => set({ tab })
+}))
+
+/** Opens Settings on a given tab. */
+export function openSettings(tab: SettingsTab): void {
+  useSettingsTabStore.getState().setTab(tab)
   useRepoStore.getState().setView('settings')
-  window.setTimeout(() => {
-    document.getElementById(AI_SETTINGS_SECTION_ID)?.scrollIntoView({ block: 'start' })
-  }, 0)
+}
+
+/** Opens Settings on the AI tab. */
+export function openAiSettings(): void {
+  openSettings('ai')
 }

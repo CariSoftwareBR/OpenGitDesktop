@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom'
 import {
   Archive,
   ArrowLeft,
-  Bot,
   Check,
   ChevronDown,
   Clock,
@@ -30,10 +29,10 @@ import { useMenuKeyboard } from '../lib/useMenuKeyboard'
 import { NARROW_LAYOUT_QUERY, useMediaQuery } from '../lib/useMediaQuery'
 import { updateStatusLabel, useUpdateStatus } from '../lib/useUpdateStatus'
 import { useRepoStore } from '../store/repoStore'
-import { useAiStore } from '../store/aiStore'
-import { useAiUi } from '../lib/useAiUi'
 import { useGithubAuthStore } from '../store/githubAuthStore'
 import ConfirmDialog, { PromptDialog } from './ConfirmDialog'
+import Github from './icons/Github'
+import { openSettings } from '../lib/openAiSettings'
 import { useT } from '../lib/i18n'
 import type { Messages } from '../../../shared/i18n'
 
@@ -48,9 +47,8 @@ function timeAgo(t: Messages['topBar'], timestamp: number | null): string {
 }
 
 const STATUS_TRIGGER =
-  'flex h-[42px] items-center gap-2 px-3 text-left transition-[background-color,transform] duration-100 hover:bg-hover-overlay active:bg-primary-text/15 disabled:opacity-40'
-const CARD_TRIGGER =
-  'flex h-[42px] items-center gap-2 rounded-md border border-default-border bg-coal-raised px-3 text-left transition-[background-color,transform] duration-100 hover:bg-hover-overlay hover:border-primary-text/25 active:scale-[0.98] active:bg-primary-text/15 disabled:opacity-40'
+  'flex h-[46px] items-center gap-3 px-4 text-left transition-[background-color,transform] duration-100 hover:bg-hover-overlay active:bg-primary-text/15 disabled:opacity-40'
+const CHEVRON = 'ml-1 shrink-0 text-tertiary-text transition-transform duration-200'
 // Portaled to document.body (see RepoCard/BranchCard) and positioned via
 // inline style rather than being an absolute descendant of the trigger —
 // the header row needs overflow-x-auto for narrow layouts, and per the CSS
@@ -129,12 +127,12 @@ function RepoCard({ compact }: { compact: boolean }): JSX.Element {
         {compact ? (
           <span title={name} className="truncate text-body font-medium text-primary-text">{name}</span>
         ) : (
-          <span className="flex flex-col leading-tight">
+          <span className="flex flex-col gap-0.5 leading-tight">
             <span className="text-label uppercase tracking-wide text-tertiary-text">{t.currentRepo}</span>
-            <span title={name} className="max-w-40 truncate text-body font-medium text-primary-text">{name}</span>
+            <span title={name} className="max-w-48 truncate text-body font-medium text-primary-text">{name}</span>
           </span>
         )}
-        <ChevronDown size={14} className="shrink-0 text-tertiary-text" aria-hidden />
+        <ChevronDown size={14} className={`${CHEVRON} ${open ? 'rotate-180' : ''}`} aria-hidden />
       </button>
       {open &&
         menuPos &&
@@ -270,14 +268,14 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
             {currentBranch}
           </span>
         ) : (
-          <span className="flex flex-col leading-tight">
+          <span className="flex flex-col gap-0.5 leading-tight">
             <span className="text-label uppercase tracking-wide text-tertiary-text">{t.currentBranch}</span>
-            <span title={currentBranch} className="max-w-32 truncate text-body font-medium text-primary-text">
+            <span title={currentBranch} className="max-w-60 truncate text-body font-medium text-primary-text">
               {currentBranch}
             </span>
           </span>
         )}
-        <ChevronDown size={14} className="shrink-0 text-tertiary-text" aria-hidden />
+        <ChevronDown size={14} className={`${CHEVRON} ${open ? 'rotate-180' : ''}`} aria-hidden />
       </button>
       {open &&
         menuPos &&
@@ -530,7 +528,7 @@ function SyncCard({ compact }: { compact: boolean }): JSX.Element {
       {forcePushDialog}
       <button
         type="button"
-        className="flex h-[42px] w-[42px] items-center justify-center text-secondary-text transition-[background-color,transform] duration-100 hover:bg-hover-overlay hover:text-primary-text disabled:opacity-40"
+        className="flex h-[46px] w-[46px] items-center justify-center text-secondary-text transition-[background-color,transform] duration-100 hover:bg-hover-overlay hover:text-primary-text disabled:opacity-40"
         onClick={() => sync()}
         disabled={isBusy}
         title={`${label} — ${subtitle}`}
@@ -547,9 +545,9 @@ function SyncCard({ compact }: { compact: boolean }): JSX.Element {
     {forcePushDialog}
     <button type="button" className={STATUS_TRIGGER} onClick={() => sync()} disabled={isBusy}>
       {icon}
-      <span className="flex flex-col items-start leading-tight">
+      <span className="flex flex-col items-start gap-0.5 leading-tight">
         <span className="text-body font-medium text-primary-text">{label}</span>
-        <span className="text-label uppercase tracking-wide text-tertiary-text">{subtitle}</span>
+        <span className="text-label font-normal text-tertiary-text">{subtitle}</span>
       </span>
     </button>
     </>
@@ -559,7 +557,6 @@ function SyncCard({ compact }: { compact: boolean }): JSX.Element {
 function GithubUserCard({ compact }: { compact: boolean }): JSX.Element | null {
   const user = useGithubAuthStore((s) => s.user)
   const loadCurrentUser = useGithubAuthStore((s) => s.loadCurrentUser)
-  const setView = useRepoStore((s) => s.setView)
   const t = useT().topBar
 
   useEffect(() => {
@@ -570,16 +567,33 @@ function GithubUserCard({ compact }: { compact: boolean }): JSX.Element | null {
 
   const displayName = user.name?.trim() || user.login
 
+  // The photo leads: framed by a blue→green ring (the app's interaction and
+  // "connected" colors) that turns half a lap on hover. The panel-colored
+  // border between ring and photo keeps the two from bleeding together.
+  const avatar = (
+    <span className="relative z-10 size-11 shrink-0">
+      <span
+        className="absolute inset-0 rounded-full bg-[conic-gradient(from_200deg,var(--color-command-blue),var(--color-success-green),var(--color-command-blue))] opacity-80 transition-[transform,opacity] duration-700 ease-out group-hover/account:opacity-100 motion-safe:group-hover/account:rotate-180"
+        aria-hidden
+      />
+      <img
+        src={user.avatarUrl}
+        alt=""
+        className="absolute inset-[2px] size-10 rounded-full border-2 border-obsidian-panel bg-coal-raised object-cover"
+      />
+    </span>
+  )
+
   if (compact) {
     return (
       <button
         type="button"
-        className="flex h-[42px] w-[42px] items-center justify-center rounded-md border border-default-border bg-coal-raised transition-[background-color,transform] duration-100 hover:bg-hover-overlay active:scale-95"
-        onClick={() => setView('settings')}
+        className="group/account flex h-[46px] shrink-0 items-center rounded-pill transition-transform duration-100 active:scale-95"
+        onClick={() => openSettings('general')}
         title={t.githubAccountTitle(displayName, user.login)}
         aria-label={t.githubAccountAria(displayName)}
       >
-        <img src={user.avatarUrl} alt="" className="h-7 w-7 rounded-full border border-default-border" />
+        {avatar}
       </button>
     )
   }
@@ -587,19 +601,20 @@ function GithubUserCard({ compact }: { compact: boolean }): JSX.Element | null {
   return (
     <button
       type="button"
-      className={CARD_TRIGGER}
-      onClick={() => setView('settings')}
+      className="group/account flex h-[46px] shrink-0 items-center text-left transition-transform duration-100 active:scale-[0.98]"
+      onClick={() => openSettings('general')}
       title={t.githubAccountTitle(displayName, user.login)}
       aria-label={t.githubAccountAria(displayName)}
     >
-      <img
-        src={user.avatarUrl}
-        alt=""
-        className="h-7 w-7 shrink-0 rounded-full border border-default-border"
-      />
-      <span className="flex min-w-0 flex-col items-start leading-tight">
-        <span className="max-w-28 truncate text-body font-medium text-primary-text">{displayName}</span>
-        <span className="max-w-28 truncate text-label text-tertiary-text">@{user.login}</span>
+      {avatar}
+      {/* A name tag that starts from under the photo, so the photo seems to
+          sit on its end — one piece, not a picture beside a box. */}
+      <span className="-ml-[22px] flex h-9 min-w-0 flex-col justify-center gap-px rounded-r-pill border border-default-border/70 bg-coal-raised/60 pl-[30px] pr-4 leading-tight transition-[background-color,border-color] duration-200 group-hover/account:border-command-blue/40 group-hover/account:bg-hover-overlay">
+        <span className="max-w-40 truncate text-body font-semibold text-primary-text">{displayName}</span>
+        <span className="flex min-w-0 items-center gap-1 text-label font-normal text-tertiary-text transition-colors duration-200 group-hover/account:text-secondary-text">
+          <Github size={10} className="shrink-0" />
+          <span className="max-w-36 truncate">{user.login}</span>
+        </span>
       </span>
     </button>
   )
@@ -676,9 +691,6 @@ function TopBar(): JSX.Element {
   const view = useRepoStore((s) => s.view)
   const setView = useRepoStore((s) => s.setView)
   const closeRepository = useRepoStore((s) => s.closeRepository)
-  const panelOpen = useAiStore((s) => s.panelOpen)
-  const togglePanel = useAiStore((s) => s.togglePanel)
-  const ui = useAiUi()
   const t = useT().topBar
   const narrow = useMediaQuery(NARROW_LAYOUT_QUERY)
 
@@ -699,19 +711,22 @@ function TopBar(): JSX.Element {
   return (
     <>
       <header className="flex items-center gap-2 overflow-x-auto bg-obsidian-panel px-3 pb-1.5 pt-2">
-        <button
-          type="button"
-          className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-md border border-default-border bg-coal-raised text-secondary-text shadow-[var(--shadow-raised)] transition-[background-color,transform,color] duration-100 hover:bg-hover-overlay hover:text-primary-text active:scale-95 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:-translate-x-0.5"
-          onClick={closeRepository}
-          title={t.backToRecents}
-          aria-label={t.backToRecents}
-        >
-          <ArrowLeft size={16} />
-        </button>
+        {/* Back, repo, branch and sync read as one cluster — the path from
+            "which project" to "what state it is in" — instead of loose tiles. */}
         <div
-          className="flex h-[42px] shrink-0 items-stretch overflow-hidden rounded-md border border-default-border bg-coal-raised shadow-[var(--shadow-raised)]"
+          className="flex h-[46px] shrink-0 items-stretch overflow-hidden rounded-md border border-default-border bg-coal-raised shadow-[var(--shadow-raised)]"
           aria-label={t.repoBranchSync}
         >
+          <button
+            type="button"
+            className="flex w-[46px] shrink-0 items-center justify-center text-secondary-text transition-[background-color,color] duration-100 hover:bg-hover-overlay hover:text-primary-text active:bg-primary-text/15 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:-translate-x-0.5"
+            onClick={closeRepository}
+            title={t.backToRecents}
+            aria-label={t.backToRecents}
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <span className="w-px self-stretch bg-default-border" aria-hidden />
           <RepoCard compact={narrow} />
           <span className="w-px self-stretch bg-default-border" aria-hidden />
           <BranchCard compact={narrow} />
@@ -720,20 +735,6 @@ function TopBar(): JSX.Element {
         </div>
         <span className="min-w-2 flex-1" />
         <GithubUserCard compact={narrow} />
-        <button
-          type="button"
-          className={
-            panelOpen
-              ? 'flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-md border border-command-blue/40 bg-command-blue-soft text-command-blue transition-transform duration-100 active:scale-95'
-              : iconBtn(false)
-          }
-          onClick={togglePanel}
-          title={panelOpen ? ui.closeAiChat : ui.openAiChat}
-          aria-label={panelOpen ? ui.closeAiChat : ui.openAiChat}
-          aria-pressed={panelOpen}
-        >
-          <Bot size={16} />
-        </button>
         <UpdateIconButton iconBtn={iconBtn} />
       </header>
 

@@ -304,7 +304,6 @@ interface AiState {
   clearChat: () => void
   clearError: () => void
   setPanelOpen: (open: boolean) => void
-  togglePanel: () => void
   setFloating: (floating: boolean) => void
   setFloatingRect: (rect: Partial<AiState['floatingRect']>) => void
 }
@@ -782,7 +781,6 @@ export const useAiStore = create<AiState>((set, get) => ({
   },
   clearError: () => set({ error: null }),
   setPanelOpen: (open) => set({ panelOpen: open }),
-  togglePanel: () => set((s) => ({ panelOpen: !s.panelOpen })),
   setFloating: (floating) => set({ floating }),
   setFloatingRect: (rect) => set((s) => ({ floatingRect: { ...s.floatingRect, ...rect } }))
 }))

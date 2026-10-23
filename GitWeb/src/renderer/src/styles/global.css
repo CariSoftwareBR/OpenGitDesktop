@@ -420,6 +420,26 @@
   }
 }
 
+/* Tooltips (TooltipLayer) rise out of the control they describe: a short
+   fade with a 3px slide away from it and a hint of scale. */
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--tooltip-from, 3px)) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.app-tooltip[data-placement] {
+  animation: tooltip-in 140ms var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)) backwards;
+}
+.app-tooltip[data-placement='bottom'] {
+  --tooltip-from: -3px;
+}
+
 @keyframes update-sweep {
   from {
     background-position: -60% 0;

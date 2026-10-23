@@ -1,6 +1,15 @@
 const ptBR = {
   title: 'Configurações',
   backToStart: 'Voltar à tela inicial',
+  tabs: {
+    label: 'Seções das configurações',
+    general: 'Geral',
+    generalHint: 'Conta, commit e sobre',
+    ai: 'Assistente IA',
+    aiHint: 'Provedor, chave e modelo',
+    appearance: 'Aparência',
+    appearanceHint: 'Idioma e tema'
+  },
   github: {
     signOut: 'Sair',
     account: 'Conta do GitHub',
@@ -15,7 +24,11 @@ const ptBR = {
   commit: {
     heading: 'Commit',
     autoPush: 'Enviar (push) automaticamente após o commit',
-    autoPushHint: 'Ao commitar, envia as alterações para o remoto em seguida, sem precisar clicar em "Push" separadamente.'
+    autoPushHint: 'Ao commitar, envia as alterações para o remoto em seguida, sem precisar clicar em "Push" separadamente.',
+    coAuthor: 'Co-autoria do OpenGitDesktop',
+    coAuthorHint:
+      'Ativado, cada commit feito pelo app leva o OpenGitDesktop como co-autor. Deixe ligado se quiser apoiar o projeto: é assim que ele aparece no histórico dos repositórios onde é usado.',
+    coAuthorPreview: 'Linha adicionada à mensagem:'
   },
   ai: {
     heading: 'IA',
@@ -44,6 +57,15 @@ type M = typeof ptBR
 const en: M = {
   title: 'Settings',
   backToStart: 'Back to the start screen',
+  tabs: {
+    label: 'Settings sections',
+    general: 'General',
+    generalHint: 'Account, commit and about',
+    ai: 'AI assistant',
+    aiHint: 'Provider, key and model',
+    appearance: 'Appearance',
+    appearanceHint: 'Language and theme'
+  },
   github: {
     signOut: 'Sign out',
     account: 'GitHub account',
@@ -58,7 +80,11 @@ const en: M = {
   commit: {
     heading: 'Commit',
     autoPush: 'Push automatically after committing',
-    autoPushHint: 'After committing, pushes the changes to the remote right away, without clicking "Push" separately.'
+    autoPushHint: 'After committing, pushes the changes to the remote right away, without clicking "Push" separately.',
+    coAuthor: 'OpenGitDesktop co-authorship',
+    coAuthorHint:
+      'When on, every commit made through the app lists OpenGitDesktop as a co-author. Keep it on if you want to support the project: that is how it shows up in the history of the repositories where it is used.',
+    coAuthorPreview: 'Line added to the message:'
   },
   ai: {
     heading: 'AI',
@@ -85,6 +111,15 @@ const en: M = {
 const es: M = {
   title: 'Configuración',
   backToStart: 'Volver a la pantalla inicial',
+  tabs: {
+    label: 'Secciones de la configuración',
+    general: 'General',
+    generalHint: 'Cuenta, commit y acerca de',
+    ai: 'Asistente IA',
+    aiHint: 'Proveedor, clave y modelo',
+    appearance: 'Apariencia',
+    appearanceHint: 'Idioma y tema'
+  },
   github: {
     signOut: 'Cerrar sesión',
     account: 'Cuenta de GitHub',
@@ -99,7 +134,11 @@ const es: M = {
   commit: {
     heading: 'Commit',
     autoPush: 'Enviar (push) automáticamente después del commit',
-    autoPushHint: 'Al hacer commit, envía los cambios al remoto a continuación, sin tener que pulsar "Push" por separado.'
+    autoPushHint: 'Al hacer commit, envía los cambios al remoto a continuación, sin tener que pulsar "Push" por separado.',
+    coAuthor: 'Coautoría de OpenGitDesktop',
+    coAuthorHint:
+      'Activado, cada commit hecho desde la app incluye a OpenGitDesktop como coautor. Déjalo activado si quieres apoyar el proyecto: así aparece en el historial de los repositorios donde se usa.',
+    coAuthorPreview: 'Línea añadida al mensaje:'
   },
   ai: {
     heading: 'IA',
