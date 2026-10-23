@@ -3,6 +3,7 @@ import { shell } from 'electron'
 import { lstat, readFile, rm, writeFile, mkdir, access, realpath } from 'fs/promises'
 import { join, dirname, basename, resolve, sep, normalize } from 'path'
 import type {
+  BranchDeleteCheck,
   BranchDeletionResult,
   BranchInfo,
   BranchIntegration,
@@ -1006,7 +1007,12 @@ const EQUIVALENCE_SCAN_LIMIT = 500
  * fetch. A branch whose commits git does not find on the base is still
  * reported as 'equivalent' when its changes landed there by squash or rebase.
  */
-export async function getBranchIntegration(cwd: string, base?: string): Promise<BranchIntegrationReport> {
+export async function getBranchIntegration(
+  cwd: string,
+  base?: string,
+  /** Inspect just this local branch — what the delete check needs. */
+  onlyLocal?: string
+): Promise<BranchIntegrationReport> {
   const baseRef = await resolveIntegrationBase(cwd, base)
   const baseShort = baseRef.label.replace(/^origin\//, '')
 
@@ -1031,6 +1037,7 @@ export async function getBranchIntegration(cwd: string, base?: string): Promise<
   const localNames = new Set(refs.filter((r) => r.ref.startsWith('refs/heads/')).map((r) => r.name))
 
   const candidates = refs.filter((r) => {
+    if (onlyLocal !== undefined) return r.ref === `refs/heads/${onlyLocal}`
     if (r.symref || r.ref === baseRef.ref) return false
     if (r.ref.startsWith('refs/heads/')) return r.name !== baseShort
     // Remote: skip the remote's copy of the base and anything already covered
@@ -1115,6 +1122,63 @@ export async function getBranchIntegration(cwd: string, base?: string): Promise<
 // Never deletable through the agent, whatever it was asked — on top of the
 // base and the remote's default branch, which are added per repo.
 const ALWAYS_PROTECTED_BRANCHES = ['main', 'master']
+
+const DELETE_CHECK_COMMIT_LIMIT = 10
+
+/**
+ * What deleting a local branch would lose, measured against the same base the
+ * integration report uses: whether its work is already there (merged, or
+ * squash/rebase-equivalent) and, when it is not, which commits are missing
+ * and whether they exist anywhere but this machine.
+ */
+export async function getBranchDeleteCheck(cwd: string, name: string): Promise<BranchDeleteCheck> {
+  assertNotOption(name, tMain().git.optionLabel.branchName)
+  const report = await getBranchIntegration(cwd, undefined, name)
+  const branch = report.branches[0]
+  if (!branch) throw new Error(tMain().git.notALocalBranch(name))
+  const ref = `refs/heads/${name}`
+
+  let missingCommits: BranchDeleteCheck['missingCommits'] = []
+  if (branch.state === 'unmerged') {
+    const log = await readGit(
+      ['log', `--max-count=${DELETE_CHECK_COMMIT_LIMIT}`, `--format=%h${FS}%cs${FS}%s`, `${report.base}..${ref}`, '--'],
+      cwd
+    )
+    if (log.exitCode === 0) {
+      missingCommits = log.stdout
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => {
+          const [hash, date, summary] = line.split(FS)
+          return { hash, date, summary }
+        })
+    }
+  }
+
+  let localOnly: number | null = null
+  if (branch.upstream && !branch.upstreamGone) {
+    const count = await readGit(['rev-list', '--count', ref, '--not', report.base, `refs/remotes/${branch.upstream}`, '--'], cwd)
+    if (count.exitCode === 0) localOnly = Number(count.stdout.trim())
+  }
+
+  return { base: report.base, branch, missingCommits, localOnly }
+}
+
+/**
+ * Deletes a local branch the user confirmed after seeing its delete check.
+ * -D, because the check (not git's HEAD-relative -d) is what decided; the
+ * tip guard makes sure what gets deleted is what the dialog described.
+ */
+export async function deleteCheckedBranch(cwd: string, name: string, expectedTip: string): Promise<void> {
+  assertNotOption(name, tMain().git.optionLabel.branchName)
+  const tip = await readGit(['rev-parse', '--verify', '--quiet', `refs/heads/${name}`], cwd)
+  if (tip.exitCode !== 0) throw new Error(tMain().git.notALocalBranch(name))
+  if (!expectedTip || !tip.stdout.trim().startsWith(expectedTip)) {
+    throw new Error(tMain().git.branchMovedSinceCheck(name))
+  }
+  const args = ['branch', '-D', name]
+  throwOnFailure(await runGit(args, cwd), args)
+}
 
 /**
  * The agent's only way to delete branches. Re-checks everything here, right

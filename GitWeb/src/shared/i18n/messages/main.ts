@@ -35,6 +35,7 @@ const ptBR = {
     branchNotIntegrated: (branch: string, ahead: number, base: string) =>
       `"${branch}" tem ${ahead} commit(s) que não estão em ${base} — não foi apagada.`,
     deleteBranchFailed: (branch: string) => `Falha ao apagar "${branch}".`,
+    branchMovedSinceCheck: (branch: string) => `"${branch}" recebeu commits depois da verificação. Tente excluir de novo para ver o estado atual.`,
     behindDefault: (count: number, branch: string) => `${count} commit(s) atrás de origin/${branch}.`,
     noLocalDefaultToAdvance: (branch: string) =>
       ` Não existe um branch "${branch}" local para avançar — abra o repositório e faça checkout dele, ou um pull no branch atual.`,
@@ -152,6 +153,7 @@ const en: MainMessages = {
     branchNotIntegrated: (branch: string, ahead: number, base: string) =>
       `"${branch}" has ${ahead} commit(s) that are not on ${base} — it was not deleted.`,
     deleteBranchFailed: (branch: string) => `Failed to delete "${branch}".`,
+    branchMovedSinceCheck: (branch: string) => `"${branch}" got new commits after the check. Try deleting again to see its current state.`,
     behindDefault: (count, branch) => `${count} commit(s) behind origin/${branch}.`,
     noLocalDefaultToAdvance: (branch) =>
       ` There is no local "${branch}" branch to advance — open the repository and check it out, or pull on the current branch.`,
@@ -267,6 +269,7 @@ const es: MainMessages = {
     branchNotIntegrated: (branch: string, ahead: number, base: string) =>
       `"${branch}" tiene ${ahead} commit(s) que no están en ${base} — no se borró.`,
     deleteBranchFailed: (branch: string) => `No se pudo borrar "${branch}".`,
+    branchMovedSinceCheck: (branch: string) => `"${branch}" recibió commits después de la verificación. Vuelve a intentar borrarla para ver su estado actual.`,
     behindDefault: (count, branch) => `${count} commit(s) por detrás de origin/${branch}.`,
     noLocalDefaultToAdvance: (branch) =>
       ` No existe una rama "${branch}" local para avanzar — abre el repositorio y haz checkout de ella, o un pull en la rama actual.`,

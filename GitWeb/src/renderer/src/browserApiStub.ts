@@ -182,6 +182,10 @@ function installBrowserApiStub(): void {
       deleteIntegratedBranches: async () => [],
       checkoutRemoteBranch: async () => ({ switched: true as const }),
       deleteBranch: async () => undefined,
+      branchDeleteCheck: async () => {
+        throw new Error('Not available in the browser preview.')
+      },
+      deleteCheckedBranch: async () => undefined,
       renameBranch: async () => undefined,
       deleteRemoteBranch: async () => undefined,
       repoUpdateStatus: async () => demoUpdateStatus,

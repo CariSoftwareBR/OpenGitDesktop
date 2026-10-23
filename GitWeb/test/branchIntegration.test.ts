@@ -7,7 +7,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('electron', () => ({ shell: { trashItem: vi.fn() } }))
 vi.mock('../src/main/credentials', () => ({ getSecret: vi.fn(async () => null) }))
 
-const { deleteIntegratedBranches, getBranchIntegration } = await import('../src/main/gitProcess')
+const { deleteCheckedBranch, deleteIntegratedBranches, getBranchDeleteCheck, getBranchIntegration } = await import(
+  '../src/main/gitProcess'
+)
 
 function git(cwd: string, ...args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
@@ -87,5 +89,49 @@ describe('deleteIntegratedBranches', () => {
     await deleteIntegratedBranches(repo, ['merged'], 'main')
     const left = git(repo, 'branch', '--format=%(refname:short)').split('\n').sort()
     expect(left).toEqual(['main', 'pending', 'rebased', 'squashed'])
+  })
+})
+
+describe('getBranchDeleteCheck', () => {
+  it('calls a squash-merged branch safe to delete, with nothing missing', async () => {
+    const check = await getBranchDeleteCheck(repo, 'squashed')
+    expect(check.base).toBe('main')
+    expect(check.branch.state).toBe('equivalent')
+    expect(check.missingCommits).toEqual([])
+  })
+
+  it('lists the commits main does not have, and flags them as local-only without an upstream', async () => {
+    const check = await getBranchDeleteCheck(repo, 'pending')
+    expect(check.branch.state).toBe('unmerged')
+    expect(check.missingCommits.map((c) => c.summary)).toEqual(['pending work'])
+    expect(check.localOnly).toBeNull()
+  })
+
+  it('counts only the commits on neither main nor the upstream', async () => {
+    git(repo, 'remote', 'add', 'origin', repo)
+    git(repo, 'update-ref', 'refs/remotes/origin/pending', 'pending')
+    git(repo, 'branch', '-q', '--set-upstream-to', 'origin/pending', 'pending')
+    expect((await getBranchDeleteCheck(repo, 'pending')).localOnly).toBe(0)
+
+    git(repo, 'checkout', '-q', 'pending')
+    commitFile(repo, 'p2.txt', 'p2\n', 'more pending work')
+    git(repo, 'checkout', '-q', 'main')
+    expect((await getBranchDeleteCheck(repo, 'pending')).localOnly).toBe(1)
+  })
+})
+
+describe('deleteCheckedBranch', () => {
+  it('refuses when the branch moved after the check, and deletes once the tip matches', async () => {
+    const { branch } = await getBranchDeleteCheck(repo, 'pending')
+    git(repo, 'checkout', '-q', 'pending')
+    commitFile(repo, 'late.txt', 'late\n', 'late work')
+    git(repo, 'checkout', '-q', 'main')
+
+    await expect(deleteCheckedBranch(repo, 'pending', branch.tip)).rejects.toThrow()
+    expect(git(repo, 'branch', '--list', 'pending')).not.toBe('')
+
+    const fresh = await getBranchDeleteCheck(repo, 'pending')
+    await deleteCheckedBranch(repo, 'pending', fresh.branch.tip)
+    expect(git(repo, 'branch', '--list', 'pending')).toBe('')
   })
 })

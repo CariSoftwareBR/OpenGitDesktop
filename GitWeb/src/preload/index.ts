@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type {
   BranchDeletionResult,
   BranchInfo,
+  BranchDeleteCheck,
   BranchIntegrationReport,
   CloneOutcome,
   CloneProgress,
@@ -148,6 +149,9 @@ const api = {
       invoke('git:checkoutRemoteBranch', remoteBranch, cwd),
     deleteBranch: (name: string, cwd: string, force: boolean): Promise<void> =>
       invoke('git:deleteBranch', name, cwd, force),
+    branchDeleteCheck: (cwd: string, name: string): Promise<BranchDeleteCheck> => invoke('git:branchDeleteCheck', cwd, name),
+    deleteCheckedBranch: (cwd: string, name: string, expectedTip: string): Promise<void> =>
+      invoke('git:deleteCheckedBranch', cwd, name, expectedTip),
     renameBranch: (oldName: string, newName: string, cwd: string): Promise<void> =>
       invoke('git:renameBranch', oldName, newName, cwd),
     deleteRemoteBranch: (name: string, cwd: string): Promise<void> => invoke('git:deleteRemoteBranch', name, cwd),

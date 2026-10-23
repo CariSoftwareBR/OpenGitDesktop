@@ -23,6 +23,7 @@ import {
   UploadCloud
 } from 'lucide-react'
 import { basename } from '../lib/path'
+import DeleteBranchDialog from './DeleteBranchDialog'
 import { sanitizeBranchInput, validateBranchName } from '../lib/branchName'
 import { useClickOutside } from '../lib/useClickOutside'
 import { useMenuKeyboard } from '../lib/useMenuKeyboard'
@@ -188,6 +189,8 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
   const mergeBranch = useRepoStore((s) => s.mergeBranch)
   const checkoutRemoteBranch = useRepoStore((s) => s.checkoutRemoteBranch)
   const deleteBranch = useRepoStore((s) => s.deleteBranch)
+  const deleteCheckedBranch = useRepoStore((s) => s.deleteCheckedBranch)
+  const repoPath = useRepoStore((s) => s.currentRepoPath)
   const renameBranch = useRepoStore((s) => s.renameBranch)
   const [open, setOpen] = useState(false)
   const [menuPos, setMenuPos] = useState<MenuPosition | null>(null)
@@ -195,6 +198,9 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
   const [mergeTarget, setMergeTarget] = useState<string | null>(null)
   const [newBranchOpen, setNewBranchOpen] = useState(false)
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
+  // The checked delete (compared with main) comes first; deleteTarget is git's
+  // own -d / -D flow, kept as the fallback when that comparison cannot run.
+  const [checkTarget, setCheckTarget] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<{ name: string; force: boolean } | null>(null)
   const [filter, setFilter] = useState('')
   const ref = useRef<HTMLDivElement>(null)
@@ -237,7 +243,7 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
 
   function requestDelete(name: string): void {
     setOpen(false)
-    setDeleteTarget({ name, force: false })
+    setCheckTarget(name)
   }
 
   return (
@@ -390,6 +396,19 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
           const name = mergeTarget
           setMergeTarget(null)
           if (name) void mergeBranch(name)
+        }}
+      />
+      <DeleteBranchDialog
+        name={checkTarget}
+        repoPath={repoPath}
+        onCancel={() => setCheckTarget(null)}
+        onDelete={(name, tip) => {
+          setCheckTarget(null)
+          void deleteCheckedBranch(name, tip)
+        }}
+        onFallback={(name) => {
+          setCheckTarget(null)
+          setDeleteTarget({ name, force: false })
         }}
       />
       <ConfirmDialog
