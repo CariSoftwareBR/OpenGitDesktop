@@ -86,7 +86,7 @@ import { applyLanguagePreference, systemLocale } from './language'
 import { sendChatRequest, sendToolAwareChatRequest, listModels, abortChatRequest } from './aiProxy'
 import type { AiSettings, ResolvedAiConfig } from '../shared/ai'
 import type { ChatMessage, ToolDefinition } from '../shared/aiChat'
-import type { AppSettings } from '../shared/settings'
+import { withProjectCoAuthor, type AppSettings } from '../shared/settings'
 import { checkForUpdates, getUpdateStatus, quitAndInstall } from './updater'
 
 // Secrets the renderer may still read back: AI provider keys, which the
@@ -162,9 +162,13 @@ export function registerIpcHandlers(): void {
   handle('git:diffStagedAll', (_e, cwd: string) => getStagedDiffAll(cwd))
   handle('git:diffUnstagedAll', (_e, cwd: string) => getUnstagedDiffAll(cwd))
   handle('git:branchDiff', (_e, cwd: string, base: string, head: string) => getBranchDiff(cwd, base, head))
-  handle('git:commit', (_e, summary: string, description: string, cwd: string) =>
-    commit(summary, description, cwd)
-  )
+  // Applied here rather than in the renderer so every commit path — the
+  // Changes view and the AI agent alike — honors the setting. A merge being
+  // concluded (empty summary) keeps git's prepared message untouched.
+  handle('git:commit', async (_e, summary: string, description: string, cwd: string) => {
+    const credit = summary.trim() && (await getSettings()).coAuthorProject
+    return commit(summary, credit ? withProjectCoAuthor(description) : description, cwd)
+  })
   handle('git:applyPatch', (_e, cwd: string, patch: string, cached: boolean, reverse: boolean) =>
     applyPatch(cwd, patch, { cached, reverse })
   )

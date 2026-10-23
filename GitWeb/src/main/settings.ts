@@ -48,6 +48,7 @@ function normalizeSettings(stored: Partial<AppSettings>): AppSettings {
     ...stored,
     colorScheme,
     language,
+    coAuthorProject: typeof stored.coAuthorProject === 'boolean' ? stored.coAuthorProject : DEFAULTS.coAuthorProject,
     cloneBaseFolders: sanitizeCloneBaseFolders(stored.cloneBaseFolders),
     lastCloneBaseFolder
   }

@@ -987,8 +987,6 @@ export interface AiUiStrings {
   investigationPartialFailure: string
   proposeFix: string
   preparingFix: string
-  openAiChat: string
-  closeAiChat: string
   generateCommitTitle: string
   generateCommit: string
   generatingCommit: string
@@ -1063,8 +1061,6 @@ export function aiUiStrings(language: AiLanguage): AiUiStrings {
       investigationPartialFailure: 'The investigation finished with files that could not be analyzed.',
       proposeFix: 'Propose fix',
       preparingFix: 'Preparing fix…',
-      openAiChat: 'Open AI chat',
-      closeAiChat: 'Close AI chat',
       generateCommitTitle: 'Generate commit message from staged diff with the agent',
       generateCommit: 'Generate with Agent',
       generatingCommit: 'Generating…',
@@ -1146,8 +1142,6 @@ export function aiUiStrings(language: AiLanguage): AiUiStrings {
       investigationPartialFailure: 'La investigación terminó con archivos que no se pudieron analizar.',
       proposeFix: 'Proponer corrección',
       preparingFix: 'Preparando corrección…',
-      openAiChat: 'Abrir chat de IA',
-      closeAiChat: 'Cerrar chat de IA',
       generateCommitTitle: 'Generar el mensaje con el agente a partir del diff en stage',
       generateCommit: 'Generar con Agente',
       generatingCommit: 'Generando…',
@@ -1228,8 +1222,6 @@ export function aiUiStrings(language: AiLanguage): AiUiStrings {
     investigationPartialFailure: 'A investigação terminou com arquivos que não puderam ser analisados.',
     proposeFix: 'Propor correção',
     preparingFix: 'Preparando correção…',
-    openAiChat: 'Abrir chat de IA',
-    closeAiChat: 'Fechar chat de IA',
     generateCommitTitle: 'Gerar a mensagem com o agente a partir do diff staged',
     generateCommit: 'Gerar com Agente',
     generatingCommit: 'Gerando…',
