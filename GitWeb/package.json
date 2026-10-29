@@ -27,7 +27,7 @@
     "@icons-pack/react-simple-icons": "^13.15.1",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-virtual": "^3.14.22",
-    "electron-updater": "^6.8.9",
+    "electron-updater": "^6.8.11",
     "lucide-react": "^1.61.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
