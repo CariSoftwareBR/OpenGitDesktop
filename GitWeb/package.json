@@ -1,6 +1,6 @@
 {
   "name": "opengitdesktop",
-  "version": "0.1.50",
+  "version": "0.1.69",
   "description": "Cliente Git multiplataforma (Windows/macOS/Linux), inspirado no GitHub Desktop",
   "main": "./out/main/index.js",
   "desktopName": "opengitdesktop.desktop",
