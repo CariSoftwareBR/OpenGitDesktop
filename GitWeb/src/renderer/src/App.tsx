@@ -132,6 +132,14 @@ function App(): JSX.Element {
     else usePullRequestStore.getState().reset()
   }, [currentRepoPath, detectRemote])
 
+  // Pull Requests follow the checked-out branch: switching branches (here or
+  // from a terminal) brings up that branch's open PR.
+  const checkedOutBranch = useRepoStore((s) => s.status?.branch ?? null)
+  const prSessionUser = usePullRequestStore((s) => s.user?.login ?? null)
+  useEffect(() => {
+    if (checkedOutBranch && prSessionUser) void usePullRequestStore.getState().syncWithBranch(checkedOutBranch)
+  }, [checkedOutBranch, prSessionUser])
+
   useEffect(() => {
     if (!prSuccessMessage) return
     const id = setTimeout(() => clearPrSuccessMessage(), 5000)

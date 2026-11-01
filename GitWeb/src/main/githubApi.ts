@@ -160,7 +160,7 @@ interface ApiPullRequest {
   state: 'open' | 'closed'
   draft: boolean
   merged_at: string | null
-  head: { ref: string; sha: string }
+  head: { ref: string; sha: string; repo?: { owner?: { login: string } } | null }
   base: { ref: string }
   mergeable?: boolean | null
   mergeable_state?: string | null
@@ -198,6 +198,7 @@ function toPullRequest(pr: ApiPullRequest): PullRequest {
     merged: Boolean(pr.merged_at),
     headRef: pr.head.ref,
     headSha: pr.head.sha,
+    headOwner: pr.head.repo?.owner?.login ?? null,
     baseRef: pr.base.ref,
     mergeable: pr.mergeable ?? null,
     mergeableState: pr.mergeable_state ?? null,
