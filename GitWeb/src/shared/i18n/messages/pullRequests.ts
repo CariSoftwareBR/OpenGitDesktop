@@ -141,7 +141,25 @@ const ptBR = {
   backToList: 'Voltar para a lista de pull requests',
   selectPr: 'Selecione uma pull request.',
   signOut: 'Sair',
-  resizeList: 'Redimensionar lista de pull requests'
+  resizeList: 'Redimensionar lista de pull requests',
+  readyToMerge: 'Pronto para mesclar',
+  readyToMergeHint: (head: string, base: string) => `Sem conflitos: os commits de ${head} entram em ${base}.`,
+  checkingMerge: 'Verificando se dá para mesclar…',
+  conflictTitle: 'Há conflitos com a branch de destino',
+  attentionTitle: 'Precisa de atenção antes do merge',
+  draftTitle: 'Rascunho',
+  mergedState: (base: string) => `Mesclada em ${base}`,
+  mergedHint: 'Os commits já estão na branch de destino.',
+  closedState: 'Fechada sem mesclar',
+  closedHint: 'Reabra para continuar a revisão.',
+  emptyTitle: 'Escolha uma pull request',
+  emptyHint: 'Revise o diff, converse nos comentários e mescle sem sair do app.',
+  openCount: (n: number) => (n === 1 ? '1 aberta' : `${n} abertas`),
+  mineCount: (n: number) => (n === 1 ? '1 sua' : `${n} suas`),
+  draftCount: (n: number) => (n === 1 ? '1 rascunho' : `${n} rascunhos`),
+  filesShort: (n: number) => (n === 1 ? '1 arquivo' : `${n} arquivos`),
+  linesAria: (added: number, removed: number) => `${added} linhas adicionadas, ${removed} removidas`,
+  fileStatus: { added: 'Adicionado', removed: 'Removido', modified: 'Modificado', renamed: 'Renomeado', copied: 'Copiado', changed: 'Alterado' } as Record<string, string>
 }
 
 type M = typeof ptBR
@@ -286,7 +304,25 @@ const en: M = {
   backToList: 'Back to the pull request list',
   selectPr: 'Select a pull request.',
   signOut: 'Sign out',
-  resizeList: 'Resize pull request list'
+  resizeList: 'Resize pull request list',
+  readyToMerge: 'Ready to merge',
+  readyToMergeHint: (head, base) => `No conflicts: the commits on ${head} land on ${base}.`,
+  checkingMerge: 'Checking whether it can merge…',
+  conflictTitle: 'Conflicts with the base branch',
+  attentionTitle: 'Needs attention before merging',
+  draftTitle: 'Draft',
+  mergedState: (base) => `Merged into ${base}`,
+  mergedHint: 'The commits are already on the base branch.',
+  closedState: 'Closed without merging',
+  closedHint: 'Reopen it to continue the review.',
+  emptyTitle: 'Pick a pull request',
+  emptyHint: 'Review the diff, talk in the comments and merge without leaving the app.',
+  openCount: (n) => `${n} open`,
+  mineCount: (n) => `${n} yours`,
+  draftCount: (n) => (n === 1 ? '1 draft' : `${n} drafts`),
+  filesShort: (n) => (n === 1 ? '1 file' : `${n} files`),
+  linesAria: (added, removed) => `${added} lines added, ${removed} removed`,
+  fileStatus: { added: 'Added', removed: 'Removed', modified: 'Modified', renamed: 'Renamed', copied: 'Copied', changed: 'Changed' } as Record<string, string>
 }
 
 const es: M = {
@@ -431,7 +467,25 @@ const es: M = {
   backToList: 'Volver a la lista de pull requests',
   selectPr: 'Selecciona una pull request.',
   signOut: 'Salir',
-  resizeList: 'Redimensionar lista de pull requests'
+  resizeList: 'Redimensionar lista de pull requests',
+  readyToMerge: 'Listo para fusionar',
+  readyToMergeHint: (head, base) => `Sin conflictos: los commits de ${head} entran en ${base}.`,
+  checkingMerge: 'Comprobando si se puede fusionar…',
+  conflictTitle: 'Hay conflictos con la rama de destino',
+  attentionTitle: 'Necesita atención antes de fusionar',
+  draftTitle: 'Borrador',
+  mergedState: (base) => `Fusionada en ${base}`,
+  mergedHint: 'Los commits ya están en la rama de destino.',
+  closedState: 'Cerrada sin fusionar',
+  closedHint: 'Reábrela para continuar la revisión.',
+  emptyTitle: 'Elige una pull request',
+  emptyHint: 'Revisa el diff, conversa en los comentarios y fusiona sin salir de la app.',
+  openCount: (n) => (n === 1 ? '1 abierta' : `${n} abiertas`),
+  mineCount: (n) => (n === 1 ? '1 tuya' : `${n} tuyas`),
+  draftCount: (n) => (n === 1 ? '1 borrador' : `${n} borradores`),
+  filesShort: (n) => (n === 1 ? '1 archivo' : `${n} archivos`),
+  linesAria: (added, removed) => `${added} líneas añadidas, ${removed} eliminadas`,
+  fileStatus: { added: 'Añadido', removed: 'Eliminado', modified: 'Modificado', renamed: 'Renombrado', copied: 'Copiado', changed: 'Cambiado' } as Record<string, string>
 }
 
 export default { 'pt-BR': ptBR, en, es }

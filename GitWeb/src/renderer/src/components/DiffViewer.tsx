@@ -17,6 +17,33 @@ interface DiffViewerProps {
 
 type LineKind = AnnotatedDiffLine['kind']
 
+/**
+ * Git's file preamble restates what the header above the diff already shows;
+ * only the lines that say something new (mode changes, renames, "Binary files
+ * differ") are kept.
+ */
+const NOISE_META = /^(diff --git |index [0-9a-f]+\.\.|--- |\+\+\+ )/
+
+function isNoise(line: AnnotatedDiffLine): boolean {
+  return line.kind === 'meta' && NOISE_META.test(line.text)
+}
+
+/** "@@ -12,6 +12,8 @@ function foo()" → the range, and the enclosing context git found. */
+function splitHunkHeader(text: string): { range: string; context: string } {
+  const match = /^(@@ [^@]+ @@)(.*)$/.exec(text)
+  return match ? { range: match[1], context: match[2].trim() } : { range: text, context: '' }
+}
+
+function HunkHeaderText({ text }: { text: string }): JSX.Element {
+  const { range, context } = splitHunkHeader(text)
+  return (
+    <span className="flex min-w-0 items-baseline gap-3">
+      <span className="shrink-0 text-diff-hunk-ink">{range}</span>
+      {context && <span className="truncate text-secondary-text">{context}</span>}
+    </span>
+  )
+}
+
 const VIRTUALIZE_THRESHOLD = 500
 const ROW_HEIGHT = 20.15
 
@@ -47,6 +74,16 @@ function DiffLine({
 }): JSX.Element {
   const t = useT().ui
   const commentable = onComment && line.newLine != null && line.kind !== 'remove' && line.kind !== 'hunk' && line.kind !== 'meta'
+  if (line.kind === 'hunk') {
+    return (
+      <div className="diff-hunk-row flex min-w-0 items-center">
+        <span className="w-24 shrink-0 select-none" aria-hidden />
+        <div className="min-w-0 flex-1 px-4 py-1">
+          <HunkHeaderText text={line.text} />
+        </div>
+      </div>
+    )
+  }
   return (
     <div className={`group flex min-w-0 items-stretch ${LINE_STYLES[line.kind]}`}>
       <span
@@ -76,6 +113,7 @@ function DiffLine({
 
 function HunkToolbar({
   hunkIndex,
+  header,
   hunkMode,
   disabled,
   onStageHunk,
@@ -83,6 +121,7 @@ function HunkToolbar({
   onDiscardHunk
 }: {
   hunkIndex: number
+  header: string
   hunkMode: 'stage' | 'unstage'
   disabled?: boolean
   onStageHunk?: (hunkIndex: number) => void
@@ -91,23 +130,29 @@ function HunkToolbar({
 }): JSX.Element {
   const t = useT().ui
   const action =
-    'rounded-sm px-2 py-0.5 text-caption font-medium transition-[background-color,transform] duration-100 hover:bg-hover-overlay active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50'
+    'diff-hunk-action inline-flex h-6 items-center rounded-pill px-2.5 font-sans text-caption font-medium transition-[background-color,transform,color] duration-100 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50'
   return (
-    <div className="flex items-center gap-3 border-t border-default-border bg-coal-raised py-1 pl-[105px] pr-3 font-sans">
-      {hunkMode === 'stage' ? (
-        <>
-          <button type="button" disabled={disabled} onClick={() => onStageHunk?.(hunkIndex)} className={`${action} text-command-blue`}>
-            {t.stageHunk}
+    <div className="diff-hunk-row flex min-w-0 items-center gap-2 pr-2">
+      <span className="w-24 shrink-0 select-none" aria-hidden />
+      <div className="min-w-0 flex-1 px-4 py-1">
+        <HunkHeaderText text={header} />
+      </div>
+      <span className="flex shrink-0 items-center gap-1">
+        {hunkMode === 'stage' ? (
+          <>
+            <button type="button" disabled={disabled} onClick={() => onDiscardHunk?.(hunkIndex)} className={`${action} is-danger`}>
+              {t.discardHunk}
+            </button>
+            <button type="button" disabled={disabled} onClick={() => onStageHunk?.(hunkIndex)} className={`${action} is-primary`}>
+              {t.stageHunk}
+            </button>
+          </>
+        ) : (
+          <button type="button" disabled={disabled} onClick={() => onUnstageHunk?.(hunkIndex)} className={`${action} is-primary`}>
+            {t.unstageHunk}
           </button>
-          <button type="button" disabled={disabled} onClick={() => onDiscardHunk?.(hunkIndex)} className={`${action} text-danger-red`}>
-            {t.discardHunk}
-          </button>
-        </>
-      ) : (
-        <button type="button" disabled={disabled} onClick={() => onUnstageHunk?.(hunkIndex)} className={`${action} text-command-blue`}>
-          {t.unstageHunk}
-        </button>
-      )}
+        )}
+      </span>
     </div>
   )
 }
@@ -116,7 +161,7 @@ function HunkToolbar({
 // one virtualizer. Toolbars are rows like any other line.
 type DiffRow =
   | { kind: 'line'; line: AnnotatedDiffLine }
-  | { kind: 'toolbar'; hunkIndex: number }
+  | { kind: 'toolbar'; hunkIndex: number; header: string }
 
 function VirtualizedDiff({
   rows,
@@ -176,13 +221,14 @@ function DiffViewer({
   const parsed = useMemo(() => (hunkMode !== 'none' ? parseFileDiff(diffText) : null), [diffText, hunkMode])
   const hunkRows = useMemo<DiffRow[] | null>(() => {
     if (!parsed || parsed.hunks.length === 0) return null
-    const rows: DiffRow[] = parsed.preamble.map((text) => ({
-      kind: 'line' as const,
-      line: { text, kind: 'meta' as const }
-    }))
+    const rows: DiffRow[] = parsed.preamble
+      .map((text) => ({ kind: 'line' as const, line: { text, kind: 'meta' as const } }))
+      .filter((row) => !isNoise(row.line))
     parsed.hunks.forEach((hunk, hunkIndex) => {
-      rows.push({ kind: 'toolbar', hunkIndex })
+      // The toolbar carries the hunk header, so the annotated header line is dropped.
+      rows.push({ kind: 'toolbar', hunkIndex, header: hunk.header })
       for (const line of annotateDiff(`${hunk.header}\n${hunk.lines.join('\n')}`)) {
+        if (line.kind === 'hunk') continue
         rows.push({ kind: 'line', line: { ...line, hunkIndex } })
       }
     })
@@ -190,7 +236,12 @@ function DiffViewer({
   }, [parsed])
   // Only parsed a second time when hunk mode is off, so a big diff is not walked twice.
   const plainRows = useMemo<DiffRow[]>(
-    () => (hunkRows ? [] : annotateDiff(diffText).map((line) => ({ kind: 'line' as const, line }))),
+    () =>
+      hunkRows
+        ? []
+        : annotateDiff(diffText)
+            .filter((line) => !isNoise(line))
+            .map((line) => ({ kind: 'line' as const, line })),
     [hunkRows, diffText]
   )
 
@@ -217,6 +268,7 @@ function DiffViewer({
         <div key={`toolbar-${row.hunkIndex}`}>
           <HunkToolbar
             hunkIndex={row.hunkIndex}
+            header={row.header}
             hunkMode={hunkMode === 'unstage' ? 'unstage' : 'stage'}
             disabled={hunkActionsDisabled}
             onStageHunk={onStageHunk}
@@ -224,7 +276,7 @@ function DiffViewer({
             onDiscardHunk={setConfirmDiscard}
           />
           {confirmDiscard === row.hunkIndex && (
-            <div className="flex items-center gap-2 bg-danger-red-soft px-3 py-1.5 text-caption text-danger-red">
+            <div className="flex items-center gap-3 bg-danger-red-soft py-1.5 pr-3 pl-[112px] font-sans text-caption text-danger-red">
               {t.discardHunkConfirm}
               <button
                 type="button"

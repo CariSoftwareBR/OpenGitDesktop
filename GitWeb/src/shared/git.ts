@@ -446,3 +446,50 @@ export function pushTargetBranch(status: Pick<RepoStatus, 'branch' | 'upstream'>
   if (!status.upstream) return status.branch
   return status.upstream.startsWith('origin/') ? status.upstream.slice('origin/'.length) : null
 }
+
+/** Lines added/removed in one file of the working tree or the index. */
+export interface FileLineStat {
+  path: string
+  additions: number
+  deletions: number
+  binary: boolean
+}
+
+export interface WorkingTreeStats {
+  staged: FileLineStat[]
+  unstaged: FileLineStat[]
+}
+
+/** One local branch at a glance — when it last moved and how it sits against its upstream. */
+export interface BranchOverview {
+  name: string
+  isCurrent: boolean
+  /** Committer date of the tip, ISO 8601. */
+  date: string
+  subject: string
+  upstream: string | null
+  ahead: number
+  behind: number
+  /** The upstream was deleted on the remote. */
+  gone: boolean
+}
+
+export interface ChurnPoint {
+  date: string
+  additions: number
+  deletions: number
+}
+
+export interface FileHotspot {
+  path: string
+  commits: number
+  additions: number
+  deletions: number
+}
+
+/** Line churn of a period: one point per commit plus the files touched most often. */
+export interface RepoChurn {
+  commits: ChurnPoint[]
+  hotspots: FileHotspot[]
+  truncated: boolean
+}

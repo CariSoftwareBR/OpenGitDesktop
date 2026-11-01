@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import {
   ArrowLeft,
   Bot,
+  Check,
   ChevronRight,
   HeartHandshake,
   Info,
@@ -19,7 +20,6 @@ import { useRepoStore } from '../store/repoStore'
 import { usePullRequestStore } from '../store/pullRequestStore'
 import { PROJECT_CO_AUTHOR_TRAILER, type ColorSchemePreference } from '../../../shared/settings'
 import Switch from '../components/Switch'
-import Combobox from '../components/Combobox'
 import GithubLoginModal from '../components/GithubLoginModal'
 import AiSettingsForm from '../components/AiSettingsForm'
 import { AI_SETTINGS_SECTION_ID, useSettingsTabStore, type SettingsTab } from '../lib/openAiSettings'
@@ -30,7 +30,8 @@ import { LOCALE_NATIVE_NAMES, SUPPORTED_LOCALES, type LanguagePreference } from 
 const GITHUB_HOST = 'github.com'
 
 function GithubAccountSection(): JSX.Element {
-  const t = useT().settings.github
+  const tAll = useT().settings
+  const t = tAll.github
   const user = useGithubAuthStore((s) => s.user)
   const userLoading = useGithubAuthStore((s) => s.userLoading)
   const logout = useGithubAuthStore((s) => s.logout)
@@ -57,41 +58,48 @@ function GithubAccountSection(): JSX.Element {
   }
 
   return (
-    <section className="flex flex-col gap-2">
-      <h2 className="text-label uppercase tracking-wide text-tertiary-text">GitHub</h2>
-      <div className="flex flex-col gap-3 rounded-lg border border-default-border bg-obsidian-panel p-4">
+    <section className="flex flex-col gap-2.5">
+      <h2 className="settings-heading">GitHub</h2>
+      <div className="settings-group">
         {user ? (
-          <div className="flex items-center gap-3">
-            <img src={user.avatarUrl} alt={user.login} className="h-9 w-9 shrink-0 rounded-full" />
-            <div className="flex-1">
-              <div className="text-title font-semibold text-primary-text">{user.name ?? user.login}</div>
-              <p className="text-caption text-secondary-text">@{user.login}</p>
+          <div className="flex items-center gap-4 px-4 py-4">
+            <span className="relative shrink-0">
+              <img src={user.avatarUrl} alt="" className="size-11 rounded-full shadow-[0_0_0_2px_var(--color-obsidian-panel),0_0_0_3.5px_var(--color-success-green)]" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-title font-semibold text-primary-text">{user.name ?? user.login}</div>
+              <p className="mt-0.5 flex min-w-0 items-center gap-1.5 text-caption text-secondary-text">
+                <span className="truncate">@{user.login}</span>
+                <span aria-hidden>·</span>
+                <span className="flex shrink-0 items-center gap-1 text-success-green">
+                  <span className="size-1.5 rounded-full bg-success-green" aria-hidden />
+                  {tAll.connectedTo(GITHUB_HOST)}
+                </span>
+              </p>
             </div>
             <button onClick={handleLogout} className="btn-secondary shrink-0">
               {t.signOut}
             </button>
           </div>
         ) : (
-          <div className="flex items-start gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-coal-raised text-secondary-text">
-              <Github size={17} />
+          <div className="flex items-center gap-4 px-4 py-4">
+            <span className="settings-icon is-neutral size-11 rounded-full">
+              <Github size={19} />
             </span>
-            <div className="flex-1">
+            <div className="min-w-0 flex-1">
               <div className="text-title font-semibold text-primary-text">{t.account}</div>
-              <p className="mt-0.5 text-caption text-secondary-text">
-                {userLoading ? t.checkingSession : t.signInHint}
-              </p>
+              <p className="mt-0.5 text-caption text-secondary-text">{userLoading ? t.checkingSession : t.signInHint}</p>
             </div>
             {!userLoading && (
-              <button onClick={() => setLoginModalOpen(true)} className="btn-secondary shrink-0">
-                {t.signIn}
+              <button onClick={() => setLoginModalOpen(true)} className="btn-primary shrink-0">
+                <Github size={15} aria-hidden /> {t.signIn}
               </button>
             )}
           </div>
         )}
 
         {showRevokeHint && !user && revokeUrl && (
-          <p className="rounded-md border border-default-border bg-coal-raised px-3 py-2.5 text-caption text-secondary-text">
+          <p className="settings-row text-caption text-secondary-text">
             {t.revokeHintBefore}
             <a href={revokeUrl} target="_blank" rel="noreferrer" className="text-command-blue underline hover:opacity-80">
               {t.revokeHintLink}
@@ -116,6 +124,7 @@ function GithubAccountSection(): JSX.Element {
 
 function SettingRow({
   icon: Icon,
+  tone = 'neutral',
   label,
   description,
   checked,
@@ -123,6 +132,7 @@ function SettingRow({
   children
 }: {
   icon: typeof UploadCloud
+  tone?: 'blue' | 'orange' | 'green' | 'neutral'
   label: string
   description: string
   checked: boolean
@@ -132,12 +142,12 @@ function SettingRow({
 }): JSX.Element {
   const labelId = useId()
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-default-border bg-obsidian-panel p-4">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-coal-raised text-secondary-text">
-        <Icon size={17} />
+    <div className="settings-row flex items-center gap-3.5">
+      <span className={`settings-icon is-${tone}`}>
+        <Icon size={16} aria-hidden />
       </span>
       <div className="min-w-0 flex-1">
-        <div id={labelId} className="text-title font-semibold text-primary-text">
+        <div id={labelId} className="text-body font-semibold text-primary-text">
           {label}
         </div>
         <p className="mt-0.5 text-caption text-secondary-text">{description}</p>
@@ -148,30 +158,37 @@ function SettingRow({
   )
 }
 
-function SettingsCard({
-  icon: Icon,
-  label,
-  description,
-  children
-}: {
-  icon: typeof UploadCloud
-  label: string
-  description: string
-  children: React.ReactNode
-}): JSX.Element {
+/** A miniature of the app in one theme: top bar, sidebar and the lane motif. */
+function ThemeMock({ variant }: { variant: 'dark' | 'light' }): JSX.Element {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-default-border bg-obsidian-panel p-4">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-coal-raised text-secondary-text">
-        <Icon size={17} aria-hidden />
+    <span className={`theme-mock is-${variant}`} aria-hidden>
+      <span className="tm-top">
+        <i />
+        <i />
       </span>
-      <div className="min-w-0 flex-1">
-        <div className="text-title font-semibold text-primary-text">{label}</div>
-        <p className="mt-0.5 text-caption text-secondary-text">{description}</p>
-      </div>
-      {children}
-    </div>
+      <span className="tm-body">
+        <span className="tm-side">
+          <i className="is-active" />
+          <i />
+          <i />
+          <i />
+        </span>
+        <span className="tm-main">
+          <svg viewBox="0 0 120 54" preserveAspectRatio="xMidYMid meet" className="h-full w-full">
+            <path d="M 8 27 L 40 27 C 52 27, 48 12, 62 12 L 108 12" className="tm-lane is-remote" />
+            <path d="M 40 27 C 52 27, 48 42, 62 42 L 96 42" className="tm-lane is-local" />
+            <circle cx="40" cy="27" r="3.4" className="tm-node" />
+            <circle cx="80" cy="12" r="3.4" className="tm-node is-remote" />
+            <circle cx="94" cy="12" r="3.4" className="tm-node is-remote" />
+            <circle cx="78" cy="42" r="3.4" className="tm-node is-local" />
+          </svg>
+        </span>
+      </span>
+    </span>
   )
 }
+
+const LANGUAGE_SAMPLES: Record<string, string> = { 'pt-BR': 'Olá', en: 'Hello', es: 'Hola' }
 
 function GeneralPanel(): JSX.Element {
   const settings = useAppSettingsStore((s) => s.settings)
@@ -183,10 +200,12 @@ function GeneralPanel(): JSX.Element {
     <>
       <GithubAccountSection />
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-label uppercase tracking-wide text-tertiary-text">{t.commit.heading}</h2>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="settings-heading">{t.commit.heading}</h2>
+        <div className="settings-group">
         <SettingRow
           icon={UploadCloud}
+          tone="blue"
           label={t.commit.autoPush}
           description={t.commit.autoPushHint}
           checked={settings?.commitAndPush ?? false}
@@ -194,6 +213,7 @@ function GeneralPanel(): JSX.Element {
         />
         <SettingRow
           icon={HeartHandshake}
+          tone="orange"
           label={t.commit.coAuthor}
           description={t.commit.coAuthorHint}
           checked={settings?.coAuthorProject ?? false}
@@ -210,24 +230,23 @@ function GeneralPanel(): JSX.Element {
             {PROJECT_CO_AUTHOR_TRAILER}
           </code>
         </SettingRow>
+        </div>
       </section>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-label uppercase tracking-wide text-tertiary-text">{t.app.heading}</h2>
-        <button
-          type="button"
-          onClick={() => setView('about')}
-          className="flex items-start gap-3 rounded-lg border border-default-border bg-obsidian-panel p-4 text-left transition-[background-color,border-color,transform] duration-150 hover:border-primary-text/25 hover:bg-hover-overlay active:scale-[0.99]"
-        >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-coal-raised text-secondary-text">
-            <Info size={17} />
-          </span>
-          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="text-title font-semibold text-primary-text">{t.app.about}</span>
-            <span className="text-caption text-secondary-text">{t.app.aboutHint}</span>
-          </span>
-          <ChevronRight size={16} className="mt-1.5 shrink-0 text-tertiary-text" />
-        </button>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="settings-heading">{t.app.heading}</h2>
+        <div className="settings-group">
+          <button type="button" onClick={() => setView('about')} className="settings-row settings-link flex w-full items-center gap-3.5 text-left">
+            <span className="settings-icon is-neutral">
+              <Info size={16} aria-hidden />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="text-body font-semibold text-primary-text">{t.app.about}</span>
+              <span className="text-caption text-secondary-text">{t.app.aboutHint}</span>
+            </span>
+            <ChevronRight size={16} className="shrink-0 text-tertiary-text" aria-hidden />
+          </button>
+        </div>
       </section>
     </>
   )
@@ -236,7 +255,8 @@ function GeneralPanel(): JSX.Element {
 function AppearancePanel(): JSX.Element {
   const settings = useAppSettingsStore((s) => s.settings)
   const updateSettings = useAppSettingsStore((s) => s.updateSettings)
-  const t = useT().settings.appearance
+  const tAll = useT().settings
+  const t = tAll.appearance
 
   const colorSchemeOptions: { value: ColorSchemePreference; label: string }[] = [
     { value: 'system', label: t.themeSystem },
@@ -248,29 +268,75 @@ function AppearancePanel(): JSX.Element {
     ...SUPPORTED_LOCALES.map((locale) => ({ value: locale, label: LOCALE_NATIVE_NAMES[locale] }))
   ]
 
+  const scheme = settings?.colorScheme ?? 'system'
+  const language = settings?.language ?? 'system'
+
   return (
-    <section className="flex flex-col gap-2">
-      <SettingsCard icon={Languages} label={t.language} description={t.languageHint}>
-        <Combobox
-          value={settings?.language ?? 'system'}
-          onChange={(v) => updateSettings({ language: v as LanguagePreference })}
-          options={languageOptions}
-          ariaLabel={t.language}
-          placeholder={t.language}
-          className="w-44 shrink-0"
-        />
-      </SettingsCard>
-      <SettingsCard icon={Monitor} label={t.theme} description={t.themeHint}>
-        <Combobox
-          value={settings?.colorScheme ?? 'system'}
-          onChange={(v) => updateSettings({ colorScheme: v as ColorSchemePreference })}
-          options={colorSchemeOptions}
-          ariaLabel={t.theme}
-          placeholder={t.theme}
-          className="w-36 shrink-0"
-        />
-      </SettingsCard>
-    </section>
+    <>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="settings-heading">
+          <Monitor size={14} aria-hidden /> {t.theme}
+        </h2>
+        <div role="radiogroup" aria-label={tAll.themeAria} className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {colorSchemeOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={scheme === option.value}
+              onClick={() => updateSettings({ colorScheme: option.value })}
+              className="choice-tile"
+            >
+              {option.value === 'system' ? (
+                <span className="theme-mock-split" aria-hidden>
+                  <ThemeMock variant="dark" />
+                  <span className="theme-mock-half">
+                    <ThemeMock variant="light" />
+                  </span>
+                </span>
+              ) : (
+                <ThemeMock variant={option.value} />
+              )}
+              <span className="flex items-center justify-between gap-2 px-1 pt-2.5">
+                <span className="text-body font-medium text-primary-text">{option.label}</span>
+                <span className="choice-check" aria-hidden>
+                  <Check size={11} strokeWidth={3} />
+                </span>
+              </span>
+            </button>
+          ))}
+        </div>
+        <p className="text-caption text-tertiary-text">{t.themeHint}</p>
+      </section>
+
+      <section className="flex flex-col gap-2.5">
+        <h2 className="settings-heading">
+          <Languages size={14} aria-hidden /> {t.language}
+        </h2>
+        <div role="radiogroup" aria-label={tAll.languageAria} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {languageOptions.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={language === option.value}
+              onClick={() => updateSettings({ language: option.value })}
+              className="choice-tile is-compact text-left"
+              title={option.value === 'system' ? tAll.followsSystem : undefined}
+            >
+              <span className="flex items-start justify-between gap-2">
+                <span className="language-sample">{option.value === 'system' ? <Monitor size={20} aria-hidden /> : LANGUAGE_SAMPLES[option.value]}</span>
+                <span className="choice-check" aria-hidden>
+                  <Check size={11} strokeWidth={3} />
+                </span>
+              </span>
+              <span className="mt-3 block truncate text-body font-medium text-primary-text">{option.label}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-caption text-tertiary-text">{t.languageHint}</p>
+      </section>
+    </>
   )
 }
 
@@ -326,7 +392,7 @@ function SettingsView(): JSX.Element {
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-7 px-8 py-10">
-        <h1 className="flex items-center gap-2 text-headline font-semibold text-primary-text">
+        <h1 className="flex items-center gap-2.5 text-headline font-semibold text-primary-text">
           {!currentRepoPath && (
             <button type="button" onClick={() => setView('changes')} className="btn-ghost -ml-2 px-2" title={t.backToStart} aria-label={t.backToStart}>
               <ArrowLeft size={17} aria-hidden />

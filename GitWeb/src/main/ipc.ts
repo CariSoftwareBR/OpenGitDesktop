@@ -75,7 +75,10 @@ import {
   pushTag,
   getLatestTag,
   getLocalRebaseInfo,
-  runLocalRebase
+  runLocalRebase,
+  getWorkingTreeStats,
+  getBranchOverview,
+  getRepoChurn
 } from './gitProcess'
 import { openPath, pathExists, showItemInFolder } from './shell'
 import { saveSecret, getSecret, deleteSecret } from './credentials'
@@ -229,6 +232,9 @@ export function registerIpcHandlers(): void {
   handle('git:pushTag', (_e, cwd: string, name: string) => pushTag(cwd, name))
   handle('git:latestTag', (_e, cwd: string, ref?: string, strict?: boolean) => getLatestTag(cwd, ref, strict))
   handle('git:localRebaseInfo', (_e, cwd: string) => getLocalRebaseInfo(cwd))
+  handle('git:workingTreeStats', (_e, cwd: string) => getWorkingTreeStats(cwd))
+  handle('git:branchOverview', (_e, cwd: string) => getBranchOverview(cwd))
+  handle('git:repoChurn', (_e, cwd: string, sinceDays: number | null, limit?: number) => getRepoChurn(cwd, sinceDays, limit))
   handle('git:runLocalRebase', (_e, cwd: string, steps: RebaseStep[], expectedHead: string) =>
     runLocalRebase(cwd, steps, expectedHead)
   )

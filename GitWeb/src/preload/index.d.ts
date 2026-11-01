@@ -18,6 +18,9 @@ import type {
   GraphCommit,
   LocalRebaseInfo,
   LocalRebaseResult,
+  BranchOverview,
+  RepoChurn,
+  WorkingTreeStats,
   RebaseStep,
   TagInfo,
   GitIdentity,
@@ -96,6 +99,9 @@ export interface Api {
     pushTag: (cwd: string, name: string) => Promise<void>
     latestTag: (cwd: string, ref?: string, strict?: boolean) => Promise<string | null>
     localRebaseInfo: (cwd: string) => Promise<LocalRebaseInfo>
+    workingTreeStats: (cwd: string) => Promise<WorkingTreeStats>
+    branchOverview: (cwd: string) => Promise<BranchOverview[]>
+    repoChurn: (cwd: string, sinceDays: number | null, limit?: number) => Promise<RepoChurn>
     runLocalRebase: (cwd: string, steps: RebaseStep[], expectedHead: string) => Promise<LocalRebaseResult>
 
     remoteUrl: (cwd: string, remoteName?: string) => Promise<string | null>
