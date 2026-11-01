@@ -35,6 +35,7 @@ import Github from './icons/Github'
 import { openSettings } from '../lib/openAiSettings'
 import { useT } from '../lib/i18n'
 import type { Messages } from '../../../shared/i18n'
+import ThemeToggle from './ThemeToggle'
 
 function timeAgo(t: Messages['topBar'], timestamp: number | null): string {
   if (!timestamp) return t.neverFetched
@@ -735,6 +736,7 @@ function TopBar(): JSX.Element {
         </div>
         <span className="min-w-2 flex-1" />
         <GithubUserCard compact={narrow} />
+        <ThemeToggle className="size-[42px] shrink-0" />
         <UpdateIconButton iconBtn={iconBtn} />
       </header>
 

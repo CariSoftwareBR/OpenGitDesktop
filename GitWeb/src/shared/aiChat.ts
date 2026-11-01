@@ -452,6 +452,86 @@ export const TOOL_CATALOG: ToolDefinition[] = [
       },
       required: []
     }
+  },
+  {
+    name: 'show_in_history',
+    description:
+      'Abre a aba Histórico no commit indicado e o destaca no grafo de branches para o usuário ver, e diz em quais branches (locais e remotas) e tags o commit já está. Use para responder visualmente perguntas como "onde essa branch saiu da main?", "esse fix já está na release?" ou "qual commit introduziu isso?" — depois de localizar o commit com list_commits ou read_commit. Só leitura.',
+    parameters: {
+      type: 'object',
+      properties: {
+        ref: { type: 'string', description: 'Commit a mostrar: hash, branch, tag, HEAD~2 etc.' }
+      },
+      required: ['ref']
+    }
+  },
+  {
+    name: 'explain_file_history',
+    description:
+      'Explica a história de um arquivo: quem escreveu cada parte (blame), os últimos commits que o mudaram e, se "line" for passado, qual commit mudou aquela linha por último, com a mensagem completa dele. Abre na tela a linha do tempo e a autoria do arquivo, com a linha destacada. Use para "por que essa linha está assim?" ou "quem mexeu nesse arquivo?". Só leitura.',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Caminho do arquivo relativo à raiz do repositório.' },
+        line: { type: 'string', description: 'Número da linha (1-based) a explicar. Opcional.' }
+      },
+      required: ['path']
+    }
+  },
+  {
+    name: 'list_tags',
+    description: 'Lista as tags do repositório (nome, commit e data), da mais nova para a mais antiga.',
+    parameters: { type: 'object', properties: {}, required: [] }
+  },
+  {
+    name: 'create_tag',
+    description:
+      'Cria uma tag anotada (ex.: uma versão "v1.2.0") num commit, só localmente. Para publicar, chame push_tag depois, se o usuário quiser.',
+    parameters: {
+      type: 'object',
+      properties: {
+        tag_name: { type: 'string', description: 'Nome da tag, ex: v1.2.0.' },
+        ref: { type: 'string', description: 'Commit onde criar a tag (hash, branch, HEAD). Padrão: HEAD.' },
+        message: { type: 'string', description: 'Mensagem da tag. Padrão: o próprio nome.' }
+      },
+      required: ['tag_name']
+    }
+  },
+  {
+    name: 'push_tag',
+    description: 'Envia UMA tag local para o remote (origin). Nunca envia todas as tags de uma vez.',
+    parameters: {
+      type: 'object',
+      properties: {
+        tag_name: { type: 'string', description: 'Nome da tag a enviar.' }
+      },
+      required: ['tag_name']
+    }
+  },
+  {
+    name: 'prepare_release_notes',
+    description:
+      'Reúne os commits entre a última tag e HEAD (ou entre from_ref e to_ref) para você escrever notas de release em Markdown na sua resposta. Use quando o usuário pedir notas de release, changelog ou "o que mudou desde a última versão".',
+    parameters: {
+      type: 'object',
+      properties: {
+        from_ref: { type: 'string', description: 'Início (exclusivo): tag ou commit. Padrão: a tag mais recente antes de to_ref.' },
+        to_ref: { type: 'string', description: 'Fim (inclusivo). Padrão: HEAD.' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'reorganize_local_commits',
+    description:
+      'Reorganiza os commits da branch atual que AINDA NÃO FORAM ENVIADOS: reordenar, juntar (squash/fixup), renomear (reword) ou descartar (drop). O usuário vê o plano visualmente e aprova antes. Commits já publicados nunca entram. O plano deve listar TODOS os commits locais, do mais antigo para o mais novo, um por linha: "pick <hash>", "reword <hash> <nova mensagem>", "squash <hash> [mensagem combinada]", "fixup <hash>" ou "drop <hash>". squash/fixup juntam o commit ao da linha anterior do plano. Use list_commits antes para ver quais commits são locais. Exemplo para juntar 3 commits de WIP: "pick a1b2c3d\\nfixup d4e5f6a\\nfixup 9f8e7d6".',
+    parameters: {
+      type: 'object',
+      properties: {
+        plan: { type: 'string', description: 'O plano, uma linha por commit, do mais antigo para o mais novo.' }
+      },
+      required: ['plan']
+    }
   }
 ]
 

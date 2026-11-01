@@ -7,8 +7,19 @@ import type {
   CloneProgress,
   CommitDetails,
   CommitFile,
+  CommitFileStat,
+  CommitRange,
+  CommitRef,
   CommitSummary,
+  CommitSummaryWithStats,
+  FileBlame,
   FileHistoryLocation,
+  FileTimelineEntry,
+  GraphCommit,
+  LocalRebaseInfo,
+  LocalRebaseResult,
+  RebaseStep,
+  TagInfo,
   GitIdentity,
   GitResult,
   RecentReposData,
@@ -73,6 +84,19 @@ export interface Api {
     commitDiff: (hash: string, path: string, cwd: string) => Promise<string>
     commitDetails: (cwd: string, ref: string) => Promise<CommitDetails | null>
     commitPatch: (cwd: string, ref: string) => Promise<string>
+    graphLog: (cwd: string, limit?: number, path?: string) => Promise<GraphCommit[]>
+    logWithStats: (cwd: string, limit?: number) => Promise<CommitSummaryWithStats[]>
+    commitFileStats: (cwd: string, ref: string) => Promise<CommitFileStat[]>
+    commitRange: (cwd: string, head: string, base: string | null, limit?: number) => Promise<CommitRange>
+    refsContaining: (cwd: string, ref: string) => Promise<CommitRef[]>
+    fileBlame: (cwd: string, path: string, rev?: string) => Promise<FileBlame>
+    fileTimeline: (cwd: string, path: string, limit?: number) => Promise<FileTimelineEntry[]>
+    listTags: (cwd: string) => Promise<TagInfo[]>
+    createTag: (cwd: string, name: string, ref?: string, message?: string) => Promise<TagInfo>
+    pushTag: (cwd: string, name: string) => Promise<void>
+    latestTag: (cwd: string, ref?: string, strict?: boolean) => Promise<string | null>
+    localRebaseInfo: (cwd: string) => Promise<LocalRebaseInfo>
+    runLocalRebase: (cwd: string, steps: RebaseStep[], expectedHead: string) => Promise<LocalRebaseResult>
 
     remoteUrl: (cwd: string, remoteName?: string) => Promise<string | null>
 

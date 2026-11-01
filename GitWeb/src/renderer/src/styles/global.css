@@ -1157,3 +1157,256 @@
     transform: translate(-50%, -50%);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   History graph, file insight (timeline + blame), agent visual cards.
+   Lane colours are a separate categorical set: eight hues spaced around the
+   wheel at similar lightness, so no lane reads as "the important one" except
+   by position. Each theme recomposes them for its canvas.
+   --------------------------------------------------------------------------- */
+:root {
+  --graph-0: #479ffa;
+  --graph-1: #4ebe96;
+  --graph-2: #ffa16c;
+  --graph-3: #c792ea;
+  --graph-4: #f2b84b;
+  --graph-5: #ff7a9c;
+  --graph-6: #5fd1e0;
+  --graph-7: #a3be5c;
+  --blame-age: 71 159 250;
+}
+[data-theme='light'] {
+  --graph-0: #1f6fe0;
+  --graph-1: #157a55;
+  --graph-2: #b5590f;
+  --graph-3: #7b4bc4;
+  --graph-4: #8a6a00;
+  --graph-5: #c2305a;
+  --graph-6: #0f7f8f;
+  --graph-7: #5b7a12;
+  --blame-age: 31 111 224;
+}
+[data-theme='dark-hc'] {
+  --graph-0: #7fc4ff;
+  --graph-1: #5be8ac;
+  --graph-2: #ffb366;
+  --graph-3: #e0b3ff;
+  --graph-4: #ffd166;
+  --graph-5: #ff9ab4;
+  --graph-6: #7fe9f5;
+  --graph-7: #c8e57a;
+  --blame-age: 127 196 255;
+}
+[data-theme='light-hc'] {
+  --graph-0: #0050b3;
+  --graph-1: #0b6b46;
+  --graph-2: #8a3d00;
+  --graph-3: #5a2a9e;
+  --graph-4: #6b4b00;
+  --graph-5: #9e1240;
+  --graph-6: #00606d;
+  --graph-7: #3d5a00;
+  --blame-age: 0 80 179;
+}
+
+@layer components {
+  /* Ref labels in the graph: the current branch is a filled pill, other
+     branches outlined, remotes quieter, tags wear a notch. */
+  .ref-chip {
+    @apply inline-flex h-[18px] max-w-[140px] shrink-0 items-center gap-1 rounded-pill border px-1.5 text-[11px] leading-none font-medium;
+  }
+  .ref-chip > span {
+    @apply min-w-0 truncate;
+  }
+  .ref-chip-current {
+    @apply border-transparent bg-command-blue text-midnight-base;
+  }
+  [data-theme='light'] .ref-chip-current,
+  [data-theme='light-hc'] .ref-chip-current {
+    @apply text-white;
+  }
+  .ref-chip-local {
+    @apply border-command-blue/45 text-command-blue;
+  }
+  .ref-chip-remote {
+    @apply border-default-border text-secondary-text;
+  }
+  .ref-chip-tag {
+    @apply border-warning-amber/45 bg-warning-amber-soft text-warning-amber;
+  }
+  .ref-chip-head {
+    @apply border-attention-orange/50 text-attention-orange;
+  }
+
+  /* The commit the agent (or a link) pointed at: a ring that settles. */
+  .graph-focus {
+    animation: graph-focus 2.4s var(--ease-out-expo) both;
+  }
+  .graph-node-pulse {
+    animation: graph-node-pulse 1.4s ease-out 3;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .plus-minus-bar {
+    @apply flex h-1.5 w-full overflow-hidden rounded-pill bg-default-border;
+  }
+}
+
+@keyframes graph-focus {
+  0% {
+    box-shadow: inset 0 0 0 2px var(--color-command-blue);
+    background-color: var(--color-command-blue-soft);
+  }
+  70% {
+    box-shadow: inset 0 0 0 2px var(--color-command-blue);
+  }
+  100% {
+    box-shadow: inset 0 0 0 0 transparent;
+  }
+}
+
+@keyframes graph-node-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .graph-focus {
+    animation: none;
+    box-shadow: inset 0 0 0 2px var(--color-command-blue);
+  }
+  .graph-node-pulse {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* Commit button while it works and right after. Disabled buttons fade to 40%,
+   which turned the busy commit into a washed-out slab; this state stays fully
+   opaque and shows motion instead — a soft light sweeping across the surface.
+   Success keeps the neutral surface (no flat green fill under dark ink) and
+   lets a green check and a brief halo carry the news. */
+@layer components {
+  .btn-primary.btn-commit-working,
+  .btn-primary.btn-commit-done {
+    opacity: 1;
+    cursor: progress;
+  }
+  .btn-primary.btn-commit-working {
+    position: relative;
+    background-image: linear-gradient(
+      100deg,
+      transparent 0%,
+      color-mix(in srgb, var(--color-command-blue) 22%, transparent) 50%,
+      transparent 100%
+    );
+    background-size: 45% 100%;
+    background-repeat: no-repeat;
+    animation: update-sweep 1.4s var(--ease-out-expo) infinite;
+  }
+  .btn-primary.btn-commit-done {
+    cursor: default;
+    animation: commit-halo 1.6s var(--ease-out-expo) both;
+  }
+  .commit-done-check {
+    @apply flex size-[18px] shrink-0 items-center justify-center rounded-full bg-success-green text-white;
+    animation: pop 0.32s var(--ease-out-expo) both;
+  }
+}
+
+@keyframes commit-halo {
+  0% {
+    box-shadow:
+      var(--shadow-button),
+      0 0 0 0 color-mix(in srgb, var(--color-success-green) 55%, transparent);
+  }
+  100% {
+    box-shadow:
+      var(--shadow-button),
+      0 0 0 7px color-mix(in srgb, var(--color-success-green) 0%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary.btn-commit-working {
+    animation: none;
+    background-image: none;
+  }
+  .btn-primary.btn-commit-done {
+    animation: none;
+  }
+}
+
+/* Start screen: a repository's lanes draw themselves when its fetch check
+   lands (the one authored motion on that screen); while checking, the two
+   lanes carry a slow travelling dash instead. */
+@layer components {
+  .lane-path {
+    stroke-dasharray: 220;
+    stroke-dashoffset: 220;
+    animation: lane-draw 640ms var(--ease-out-expo) forwards;
+  }
+  .lane-node {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: lane-node-in 420ms var(--ease-out-expo) backwards;
+  }
+  .lane-scan {
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 3 7;
+    opacity: 0.45;
+    animation: lane-scan 1.1s linear infinite;
+  }
+  .workbench-row {
+    @apply relative rounded-md border border-transparent transition-[background-color,border-color] duration-150;
+  }
+  .workbench-row:hover,
+  .workbench-row:focus-within {
+    background-color: var(--color-obsidian-panel);
+    border-color: var(--color-default-border);
+  }
+  [data-theme='light'] .workbench-row:hover,
+  [data-theme='light'] .workbench-row:focus-within,
+  [data-theme='light-hc'] .workbench-row:hover,
+  [data-theme='light-hc'] .workbench-row:focus-within {
+    box-shadow: var(--shadow-raised);
+  }
+}
+
+@keyframes lane-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes lane-node-in {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+}
+@keyframes lane-scan {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lane-path {
+    animation: none;
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+  .lane-node,
+  .lane-scan {
+    animation: none;
+  }
+}

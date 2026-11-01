@@ -903,11 +903,18 @@ const SCM_SKILL_TRIGGERS: { id: ScmSkillId; tools: Set<string>; pattern: RegExp;
       'stash_pop',
       'check_incoming_commits',
       'get_git_identity',
-      'set_git_identity'
+      'set_git_identity',
+      'show_in_history',
+      'explain_file_history',
+      'list_tags',
+      'create_tag',
+      'push_tag',
+      'prepare_release_notes',
+      'reorganize_local_commits'
     ]),
     // "pull request" belongs to the PR skills, not to pull.
     pattern:
-      /\b(commit\w*|comitar|comitear|push\w*|pull\w*(?!\s*-?\s*requests?)|branch(?:es)?|ramas?|stash\w*|identidade|identidad|identity)\b/i
+      /\b(commit\w*|comitar|comitear|push\w*|pull\w*(?!\s*-?\s*requests?)|branch(?:es)?|ramas?|stash\w*|identidade|identidad|identity|tags?|releases?|changelog|squash\w*|rebase\w*|blame|hist[oó]rico|historial|history)\b/i
   },
   {
     id: 'merge-branch',

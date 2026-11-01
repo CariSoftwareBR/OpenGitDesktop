@@ -13,6 +13,8 @@ import pullRequests from './messages/pullRequests'
 import aiSettings from './messages/aiSettings'
 import clone from './messages/clone'
 import githubLogin from './messages/githubLogin'
+import graph from './messages/graph'
+import graphTools from './messages/graphTools'
 import ui from './messages/ui'
 import stores from './messages/stores'
 import tools from './messages/tools'
@@ -29,6 +31,8 @@ const namespaces = {
   common,
   dashboard,
   githubLogin,
+  graph,
+  graphTools,
   history,
   initial,
   main,

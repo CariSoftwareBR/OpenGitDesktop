@@ -1310,7 +1310,10 @@ function ChangesView(): JSX.Element {
               onClick={handleCommit}
               disabled={commitButtonDisabled}
               aria-describedby={commitDisabledReason ? `${summaryId}-commit-hint` : undefined}
-              className={`btn-primary min-w-0 flex-1 justify-center overflow-hidden transition-colors duration-300 ${log.length > 0 ? 'rounded-r-none active:scale-100' : ''} ${justCommitted ? 'bg-success-green!' : ''}`}
+              aria-busy={committing || undefined}
+              className={`btn-primary min-w-0 flex-1 justify-center overflow-hidden ${log.length > 0 ? 'rounded-r-none active:scale-100' : ''} ${
+                committing ? 'btn-commit-working' : justCommitted ? 'btn-commit-done' : ''
+              }`}
             >
               {committing ? (
                 <>
@@ -1319,7 +1322,9 @@ function ChangesView(): JSX.Element {
                 </>
               ) : justCommitted ? (
                 <>
-                  <Check size={14} className="shrink-0 animate-[pop_0.3s_ease-out]" aria-hidden />
+                  <span className="commit-done-check" aria-hidden>
+                    <Check size={12} strokeWidth={3} />
+                  </span>
                   <span className="truncate">{commitLabel}</span>
                 </>
               ) : (
@@ -1485,6 +1490,7 @@ function ChangesView(): JSX.Element {
         onCopy={(text) => void handleCopyPath(text)}
         onShowInExplorer={(path) => void handleShowInExplorer(path)}
         onOpenDefault={(path) => void handleOpenDefault(path)}
+        onShowTimeline={(path) => useRepoStore.getState().openFileInsight(path)}
       />
     </div>
   )

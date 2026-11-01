@@ -4,6 +4,13 @@ import {
   Check,
   CircleFadingArrowUp,
   EyeOff,
+  FileClock,
+  FileText,
+  ListOrdered,
+  LocateFixed,
+  Tag,
+  Tags,
+  Upload,
   FileDiff,
   FileSearch,
   FolderGit2,
@@ -64,7 +71,14 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   pull: ArrowDownToLine,
   switch_branch: GitFork,
   stash: PackageOpen,
-  stash_pop: CircleFadingArrowUp
+  stash_pop: CircleFadingArrowUp,
+  show_in_history: LocateFixed,
+  explain_file_history: FileClock,
+  list_tags: Tags,
+  create_tag: Tag,
+  push_tag: Upload,
+  prepare_release_notes: FileText,
+  reorganize_local_commits: ListOrdered
 }
 
 /** Labels come from the current locale, so callers re-render on a language switch. */

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { ChevronRight, ExternalLink, FolderOpen, Trash2 } from 'lucide-react'
+import { ChevronRight, ExternalLink, FileClock, FolderOpen, Trash2 } from 'lucide-react'
 import { useT } from '../lib/i18n'
 
 export interface FileContextMenuTarget {
@@ -23,6 +23,8 @@ interface FileContextMenuProps {
   onOpenDefault: (path: string) => void
   fullPath: string | null
   fileExists: boolean
+  /** Opens the file's timeline and line-by-line authorship. Not offered for new files. */
+  onShowTimeline?: (path: string) => void
 }
 
 function toIgnorePattern(path: string): string {
@@ -74,11 +76,13 @@ function FileContextMenu({
   onShowInExplorer,
   onOpenDefault,
   fullPath,
-  fileExists
+  fileExists,
+  onShowTimeline
 }: FileContextMenuProps): JSX.Element | null {
   const ref = useRef<HTMLDivElement>(null)
   const folderRowRef = useRef<HTMLDivElement>(null)
   const t = useT().ui
+  const g = useT().graph
   const [folderOpen, setFolderOpen] = useState(false)
   const [submenuLeft, setSubmenuLeft] = useState(true)
   const [pos, setPos] = useState({ left: x, top: y })
@@ -216,6 +220,16 @@ function FileContextMenu({
         <Trash2 size={14} className="shrink-0 opacity-90" aria-hidden />
         <span>{t.discardChanges}</span>
       </button>
+
+      {onShowTimeline && !target.untracked && !isDirectory && (
+        <>
+          <Separator />
+          <button type="button" role="menuitem" className={ITEM} onClick={() => run(() => onShowTimeline(target.path))}>
+            <FileClock size={14} className="shrink-0 text-secondary-text" aria-hidden />
+            <span>{g.fileInsight}</span>
+          </button>
+        </>
+      )}
 
       {canIgnore && (
         <>

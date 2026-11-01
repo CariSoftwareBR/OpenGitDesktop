@@ -20,12 +20,25 @@ export type ChatRenderItem =
 //
 // Write/danger tools are never grouped: their approve/cancel gate has to stay
 // one card per action.
+// Read tools whose answer is a picture (a card), not a reading to skim past:
+// collapsing them into a progress group would hide exactly what they show.
+const VISUAL_READ_TOOLS = new Set([
+  'list_commits',
+  'show_in_history',
+  'explain_file_history',
+  'check_all_repos',
+  'check_pull_request_status',
+  'prepare_release_notes',
+  'list_tags'
+])
+
 export function groupChatMessages(messages: ChatUiMessage[]): ChatRenderItem[] {
   const items: ChatRenderItem[] = []
 
   function groupableCall(message: ChatUiMessage): UiToolCall | null {
     if (message.role !== 'assistant' || message.toolCalls?.length !== 1) return null
     const uiCall = message.toolCalls[0]
+    if (VISUAL_READ_TOOLS.has(uiCall.call.name)) return null
     return toolSeverity(uiCall.call.name) === 'read' ? uiCall : null
   }
 
