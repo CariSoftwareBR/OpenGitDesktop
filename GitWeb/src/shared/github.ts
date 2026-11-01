@@ -14,6 +14,13 @@ export interface GitHubRepoSummary {
   owner: string
   cloneUrl: string
   private: boolean
+  /** Optional enrichments — older callers and the token flow may omit them. */
+  description?: string | null
+  language?: string | null
+  /** Last push (falls back to last update), ISO 8601. */
+  updatedAt?: string | null
+  fork?: boolean
+  archived?: boolean
 }
 
 export type PullRequestState = 'open' | 'closed' | 'all'

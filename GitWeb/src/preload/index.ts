@@ -19,6 +19,9 @@ import type {
   GraphCommit,
   LocalRebaseInfo,
   LocalRebaseResult,
+  BranchOverview,
+  RepoChurn,
+  WorkingTreeStats,
   RebaseStep,
   TagInfo,
   GitIdentity,
@@ -144,6 +147,10 @@ const api = {
     pushTag: (cwd: string, name: string): Promise<void> => invoke('git:pushTag', cwd, name),
     latestTag: (cwd: string, ref?: string, strict?: boolean): Promise<string | null> => invoke('git:latestTag', cwd, ref, strict),
     localRebaseInfo: (cwd: string): Promise<LocalRebaseInfo> => invoke('git:localRebaseInfo', cwd),
+    workingTreeStats: (cwd: string): Promise<WorkingTreeStats> => invoke('git:workingTreeStats', cwd),
+    branchOverview: (cwd: string): Promise<BranchOverview[]> => invoke('git:branchOverview', cwd),
+    repoChurn: (cwd: string, sinceDays: number | null, limit?: number): Promise<RepoChurn> =>
+      invoke('git:repoChurn', cwd, sinceDays, limit),
     runLocalRebase: (cwd: string, steps: RebaseStep[], expectedHead: string): Promise<LocalRebaseResult> =>
       invoke('git:runLocalRebase', cwd, steps, expectedHead),
 

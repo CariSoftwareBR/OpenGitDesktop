@@ -59,6 +59,40 @@ let aiSettings: AiSettings = structuredClone(AI_DEFAULTS)
 const secrets = new Map<string, string>()
 const GITHUB_UNAVAILABLE = 'O GitHub não está disponível no preview de browser.'
 
+function demoGithub(): boolean {
+  try {
+    return localStorage.getItem('demoGithub') === '1'
+  } catch {
+    return false
+  }
+}
+
+const DEMO_USER = { login: 'demo-dev', name: 'Demo Dev', avatarUrl: 'https://github.com/github.png' }
+
+const hoursAgo = (h: number): string => new Date(Date.now() - h * 3600e3).toISOString()
+
+const DEMO_PRS = [
+  { number: 19, title: 'Redesenha o diálogo Clonar repositório', body: 'O clone aparece como uma **rota** do remoto até a pasta local.\n\n- Lista rica com dono, linguagem e data\n- Filtro por dono', state: 'open' as const, draft: false, merged: false, headRef: 'feature/redesenho-clonar', headSha: 'a1b2c3d', baseRef: 'feature/grafo-historico', mergeable: null, mergeableState: null, authorLogin: 'demo-dev', htmlUrl: 'https://github.com/demo/OpenGitDesktop/pull/19', createdAt: hoursAgo(1) },
+  { number: 18, title: 'Grafo do histórico, cards visuais no chat, autoria, tags e nova tela inicial', body: 'Grafo, autoria por linha, tags e uma tela inicial nova.', state: 'open' as const, draft: false, merged: false, headRef: 'feature/grafo-historico', headSha: 'b2c3d4e', baseRef: 'main', mergeable: null, mergeableState: null, authorLogin: 'demo-dev', htmlUrl: 'https://github.com/demo/OpenGitDesktop/pull/18', createdAt: hoursAgo(5) },
+  { number: 17, title: 'Corrige o tema escuro em alto contraste', body: null, state: 'open' as const, draft: false, merged: false, headRef: 'fix/alto-contraste', headSha: 'c3d4e5f', baseRef: 'main', mergeable: null, mergeableState: null, authorLogin: 'octocat', htmlUrl: 'https://github.com/demo/OpenGitDesktop/pull/17', createdAt: hoursAgo(30) },
+  { number: 16, title: 'Experimento: atalhos de teclado configuráveis', body: null, state: 'open' as const, draft: true, merged: false, headRef: 'exp/atalhos', headSha: 'd4e5f6a', baseRef: 'main', mergeable: null, mergeableState: null, authorLogin: 'hubot', htmlUrl: 'https://github.com/demo/OpenGitDesktop/pull/16', createdAt: hoursAgo(80) },
+  { number: 13, title: 'Bump undici from 7.29.1 to 7.30.1', body: null, state: 'closed' as const, draft: false, merged: true, headRef: 'dependabot/undici', headSha: 'e5f6a7b', baseRef: 'main', mergeable: null, mergeableState: null, authorLogin: 'dependabot', htmlUrl: 'https://github.com/demo/OpenGitDesktop/pull/13', createdAt: hoursAgo(200) },
+  { number: 11, title: 'Tentativa de cache no grafo', body: null, state: 'closed' as const, draft: false, merged: false, headRef: 'exp/cache', headSha: 'f6a7b8c', baseRef: 'main', mergeable: null, mergeableState: null, authorLogin: 'octocat', htmlUrl: 'https://github.com/demo/OpenGitDesktop/pull/11', createdAt: hoursAgo(400) }
+]
+
+const DEMO_PR_FILES = [
+  { filename: 'GitWeb/src/renderer/src/components/CloneModal.tsx', status: 'modified', additions: 590, deletions: 206, patch: '@@ -1,4 +1,6 @@ import\n-import { KeyRound } from \'lucide-react\'\n+import { ArrowDownToLine, KeyRound } from \'lucide-react\'\n+import { relativeTime } from \'../lib/relativeTime\'\n import Github from \'./icons/Github\'\n import { useRepoStore } from \'../store/repoStore\'' },
+  { filename: 'GitWeb/src/renderer/src/styles/global.css', status: 'modified', additions: 242, deletions: 0, patch: '@@ -1520,3 +1520,8 @@\n }\n+\n+.clone-sheet {\n+  animation: clone-sheet-in 320ms;\n+}' },
+  { filename: 'GitWeb/src/shared/i18n/messages/clone.ts', status: 'modified', additions: 66, deletions: 3, patch: '@@ -36,3 +36,5 @@\n-  baseFoldersAria: \'Pastas-base cadastradas\'\n+  baseFoldersAria: \'Pastas-base cadastradas\',\n+  subtitle: \'Traga um repositório para a sua bancada.\'' },
+  { filename: 'GitWeb/src/shared/github.ts', status: 'modified', additions: 7, deletions: 0, patch: '@@ -15,3 +15,8 @@\n   private: boolean\n+  description?: string | null\n+  language?: string | null' },
+  { filename: 'GitWeb/test/cloneRoute.test.ts', status: 'added', additions: 48, deletions: 0, patch: '@@ -0,0 +1,3 @@\n+import { describe } from \'vitest\'\n+\n+describe(\'route\', () => {})' }
+]
+
+const DEMO_PR_COMMENTS = [
+  { id: 1, authorLogin: 'octocat', body: 'Ficou ótimo! Só uma dúvida: o selo **na bancada** compara só o nome da pasta?', createdAt: hoursAgo(0.8) },
+  { id: 2, authorLogin: 'demo-dev', body: 'Isso, só o nome. Deixei anotado na descrição.', createdAt: hoursAgo(0.5) }
+]
+
 const demoStatus: RepoStatus = {
   branch: 'main',
   upstream: 'origin/main',
@@ -102,6 +136,38 @@ const demoLog: CommitSummary[] = [
     date: new Date().toISOString()
   }
 ]
+
+/** A year of plausible history for the demo mode — deterministic, so screenshots are stable. */
+function demoYear(): CommitSummary[] {
+  const people = [
+    ['Demo Dev', 'demo@local'],
+    ['Octo Cat', 'octo@local'],
+    ['Hu Bot', 'hubot@local'],
+    ['Mona Lisa', 'mona@local']
+  ]
+  const subjects = ['Ajusta o grafo', 'Corrige o tema claro', 'Novo cartão no chat', 'Refatora o store', 'Atualiza dependências', 'Melhora o diff', 'Testes do rebase', 'Textos em espanhol']
+  const commits: CommitSummary[] = []
+  let seed = 7
+  const rand = (): number => {
+    seed = (seed * 9301 + 49297) % 233280
+    return seed / 233280
+  }
+  for (let day = 0; day < 365; day++) {
+    // Busier lately, quiet weekends, a vacation gap in the middle.
+    const date = new Date(Date.now() - day * 86400e3)
+    const weekend = date.getDay() === 0 || date.getDay() === 6
+    if (day > 150 && day < 175) continue
+    const intensity = (weekend ? 0.15 : 0.7) * (day < 60 ? 1.6 : 1)
+    const count = Math.floor(rand() * 4 * intensity)
+    for (let k = 0; k < count; k++) {
+      const [authorName, authorEmail] = people[Math.floor(Math.pow(rand(), 1.8) * people.length)]
+      date.setHours(9 + Math.floor(rand() * 10), Math.floor(rand() * 60))
+      const hash = (Math.floor(rand() * 0xffffffff).toString(16) + day.toString(16) + k).padEnd(12, '0')
+      commits.push({ hash, shortHash: hash.slice(0, 7), summary: subjects[Math.floor(rand() * subjects.length)], body: '', authorName, authorEmail, date: date.toISOString() })
+    }
+  }
+  return commits
+}
 
 const DEMO_ROOT = DEMO_PATH.replace(/OpenGitDesktop$/, '')
 const recentGroups: RepoGroup[] = []
@@ -264,7 +330,7 @@ function installBrowserApiStub(): void {
       branches: async () => demoBranches,
       createBranch: async () => undefined,
       switchBranch: async () => ({ switched: true as const }),
-      log: async () => demoLog,
+      log: async () => (demoGithub() ? demoYear() : demoLog),
       commitFiles: async () => [],
       commitDiff: async () => '',
       commitDetails: async () => demoCommitDetails,
@@ -272,7 +338,18 @@ function installBrowserApiStub(): void {
       remoteUrl: async () => 'https://github.com/demo/OpenGitDesktop.git',
       getIdentity: async () => ({ local: { name: 'Demo', email: 'demo@example.com' }, global: { name: null, email: null } }),
       setIdentity: async () => undefined,
-      listFiles: async () => ['README.md', 'src/app.ts'],
+      listFiles: async () =>
+        demoGithub()
+          ? [
+              ...Array.from({ length: 140 }, (_, i) => `src/renderer/src/file${i}.tsx`),
+              ...Array.from({ length: 60 }, (_, i) => `src/main/mod${i}.ts`),
+              ...Array.from({ length: 22 }, (_, i) => `src/styles/s${i}.css`),
+              ...Array.from({ length: 12 }, (_, i) => `docs/page${i}.md`),
+              'package.json',
+              'tsconfig.json',
+              ...Array.from({ length: 9 }, (_, i) => `assets/icon${i}.png`)
+            ]
+          : ['README.md', 'src/app.ts'],
       readFileForAgent: async () => '// preview de browser: conteúdo indisponível\n',
       fetch: async () => undefined,
       fetchDryRun: async () => okGit(),
@@ -354,7 +431,35 @@ function installBrowserApiStub(): void {
         commits: demoGraph.slice(0, 3).reverse(),
         blocked: null
       }),
-      runLocalRebase: async () => ({ newHead: demoGraph[0].hash, commitCount: 2 })
+      runLocalRebase: async () => ({ newHead: demoGraph[0].hash, commitCount: 2 }),
+      workingTreeStats: async () => ({
+        staged: [{ path: 'src/renderer/src/views/ChangesView.tsx', additions: 48, deletions: 12, binary: false }],
+        unstaged: [
+          { path: 'src/main/gitProcess.ts', additions: 31, deletions: 4, binary: false },
+          { path: 'README.md', additions: 2, deletions: 2, binary: false }
+        ]
+      }),
+      branchOverview: async () => [
+        { name: 'main', isCurrent: true, date: new Date(Date.now() - 3600e3).toISOString(), subject: 'Grafo do histórico', upstream: 'origin/main', ahead: 1, behind: 3, gone: false },
+        { name: 'feature/novo-grafo', isCurrent: false, date: new Date(Date.now() - 2 * 86400e3).toISOString(), subject: 'Layout das faixas', upstream: 'origin/feature/novo-grafo', ahead: 2, behind: 0, gone: false },
+        { name: 'fix/espaco-em-branco', isCurrent: false, date: new Date(Date.now() - 21 * 86400e3).toISOString(), subject: 'Corrige espaço', upstream: 'origin/fix/espaco-em-branco', ahead: 0, behind: 0, gone: true },
+        { name: 'experimento', isCurrent: false, date: new Date(Date.now() - 90 * 86400e3).toISOString(), subject: 'Teste local', upstream: null, ahead: 0, behind: 0, gone: false }
+      ],
+      repoChurn: async () => ({
+        commits: Array.from({ length: 60 }, (_, i) => ({
+          date: new Date(Date.now() - i * 2.5 * 86400e3).toISOString(),
+          additions: 20 + ((i * 37) % 160),
+          deletions: 5 + ((i * 23) % 70)
+        })),
+        hotspots: [
+          { path: 'src/renderer/src/views/ChangesView.tsx', commits: 18, additions: 640, deletions: 210 },
+          { path: 'src/main/gitProcess.ts', commits: 14, additions: 820, deletions: 120 },
+          { path: 'src/renderer/src/store/repoStore.ts', commits: 11, additions: 300, deletions: 140 },
+          { path: 'src/shared/i18n/messages/main.ts', commits: 7, additions: 160, deletions: 40 },
+          { path: 'package.json', commits: 5, additions: 12, deletions: 9 }
+        ],
+        truncated: false
+      })
     },
     fs: {
       readRepoFile: async () => '',
@@ -388,7 +493,9 @@ function installBrowserApiStub(): void {
       deviceFlowPoll: async () => ({ status: 'error' as const, errorMessage: GITHUB_UNAVAILABLE }),
       deviceFlowCancel: async () => undefined,
 
-      getSession: async () => null,
+      // Opt-in demo session (localStorage.demoGithub = '1') so the Pull
+      // Requests screen can be designed in the browser; off by default.
+      getSession: async () => (demoGithub() ? DEMO_USER : null),
       loginWithPat: async () => {
         throw new Error(GITHUB_UNAVAILABLE)
       },
@@ -401,9 +508,12 @@ function installBrowserApiStub(): void {
         throw new Error(GITHUB_UNAVAILABLE)
       },
 
-      listPullRequests: async () => [],
-      getPullRequest: async () => {
-        throw new Error(GITHUB_UNAVAILABLE)
+      listPullRequests: async (_host, _owner, _repo, state) =>
+        demoGithub() ? DEMO_PRS.filter((pr) => state === 'all' || pr.state === state) : [],
+      getPullRequest: async (_host, _owner, _repo, number) => {
+        const pr = demoGithub() ? DEMO_PRS.find((p) => p.number === number) : undefined
+        if (!pr) throw new Error(GITHUB_UNAVAILABLE)
+        return { ...pr, mergeable: pr.number !== 17, mergeableState: pr.number === 17 ? 'dirty' : 'clean' }
       },
       getBranchRules: async () => {
         throw new Error(GITHUB_UNAVAILABLE)
@@ -414,8 +524,8 @@ function installBrowserApiStub(): void {
       createPullRequest: async () => {
         throw new Error(GITHUB_UNAVAILABLE)
       },
-      listPullRequestFiles: async () => [],
-      listPullRequestComments: async () => [],
+      listPullRequestFiles: async () => (demoGithub() ? DEMO_PR_FILES : []),
+      listPullRequestComments: async () => (demoGithub() ? DEMO_PR_COMMENTS : []),
       addPullRequestComment: async () => {
         throw new Error(GITHUB_UNAVAILABLE)
       },
