@@ -62,7 +62,7 @@ function PlusMinus({ additions, deletions, max }: { additions: number; deletions
   const total = additions + deletions
   const scale = max > 0 ? Math.max(0.08, Math.min(1, total / max)) : 0
   return (
-    <span className="flex shrink-0 items-center gap-1.5 font-mono text-[11px] tabular-nums">
+    <span className="flex shrink-0 items-center gap-1.5 font-mono text-meta tabular-nums">
       <span className="text-success-green">+{additions}</span>
       <span className="text-danger-red">−{deletions}</span>
       <span className="hidden h-1.5 w-12 overflow-hidden rounded-pill bg-default-border @[26rem]:flex" aria-hidden>
@@ -113,7 +113,7 @@ function CommitRow({
         <span className="truncate text-caption font-medium text-primary-text" title={commit.summary}>
           {commit.summary}
         </span>
-        <span className="flex min-w-0 items-center gap-1 text-[11px] text-tertiary-text">
+        <span className="flex min-w-0 items-center gap-1 text-meta text-tertiary-text">
           <span className="truncate">{commit.authorName}</span>
           <span aria-hidden>·</span>
           <span className="shrink-0">{relativeTime(locale, commit.date)}</span>
@@ -156,7 +156,7 @@ function CommitsCard({ visual }: { visual: Extract<ToolVisual, { kind: 'commits'
         ))}
       </ul>
       {visual.commits.length > shown.length && (
-        <p className="px-1.5 pt-1 text-[11px] text-tertiary-text">{t.flowMore(visual.commits.length - shown.length)}</p>
+        <p className="px-1.5 pt-1 text-meta text-tertiary-text">{t.flowMore(visual.commits.length - shown.length)}</p>
       )}
     </Frame>
   )
@@ -178,7 +178,7 @@ function CommitCard({ visual }: { visual: Extract<ToolVisual, { kind: 'commit' }
         <Avatar name={commit.authorName} size={28} />
         <div className="min-w-0 flex-1">
           <p className="text-body font-medium leading-snug text-primary-text [overflow-wrap:anywhere]">{commit.summary}</p>
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-[11px] text-tertiary-text">
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-meta text-tertiary-text">
             <span>{commit.authorName}</span>
             <span aria-hidden>·</span>
             <span>{relativeTime(locale, commit.date)}</span>
@@ -197,7 +197,7 @@ function CommitCard({ visual }: { visual: Extract<ToolVisual, { kind: 'commit' }
       </div>
       {visual.files.length > 0 && (
         <>
-          <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-secondary-text">
+          <div className="mt-3 flex items-center justify-between gap-2 text-meta text-secondary-text">
             <span>{t.files(visual.files.length)}</span>
             <PlusMinus additions={additions} deletions={deletions} max={additions + deletions} />
           </div>
@@ -213,14 +213,14 @@ function CommitCard({ visual }: { visual: Extract<ToolVisual, { kind: 'commit' }
                   {f.path}
                 </span>
                 {f.binary ? (
-                  <span className="text-[11px] text-tertiary-text">bin</span>
+                  <span className="text-meta text-tertiary-text">bin</span>
                 ) : (
                   <PlusMinus additions={f.additions} deletions={f.deletions} max={max} />
                 )}
               </li>
             ))}
           </ul>
-          {files.length > shown.length && <p className="px-1.5 pt-1 text-[11px] text-tertiary-text">{t.flowMore(files.length - shown.length)}</p>}
+          {files.length > shown.length && <p className="px-1.5 pt-1 text-meta text-tertiary-text">{t.flowMore(files.length - shown.length)}</p>}
         </>
       )}
     </Frame>
@@ -247,11 +247,11 @@ function ReposCard({ visual }: { visual: Extract<ToolVisual, { kind: 'repos' }> 
                 <span className="min-w-0 flex-1 truncate text-caption font-medium text-primary-text">{r.name}</span>
               </div>
               {r.error ? (
-                <p className="mt-1 truncate text-[11px] text-danger-red" title={r.error}>
+                <p className="mt-1 truncate text-meta text-danger-red" title={r.error}>
                   {t.repoError}: {r.error}
                 </p>
               ) : (
-                <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px]">
+                <div className="mt-1.5 flex flex-wrap items-center gap-1 text-meta">
                   <span className="flex max-w-[9rem] items-center gap-1 rounded-pill border border-default-border px-1.5 text-secondary-text">
                     <GitBranch size={10} className="shrink-0" aria-hidden />
                     <span className="truncate">{r.branch ?? t.noBranch}</span>
@@ -312,12 +312,12 @@ function PrStatusCard({ visual }: { visual: Extract<ToolVisual, { kind: 'prStatu
   return (
     <Frame className="p-3">
       <div className="flex min-w-0 items-start gap-2">
-        <span className={`shrink-0 rounded-pill px-2 py-0.5 text-[11px] font-medium ${stateTone}`}>{t.prState[state] ?? state}</span>
+        <span className={`shrink-0 rounded-pill px-2 py-0.5 text-meta font-medium ${stateTone}`}>{t.prState[state] ?? state}</span>
         <span className="min-w-0 flex-1 text-caption font-medium text-primary-text [overflow-wrap:anywhere]">
           #{pr.number} {pr.title}
         </span>
       </div>
-      <p className="mt-1 flex items-center gap-1 text-[11px] text-tertiary-text">
+      <p className="mt-1 flex items-center gap-1 text-meta text-tertiary-text">
         <span className="min-w-0 truncate font-mono" title={pr.headRef}>
           {pr.headRef}
         </span>
@@ -329,7 +329,7 @@ function PrStatusCard({ visual }: { visual: Extract<ToolVisual, { kind: 'prStatu
       <div className="mt-2.5">
         <p className="mb-1 text-label uppercase tracking-wide text-tertiary-text">{t.checksTitle}</p>
         {ordered.length === 0 ? (
-          <p className="text-[11px] text-tertiary-text">—</p>
+          <p className="text-meta text-tertiary-text">—</p>
         ) : (
           <ul className="flex flex-col gap-0.5">
             {ordered.slice(0, 10).map((c) => {
@@ -361,7 +361,7 @@ function PrStatusCard({ visual }: { visual: Extract<ToolVisual, { kind: 'prStatu
         {reviews.slice(0, 6).map((r) => (
           <span
             key={r.authorLogin}
-            className={`flex items-center gap-1 rounded-pill border px-1.5 text-[11px] ${
+            className={`flex items-center gap-1 rounded-pill border px-1.5 text-meta ${
               r.state === 'APPROVED'
                 ? 'border-success-green/40 text-success-green'
                 : r.state === 'CHANGES_REQUESTED'
@@ -408,13 +408,13 @@ function FlowCard({ visual }: { visual: Extract<ToolVisual, { kind: 'flow' }> })
         </span>
         <ArrowRight size={13} className="ml-2.5 shrink-0 rotate-90 text-tertiary-text @[26rem]:ml-0 @[26rem]:rotate-0" aria-hidden />
         <span
-          className="flex min-w-0 max-w-full items-center gap-1 rounded-pill bg-command-blue px-2 py-0.5 text-midnight-base @[26rem]:max-w-[45%]"
+          className="flex min-w-0 max-w-full items-center gap-1 rounded-pill bg-command-blue px-2 py-0.5 text-on-command @[26rem]:max-w-[45%]"
           title={visual.target}
         >
           {visual.newBranch ? <Cloud size={11} className="shrink-0" aria-hidden /> : <GitBranch size={11} className="shrink-0" aria-hidden />}
           <span className="truncate font-medium">{visual.target}</span>
         </span>
-        {visual.newBranch && <span className="text-[11px] text-tertiary-text">{t.flowNewBranch}</span>}
+        {visual.newBranch && <span className="text-meta text-tertiary-text">{t.flowNewBranch}</span>}
       </div>
       <p className="mt-2 text-caption font-medium text-primary-text">{t.flowTo(visual.total, visual.target)}</p>
       <ol className="relative mt-1.5 flex flex-col">
@@ -429,11 +429,11 @@ function FlowCard({ visual }: { visual: Extract<ToolVisual, { kind: 'flow' }> })
             <span className="min-w-0 flex-1 truncate text-caption text-primary-text" title={c.summary}>
               {c.summary}
             </span>
-            <span className="shrink-0 text-[11px] text-tertiary-text">{relativeTime(locale, c.date)}</span>
+            <span className="shrink-0 text-meta text-tertiary-text">{relativeTime(locale, c.date)}</span>
           </li>
         ))}
         {visual.total > shown.length && (
-          <li className="relative py-[3px] pl-6 text-[11px] text-tertiary-text">
+          <li className="relative py-[3px] pl-6 text-meta text-tertiary-text">
             <span aria-hidden className="absolute bottom-0 left-[9px] top-0 w-0.5 bg-[var(--graph-1)] opacity-50" />
             {t.flowMore(visual.total - shown.length)}
           </li>
@@ -460,7 +460,7 @@ function FocusCard({ visual }: { visual: Extract<ToolVisual, { kind: 'focus' }> 
       <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1.5 px-1.5">
         <span className="text-label uppercase tracking-wide text-tertiary-text">{t.containedIn}</span>
         {visual.containedIn.length === 0 ? (
-          <span className="text-[11px] text-tertiary-text">{t.containedInNone}</span>
+          <span className="text-meta text-tertiary-text">{t.containedInNone}</span>
         ) : (
           <RefChips refs={visual.containedIn} max={6} />
         )}
@@ -501,7 +501,7 @@ function ReleaseCard({ visual }: { visual: Extract<ToolVisual, { kind: 'release'
                   </span>
                 </li>
               ))}
-              {groups[key].length > 5 && <li className="pl-4 text-[11px] text-tertiary-text">{t.flowMore(groups[key].length - 5)}</li>}
+              {groups[key].length > 5 && <li className="pl-4 text-meta text-tertiary-text">{t.flowMore(groups[key].length - 5)}</li>}
             </ul>
           </div>
         )
@@ -589,7 +589,7 @@ export function RebasePlanPicture({ before, steps }: { before: CommitSummary[]; 
                 {r.folded.length > 0 && (
                   <ul className="mt-0.5 flex flex-col pl-3.5">
                     {r.folded.map((f) => (
-                      <li key={f.commit.hash} className="flex min-w-0 items-center gap-1 text-[11px] text-tertiary-text">
+                      <li key={f.commit.hash} className="flex min-w-0 items-center gap-1 text-meta text-tertiary-text">
                         <GitMerge size={10} className="shrink-0 text-[var(--graph-3)]" aria-hidden />
                         <span className="truncate">{f.commit.summary}</span>
                       </li>
@@ -642,7 +642,7 @@ function BlameCard({ visual }: { visual: Extract<ToolVisual, { kind: 'blame' }> 
                   {visual.commit.uncommitted ? t.uncommitted : visual.commit.summary}
                 </span>
                 {!visual.commit.uncommitted && (
-                  <span className="text-[11px] text-tertiary-text">
+                  <span className="text-meta text-tertiary-text">
                     {visual.commit.authorName} · {relativeTime(locale, visual.commit.date)} · <span className="font-mono">{visual.commit.shortHash}</span>
                   </span>
                 )}
@@ -661,7 +661,7 @@ function BlameCard({ visual }: { visual: Extract<ToolVisual, { kind: 'blame' }> 
           </div>
           <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5">
             {visual.authors.map((a, i) => (
-              <li key={a.name} className="flex items-center gap-1 text-[11px] text-secondary-text">
+              <li key={a.name} className="flex items-center gap-1 text-meta text-secondary-text">
                 <span className="size-2 rounded-full" style={{ background: `var(--graph-${AUTHOR_LANES[i % AUTHOR_LANES.length]})` }} aria-hidden />
                 {a.name} <span className="text-tertiary-text">{t.linesBy(a.lines)}</span>
               </li>
@@ -692,8 +692,8 @@ function TagsCard({ visual }: { visual: Extract<ToolVisual, { kind: 'tags' }> })
               <span>{tag.name}</span>
             </span>
             <span className="min-w-0 flex-1 truncate text-caption text-secondary-text">{tag.message && tag.message !== tag.name ? tag.message : ''}</span>
-            <span className="shrink-0 font-mono text-[11px] text-tertiary-text">{tag.shortTarget}</span>
-            <span className="shrink-0 text-[11px] text-tertiary-text">{relativeTime(locale, tag.date)}</span>
+            <span className="shrink-0 font-mono text-meta text-tertiary-text">{tag.shortTarget}</span>
+            <span className="shrink-0 text-meta text-tertiary-text">{relativeTime(locale, tag.date)}</span>
           </li>
         ))}
       </ul>

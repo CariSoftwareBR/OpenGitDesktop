@@ -523,7 +523,7 @@ function ActivityChart({ bins }: { bins: Bin[] }): JSX.Element {
           {ticks.map((tick) => (
             <g key={tick}>
               <line x1={pad.left} x2={width - pad.right} y1={y(tick)} y2={y(tick)} stroke={tick === 0 ? 'var(--viz-axis)' : 'var(--viz-grid)'} />
-              <text x={pad.left - 8} y={y(tick)} dy="0.32em" textAnchor="end" className="fill-tertiary-text text-[11px] tabular-nums">
+              <text x={pad.left - 8} y={y(tick)} dy="0.32em" textAnchor="end" className="fill-tertiary-text text-meta tabular-nums">
                 {fmt.number(tick)}
               </text>
             </g>
@@ -533,7 +533,7 @@ function ActivityChart({ bins }: { bins: Bin[] }): JSX.Element {
             // The last label is always drawn (right-aligned); a regular one too
             // close to it would print on top of it ("23 set" + "24 set").
             (i % labelEvery === 0 && (i === n - 1 || x(n - 1) - x(i) >= 72)) || i === n - 1 ? (
-              <text key={b.start} x={x(i)} y={height - 8} textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'} className="fill-tertiary-text text-[11px]">
+              <text key={b.start} x={x(i)} y={height - 8} textAnchor={i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'} className="fill-tertiary-text text-meta">
                 {b.label}
               </text>
             ) : null
@@ -561,7 +561,7 @@ function ActivityChart({ bins }: { bins: Bin[] }): JSX.Element {
                 // By pixels, not by index share: with few points ("Tudo" = 2 bins) the
                 // share test missed the right edge and the label was cut off.
                 textAnchor={x(peakIndex) > width - pad.right - 40 ? 'end' : x(peakIndex) < pad.left + 40 ? 'start' : 'middle'}
-                className="fill-secondary-text text-[11px] font-medium"
+                className="fill-secondary-text text-meta font-medium"
               >
                 {t.peak} · {fmt.number(bins[peakIndex].count)}
               </text>
@@ -615,7 +615,7 @@ function Heatmap({ grid, max }: { grid: number[][]; max: number }): JSX.Element 
       <div className="grid grid-cols-[28px_repeat(24,minmax(0,1fr))] gap-[3px]" onPointerLeave={() => setHover(null)}>
         {HEATMAP_ROWS.map((day) => (
           <div key={day} className="contents">
-            <span className="flex items-center text-[11px] text-tertiary-text">{t.weekdays[day]}</span>
+            <span className="flex items-center text-meta text-tertiary-text">{t.weekdays[day]}</span>
             {grid[day].map((count, hour) => (
               <span
                 key={hour}
@@ -639,7 +639,7 @@ function Heatmap({ grid, max }: { grid: number[][]; max: number }): JSX.Element 
         ))}
       </div>
 
-      <div className="mt-3 flex items-center justify-end gap-1.5 text-[11px] text-tertiary-text" aria-hidden>
+      <div className="mt-3 flex items-center justify-end gap-1.5 text-meta text-tertiary-text" aria-hidden>
         {t.less}
         {[0, 1, 2, 3, 4, 5].map((lvl) => (
           <span key={lvl} className="size-3 rounded-[3px]" style={{ backgroundColor: fill(lvl) }} />
@@ -685,7 +685,7 @@ function Contributors({ people, total }: { people: Contributor[]; total: number 
       {people.map((person, i) => (
         <li key={person.key} className="flex items-center gap-3" title={t.personCommits(person.name, person.count)}>
           <span
-            className="flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold shadow-[var(--shadow-raised)]"
+            className="flex size-8 shrink-0 items-center justify-center rounded-full text-meta font-semibold shadow-[var(--shadow-raised)]"
             style={{ backgroundColor: `var(--viz-${(i % 8) + 1})`, color: `var(--viz-${(i % 8) + 1}-ink)` }}
             aria-hidden
           >

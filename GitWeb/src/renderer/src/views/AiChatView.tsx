@@ -106,7 +106,7 @@ function TextResultToggle({ text }: { text: string }): JSX.Element | null {
   if (!text.trim()) return null
   return (
     <div className="mt-1.5">
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="text-[11px] text-tertiary-text hover:text-command-blue hover:underline">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="text-meta text-tertiary-text hover:text-command-blue hover:underline">
         {open ? g.hideText : g.showText}
       </button>
       {open && (
@@ -455,11 +455,13 @@ function AiChatView(): JSX.Element {
     }
     function onMouseUp(): void {
       document.body.style.userSelect = ''
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onMouseUp)
+      document.removeEventListener('pointermove', onMouseMove)
+      document.removeEventListener('pointerup', onMouseUp)
+      document.removeEventListener('pointercancel', onMouseUp)
     }
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onMouseUp)
+    document.addEventListener('pointermove', onMouseMove)
+    document.addEventListener('pointerup', onMouseUp)
+    document.addEventListener('pointercancel', onMouseUp)
   }
 
   // Resize-by-corner for the floating window — no upper bound besides the
@@ -484,11 +486,13 @@ function AiChatView(): JSX.Element {
     function onMouseUp(): void {
       document.body.style.cursor = ''
       document.body.style.userSelect = ''
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onMouseUp)
+      document.removeEventListener('pointermove', onMouseMove)
+      document.removeEventListener('pointerup', onMouseUp)
+      document.removeEventListener('pointercancel', onMouseUp)
     }
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onMouseUp)
+    document.addEventListener('pointermove', onMouseMove)
+    document.addEventListener('pointerup', onMouseUp)
+    document.addEventListener('pointercancel', onMouseUp)
   }
 
   const composerDisabledReason = !isConfigured
@@ -508,7 +512,7 @@ function AiChatView(): JSX.Element {
           aria-valuemax={Math.max(AI_CHAT_MIN_WIDTH, Math.floor(typeof window !== 'undefined' ? window.innerWidth - floatingRect.x : AI_CHAT_MIN_WIDTH))}
           aria-valuenow={Math.round(floatingRect.width)}
           tabIndex={0}
-          onMouseDown={handleResizeStart}
+          onPointerDown={handleResizeStart}
           onKeyDown={(e) => {
             const step = 16
             if (e.key === 'ArrowRight') {
@@ -529,12 +533,12 @@ function AiChatView(): JSX.Element {
               setFloatingRect({ height: Math.max(AI_CHAT_MIN_HEIGHT, floatingRect.height - step) })
             }
           }}
-          className="absolute bottom-0 right-0 z-10 size-6 cursor-nwse-resize rounded-tl-sm hover:bg-command-blue/30 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
+          className="touch-none absolute bottom-0 right-0 z-10 size-6 cursor-nwse-resize rounded-tl-sm hover:bg-command-blue/30 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
         />
       )}
       <div
-        className={`relative flex min-w-0 items-center gap-1 border-b border-default-border p-2 ${floating ? 'cursor-move' : ''}`}
-        onMouseDown={handleHeaderMouseDown}
+        className={`touch-none relative flex min-w-0 items-center gap-1 border-b border-default-border p-2 ${floating ? 'cursor-move' : ''}`}
+        onPointerDown={handleHeaderMouseDown}
       >
             <button
               type="button"

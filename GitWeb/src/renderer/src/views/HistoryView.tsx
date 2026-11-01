@@ -189,7 +189,7 @@ function CommitList({
                           {relativeTime(locale, commit.date)}
                         </span>
                         <span aria-hidden>·</span>
-                        <span className="shrink-0 font-mono text-[11px]">{commit.shortHash}</span>
+                        <span className="shrink-0 font-mono text-meta">{commit.shortHash}</span>
                         {localOnly && (
                           <span className="shrink-0 text-attention-orange" title={g.localOnly}>
                             ●
@@ -351,11 +351,13 @@ function HistoryView(): JSX.Element {
         draggingRef.current = false
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
-        document.removeEventListener('mousemove', onMouseMove)
-        document.removeEventListener('mouseup', onMouseUp)
+        document.removeEventListener('pointermove', onMouseMove)
+        document.removeEventListener('pointerup', onMouseUp)
+        document.removeEventListener('pointercancel', onMouseUp)
       }
-      document.addEventListener('mousemove', onMouseMove)
-      document.addEventListener('mouseup', onMouseUp)
+      document.addEventListener('pointermove', onMouseMove)
+      document.addEventListener('pointerup', onMouseUp)
+      document.addEventListener('pointercancel', onMouseUp)
     },
     [filesWidth]
   )
@@ -645,7 +647,7 @@ function HistoryView(): JSX.Element {
             aria-valuemax={MAX_FILES_WIDTH}
             aria-valuenow={filesWidth}
             tabIndex={0}
-            onMouseDown={handleResizeStart}
+            onPointerDown={handleResizeStart}
             onKeyDown={(e) => {
               if (e.key === 'ArrowLeft') {
                 e.preventDefault()
@@ -655,7 +657,7 @@ function HistoryView(): JSX.Element {
                 setFilesWidth((w) => Math.min(MAX_FILES_WIDTH, w + 16))
               }
             }}
-            className="w-1 shrink-0 cursor-col-resize border-r border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
+            className="touch-none w-1 shrink-0 cursor-col-resize border-r border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
           />
         )}
 

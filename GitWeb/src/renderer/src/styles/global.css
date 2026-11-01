@@ -64,6 +64,9 @@
   --text-body--line-height: 1.5;
   --text-caption: 12px;
   --text-caption--line-height: 1.45;
+  /* Dense metadata between caption and label: ref chips, counts, timestamps
+     inside compact rows. Size only — it keeps the line-height it sits in. */
+  --text-meta: 11px;
   --text-label: 10px;
   --text-label--line-height: 1.5;
   --text-label--letter-spacing: 0.08em;
@@ -103,6 +106,9 @@
   --color-danger-quiet: #c24848;
   --color-danger-quiet-hover: #ad3e3e;
   --color-on-danger: #ffffff;
+  /* Text on a solid command-blue fill (the panel tone of each theme): 6.7:1
+     dark, 4.8:1 light, 7.5:1+ in high contrast. */
+  --color-on-command: #131315;
 }
 
 /* Theme variants — additive on top of the @theme block above, which stays
@@ -166,6 +172,7 @@
   --color-danger-quiet: #a34b4b;
   --color-danger-quiet-hover: #8f3e3e;
   --color-on-danger: #ffffff;
+  --color-on-command: #ffffff;
 }
 
 /* Dark, high contrast — pure black canvas; every role that used to lean on
@@ -213,6 +220,7 @@
   --color-danger-quiet: #ff6b6b;
   --color-danger-quiet-hover: #ff8585;
   --color-on-danger: #000000;
+  --color-on-command: #000000;
 }
 
 /* Light, high contrast — pure white canvas, same always-visible-border
@@ -260,6 +268,7 @@
   --color-danger-quiet: #a30000;
   --color-danger-quiet-hover: #8a0000;
   --color-on-danger: #ffffff;
+  --color-on-command: #ffffff;
 }
 
 /* Data-viz tokens (Dashboard only). Charts are the one place colour encodes
@@ -1141,6 +1150,16 @@
   [data-theme='light'] .chip-success {
     color: #136f4d;
   }
+  /* The same deeper inks for every badge built straight from utilities
+     (bg-*-soft + text-*): the ink token is re-pointed on the tinted element,
+     so its own text and anything inside holds 4.5:1 without touching each
+     call site. Only the ink moves — the soft fills are literal colours. */
+  [data-theme='light'] .bg-command-blue-soft {
+    --color-command-blue: #1b5fc1;
+  }
+  [data-theme='light'] .bg-attention-orange-soft {
+    --color-attention-orange: #9b4c0d;
+  }
 
   /* Compact icon buttons keep their drawn size but get a 24×24 minimum pointer
      target (WCAG 2.5.8) from an invisible, centered hit area. */
@@ -1213,7 +1232,7 @@
   /* Ref labels in the graph: the current branch is a filled pill, other
      branches outlined, remotes quieter, tags wear a notch. */
   .ref-chip {
-    @apply inline-flex h-[18px] max-w-[140px] shrink-0 items-center gap-1 rounded-pill border px-1.5 text-[11px] leading-none font-medium;
+    @apply inline-flex h-[18px] max-w-[140px] shrink-0 items-center gap-1 rounded-pill border px-1.5 text-meta leading-none font-medium;
   }
   .ref-chip > span {
     @apply min-w-0 truncate;
@@ -1799,7 +1818,7 @@
     padding: 0 8px;
     border-radius: 999px;
     font-family: var(--font-mono, ui-monospace, monospace);
-    font-size: 11px;
+    font-size: var(--text-meta);
     color: var(--color-command-blue);
     background: var(--color-command-blue-soft);
   }
@@ -1942,7 +1961,7 @@
   }
   .branch-flow.is-compact .branch-token {
     padding: 0 6px;
-    font-size: 11px;
+    font-size: var(--text-meta);
     line-height: 17px;
   }
 
@@ -2024,7 +2043,7 @@
     height: 22px;
     padding: 0 8px;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: var(--text-meta);
     font-weight: 500;
     color: var(--chip-ink, var(--color-secondary-text));
     background: color-mix(in oklab, var(--chip-ink, var(--color-tertiary-text)) 13%, transparent);

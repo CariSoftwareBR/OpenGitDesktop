@@ -233,7 +233,7 @@ function RebasePlannerDialog(): JSX.Element | null {
                           >
                             {row.summary}
                           </span>
-                          <span className="truncate text-[11px] text-tertiary-text">
+                          <span className="truncate text-meta text-tertiary-text">
                             <span className="font-mono">{row.shortHash}</span> · {t.actionHint[row.action]}
                           </span>
                         </span>

@@ -526,11 +526,13 @@ function ChangesView(): JSX.Element {
         draggingRef.current = false
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
-        document.removeEventListener('mousemove', onMouseMove)
-        document.removeEventListener('mouseup', onMouseUp)
+        document.removeEventListener('pointermove', onMouseMove)
+        document.removeEventListener('pointerup', onMouseUp)
+        document.removeEventListener('pointercancel', onMouseUp)
       }
-      document.addEventListener('mousemove', onMouseMove)
-      document.addEventListener('mouseup', onMouseUp)
+      document.addEventListener('pointermove', onMouseMove)
+      document.addEventListener('pointerup', onMouseUp)
+      document.addEventListener('pointercancel', onMouseUp)
     },
     [sidebarWidth]
   )
@@ -554,11 +556,13 @@ function ChangesView(): JSX.Element {
         commitPanelDraggingRef.current = false
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
-        document.removeEventListener('mousemove', onMouseMove)
-        document.removeEventListener('mouseup', onMouseUp)
+        document.removeEventListener('pointermove', onMouseMove)
+        document.removeEventListener('pointerup', onMouseUp)
+        document.removeEventListener('pointercancel', onMouseUp)
       }
-      document.addEventListener('mousemove', onMouseMove)
-      document.addEventListener('mouseup', onMouseUp)
+      document.addEventListener('pointermove', onMouseMove)
+      document.addEventListener('pointerup', onMouseUp)
+      document.addEventListener('pointercancel', onMouseUp)
     },
     [commitPanelHeight]
   )
@@ -1316,7 +1320,7 @@ function ChangesView(): JSX.Element {
           aria-valuemax={MAX_COMMIT_PANEL_HEIGHT}
           aria-valuenow={commitPanelHeight}
           tabIndex={0}
-          onMouseDown={handleCommitPanelResizeStart}
+          onPointerDown={handleCommitPanelResizeStart}
           onKeyDown={(e) => {
             if (e.key === 'ArrowUp') {
               e.preventDefault()
@@ -1326,7 +1330,7 @@ function ChangesView(): JSX.Element {
               setCommitPanelHeight((h) => Math.max(MIN_COMMIT_PANEL_HEIGHT, h - 16))
             }
           }}
-          className="h-1.5 shrink-0 cursor-row-resize border-t border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
+          className="touch-none h-1.5 shrink-0 cursor-row-resize border-t border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
         />
 
         <div
@@ -1479,7 +1483,7 @@ function ChangesView(): JSX.Element {
           aria-valuemax={MAX_SIDEBAR_WIDTH}
           aria-valuenow={sidebarWidth}
           tabIndex={0}
-          onMouseDown={handleResizeStart}
+          onPointerDown={handleResizeStart}
           onKeyDown={(e) => {
             if (e.key === 'ArrowLeft') {
               e.preventDefault()
@@ -1489,7 +1493,7 @@ function ChangesView(): JSX.Element {
               setSidebarWidth((w) => Math.min(MAX_SIDEBAR_WIDTH, w + 16))
             }
           }}
-          className="w-1 shrink-0 cursor-col-resize border-r border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
+          className="touch-none w-1 shrink-0 cursor-col-resize border-r border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
         />
       )}
 

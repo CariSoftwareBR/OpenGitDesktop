@@ -55,7 +55,7 @@ function TimelineItem({
             {entry.summary}
           </span>
         </span>
-        <span className="flex min-w-0 items-center gap-1.5 pl-3.5 text-[11px] text-tertiary-text">
+        <span className="flex min-w-0 items-center gap-1.5 pl-3.5 text-meta text-tertiary-text">
           <span className="truncate">{entry.authorName}</span>
           <span aria-hidden>·</span>
           <span className="shrink-0">{relativeTime(locale, entry.date)}</span>
@@ -215,7 +215,7 @@ function FileInsightPanel(): JSX.Element | null {
                 <span key={name} style={{ width: `${(n / totalLines) * 100}%`, background: `var(--graph-${AUTHOR_LANES[i % AUTHOR_LANES.length]})` }} />
               ))}
             </div>
-            <p className="truncate text-[11px] text-tertiary-text">
+            <p className="truncate text-meta text-tertiary-text">
               {authors
                 .slice(0, 3)
                 .map(([name, n]) => `${name} ${Math.round((n / totalLines) * 100)}%`)
@@ -274,38 +274,38 @@ function FileInsightPanel(): JSX.Element | null {
         <section className="flex min-w-0 flex-1 flex-col">
           <div className="flex min-h-10 shrink-0 items-center gap-3 overflow-hidden whitespace-nowrap border-b border-default-border px-3 py-1.5">
             <h3 className="text-label uppercase tracking-wide text-tertiary-text">{t.blame}</h3>
-            <span className="truncate rounded-pill border border-default-border px-2 text-[11px] text-secondary-text">
+            <span className="truncate rounded-pill border border-default-border px-2 text-meta text-secondary-text">
               {rev ? t.atCommit(rev.slice(0, 7)) : t.workingTree}
             </span>
             {rev && (
-              <button type="button" onClick={() => setRev(null)} className="text-[11px] text-command-blue hover:underline">
+              <button type="button" onClick={() => setRev(null)} className="text-meta text-command-blue hover:underline">
                 {t.backToWorkingTree}
               </button>
             )}
             {focusLine && (
               <span className="flex items-center gap-1.5">
-                <span className="rounded-pill bg-command-blue-soft px-2 text-[11px] text-command-blue">{t.lineBy(focusLine)}</span>
+                <span className="rounded-pill bg-command-blue-soft px-2 text-meta text-command-blue">{t.lineBy(focusLine)}</span>
                 {aiReady && (
                   <button
                     type="button"
                     onClick={() => askAi(focusLine)}
                     disabled={aiBusy}
                     title={t.askAiLine}
-                    className="flex h-6 shrink-0 items-center gap-1 rounded-pill bg-command-blue px-2.5 text-[11px] font-medium text-white transition-[filter] hover:brightness-110"
+                    className="flex h-6 shrink-0 items-center gap-1 rounded-pill bg-command-blue px-2.5 text-meta font-medium text-on-command transition-[filter] hover:brightness-110"
                   >
                     <Bot size={12} aria-hidden /> {t.askAiShort}
                   </button>
                 )}
               </span>
             )}
-            <span className="ml-auto hidden items-center gap-1.5 text-[11px] text-tertiary-text xl:flex" aria-hidden>
+            <span className="ml-auto hidden items-center gap-1.5 text-meta text-tertiary-text xl:flex" aria-hidden>
               {t.ageNewest}
               <span className="h-1.5 w-16 rounded-pill" style={{ background: 'linear-gradient(90deg, rgb(var(--blame-age) / 0.9), rgb(var(--blame-age) / 0.04))' }} />
               {t.ageOldest}
             </span>
           </div>
           {blame?.truncated && (
-            <p className="border-b border-default-border px-3 py-1 text-[11px] text-tertiary-text">
+            <p className="border-b border-default-border px-3 py-1 text-meta text-tertiary-text">
               {t.truncated(fmt.number(blame.lines.length), fmt.number(blame.totalLines))}
             </p>
           )}
@@ -336,7 +336,7 @@ function FileInsightPanel(): JSX.Element | null {
                         aria-hidden
                       />
                       <span
-                        className="sticky left-0 z-[1] flex w-[230px] shrink-0 items-center gap-1.5 overflow-hidden bg-obsidian-panel px-2 font-sans text-[11px]"
+                        className="sticky left-0 z-[1] flex w-[230px] shrink-0 items-center gap-1.5 overflow-hidden bg-obsidian-panel px-2 font-sans text-meta"
                         style={{ boxShadow: `inset 230px 0 0 ${commit?.uncommitted ? 'var(--color-attention-orange-soft)' : ageTint(ratio, 0.16)}` }}
                       >
                         {runStart && commit && (

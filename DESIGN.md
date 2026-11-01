@@ -169,6 +169,10 @@ typography:
     fontWeight: 400
     lineHeight: 1.45
     letterSpacing: "normal"
+  meta:
+    fontFamily: "calibre, Inter, ui-sans-serif, system-ui, -apple-system, sans-serif"
+    fontSize: "11px"
+    letterSpacing: "normal"
   label:
     fontFamily: "calibre, Inter, ui-sans-serif, system-ui, -apple-system, sans-serif"
     fontSize: "10px"
@@ -309,6 +313,7 @@ Full token values live in `themeVariants` in this file's frontmatter, and are mi
 - **Title** (600, `16px`, `1.3`): panel titles, dialog titles, and high-priority row labels.
 - **Body** (400, `14px`, `1.5`): instructions, descriptions, controls, and operational copy; prose is capped near `70ch`.
 - **Caption** (400, `12px`, `1.45`): secondary metadata on pointer-precise layouts.
+- **Meta** (`11px`, inherits line-height): dense metadata inside compact rows — ref chips, counts, timestamps, branch tokens. Token `--text-meta` / `text-meta`; never an arbitrary `text-[11px]`.
 - **Label** (600, `10px`, `0.08em`, uppercase when categorical): section headers and short state labels only.
 
 ### Named Rules
