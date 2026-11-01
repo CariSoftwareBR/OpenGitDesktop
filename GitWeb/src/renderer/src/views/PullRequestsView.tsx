@@ -9,6 +9,7 @@ import {
   ChevronRight,
   ExternalLink,
   CircleHelp,
+  CircleCheck,
   GitBranch,
   GitBranchPlus,
   GitMerge,
@@ -37,9 +38,10 @@ import ConfirmDialog, { PromptDialog } from '../components/ConfirmDialog'
 import GithubLoginModal from '../components/GithubLoginModal'
 import Markdown from '../components/Markdown'
 import Pagination from '../components/Pagination'
-import type { PullRequestState } from '../lib/github'
+import type { PullRequest, PullRequestFile, PullRequestState } from '../lib/github'
+import { relativeTime } from '../lib/relativeTime'
 import type { Formatters, Messages } from '../../../shared/i18n'
-import { useFormatters, useT } from '../lib/i18n'
+import { useFormatters, useLocale, useT } from '../lib/i18n'
 
 type PrMessages = Messages['pullRequests']
 
@@ -70,7 +72,7 @@ const DEFAULT_FILES_WIDTH = 280
 
 const MIN_COMMENTS_HEIGHT = 120
 const MAX_COMMENTS_HEIGHT = 520
-const DEFAULT_COMMENTS_HEIGHT = 224
+const DEFAULT_COMMENTS_HEIGHT = 196
 
 const MIN_HEADER_HEIGHT = 120
 const MAX_HEADER_HEIGHT = 480
@@ -280,6 +282,111 @@ function BranchChip({ name }: { name: string }): JSX.Element {
       <GitBranch size={11} className="shrink-0 text-tertiary-text" aria-hidden />
       <span className="truncate">{name || '—'}</span>
     </span>
+  )
+}
+
+type PrTone = 'open' | 'draft' | 'merged' | 'closed'
+
+function prTone(pr: PullRequest): PrTone {
+  if (pr.merged) return 'merged'
+  if (pr.state === 'closed') return 'closed'
+  return pr.draft ? 'draft' : 'open'
+}
+
+function PrStateIcon({ pr, size = 14 }: { pr: PullRequest; size?: number }): JSX.Element {
+  const tone = prTone(pr)
+  const Icon = tone === 'merged' ? GitMerge : tone === 'closed' ? GitPullRequestClosed : tone === 'draft' ? GitPullRequestDraft : GitPullRequest
+  return <Icon size={size} aria-hidden />
+}
+
+function PrStatePill({ pr }: { pr: PullRequest }): JSX.Element {
+  const t = useT().pullRequests
+  const tone = prTone(pr)
+  const label = tone === 'merged' ? t.merged : tone === 'closed' ? t.closed : tone === 'draft' ? t.draft : t.open
+  return (
+    <span className={`pr-state is-${tone}`}>
+      <PrStateIcon pr={pr} size={13} />
+      {label}
+    </span>
+  )
+}
+
+/** GitHub serves every account's avatar at github.com/<login>.png; a failed load just hides it. */
+function Avatar({ login, size = 20 }: { login: string; size?: number }): JSX.Element {
+  const [failed, setFailed] = useState(false)
+  if (failed || !login) {
+    return (
+      <span className="pr-avatar grid shrink-0 place-items-center rounded-full font-semibold" style={{ width: size, height: size, fontSize: size * 0.42 }} aria-hidden>
+        {login.slice(0, 1).toUpperCase()}
+      </span>
+    )
+  }
+  return (
+    <img
+      src={`https://github.com/${encodeURIComponent(login)}.png?size=${size * 2}`}
+      alt=""
+      width={size}
+      height={size}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      className="pr-avatar shrink-0 rounded-full"
+    />
+  )
+}
+
+function BranchFlow({ head, base, compact = false }: { head: string; base: string; compact?: boolean }): JSX.Element {
+  return (
+    <span className={`branch-flow ${compact ? 'is-compact' : ''}`}>
+      <span className="branch-token" title={head}>
+        {head}
+      </span>
+      <ArrowRight size={compact ? 11 : 12} className="shrink-0 text-tertiary-text" aria-hidden />
+      <span className="branch-token is-base" title={base}>
+        {base}
+      </span>
+    </span>
+  )
+}
+
+/** GitHub's five-block +/- meter: the share of additions vs deletions at a glance. */
+function DiffBlocks({ additions, deletions }: { additions: number; deletions: number }): JSX.Element {
+  const total = additions + deletions
+  const green = total === 0 ? 0 : Math.round((additions / total) * 5)
+  return (
+    <span className="flex shrink-0 gap-[2px]" aria-hidden>
+      {Array.from({ length: 5 }, (_, i) => (
+        <span key={i} className={`diff-block ${total === 0 ? '' : i < green ? 'is-add' : 'is-del'}`} />
+      ))}
+    </span>
+  )
+}
+
+const FILE_STATUS_CODE: Record<string, string> = { added: 'A', removed: 'D', modified: 'M', renamed: 'R', copied: 'C', changed: 'M' }
+
+function PrFileRow({ file, selected, onSelect }: { file: PullRequestFile; selected: boolean; onSelect: () => void }): JSX.Element {
+  const t = useT().pullRequests
+  const slash = file.filename.lastIndexOf('/')
+  const name = slash < 0 ? file.filename : file.filename.slice(slash + 1)
+  const dir = slash < 0 ? '' : file.filename.slice(0, slash)
+  const code = FILE_STATUS_CODE[file.status] ?? 'M'
+  return (
+    <li>
+      <button type="button" onClick={onSelect} className={`list-row w-full gap-2.5 text-left ${selected ? 'is-selected' : ''}`} title={file.filename}>
+        <span className={`file-status is-${code}`} aria-label={t.fileStatus[file.status] ?? file.status}>
+          {code}
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col leading-tight">
+          <span className="truncate text-body text-primary-text">{name}</span>
+          {dir && <span className="truncate text-caption text-tertiary-text">{dir}</span>}
+        </span>
+        <span className="flex shrink-0 flex-col items-end gap-1">
+          <span className="text-caption tabular-nums" aria-label={t.linesAria(file.additions, file.deletions)}>
+            <span className="text-diff-add-ink">+{file.additions}</span> <span className="text-danger-red">−{file.deletions}</span>
+          </span>
+          <DiffBlocks additions={file.additions} deletions={file.deletions} />
+        </span>
+      </button>
+    </li>
   )
 }
 
@@ -1141,6 +1248,7 @@ function PullRequestDetail(): JSX.Element | null {
   const narrow = useMediaQuery(NARROW_LAYOUT_QUERY)
   const t = useT().pullRequests
   const fmt = useFormatters()
+  const locale = useLocale()
   const MERGE_METHOD_OPTIONS = mergeMethodOptions(t)
 
   const [headerHeight, setHeaderHeight] = useState<number | null>(null)
@@ -1258,6 +1366,40 @@ function PullRequestDetail(): JSX.Element | null {
             ? t.behind(detail.pr.headRef, detail.pr.baseRef)
             : null
 
+  const totalAdditions = detail.files.reduce((sum, f) => sum + f.additions, 0)
+  const totalDeletions = detail.files.reduce((sum, f) => sum + f.deletions, 0)
+  const mergeTone: 'ready' | 'checking' | 'blocked' | 'warning' | 'draft' | 'merged' | 'closed' = detail.pr.merged
+    ? 'merged'
+    : !isOpen
+      ? 'closed'
+      : detail.pr.draft
+        ? 'draft'
+        : mergeBlocker
+          ? 'blocked'
+          : mergeWarning
+            ? 'warning'
+            : detail.pr.mergeable === null
+              ? 'checking'
+              : 'ready'
+  const mergeTitle = {
+    merged: t.mergedState(detail.pr.baseRef),
+    closed: t.closedState,
+    draft: t.draftTitle,
+    blocked: t.conflictTitle,
+    warning: t.attentionTitle,
+    checking: t.checkingMerge,
+    ready: t.readyToMerge
+  }[mergeTone]
+  const mergeHint = {
+    merged: t.mergedHint,
+    closed: t.closedHint,
+    draft: mergeBlocker,
+    blocked: mergeBlocker,
+    warning: mergeWarning,
+    checking: null,
+    ready: t.readyToMergeHint(detail.pr.headRef, detail.pr.baseRef)
+  }[mergeTone]
+
   async function handleComment(): Promise<void> {
     if (!comment.trim()) return
     await addComment(comment.trim())
@@ -1268,98 +1410,128 @@ function PullRequestDetail(): JSX.Element | null {
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <header
         ref={headerRef}
-        className={`shrink-0 px-5 py-4 ${narrow ? 'border-b border-default-border' : ''} ${headerHeight !== null ? 'overflow-y-auto' : ''}`}
+        className={`pr-hero shrink-0 px-6 pt-4 pb-4 ${narrow ? 'border-b border-default-border' : ''} ${headerHeight !== null ? 'overflow-y-auto' : 'max-h-[55%] overflow-y-auto'}`}
         style={headerHeight !== null ? { maxHeight: headerHeight } : undefined}
       >
-        <h2 className="text-title font-semibold text-primary-text">
+        <div className="flex flex-wrap items-center gap-2">
+          <PrStatePill pr={detail.pr} />
+          <BranchFlow head={detail.pr.headRef} base={detail.pr.baseRef} />
+          <span className="ml-auto flex flex-wrap items-center gap-0.5">
+            {isOpen && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setConfirmAction('approve')}
+                  disabled={isBusy || detail.pr.state !== 'open' || detail.pr.merged || isOwnPr}
+                  title={isOwnPr ? t.cannotApproveOwn : undefined}
+                  className="btn-ghost h-7 px-2 text-caption"
+                >
+                  <Check size={13} aria-hidden /> {t.approve}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmAction('changes')}
+                  disabled={isBusy || detail.pr.state !== 'open' || detail.pr.merged || isOwnPr}
+                  title={isOwnPr ? t.cannotRequestOwn : undefined}
+                  className="btn-ghost h-7 px-2 text-caption"
+                >
+                  {t.requestChanges}
+                </button>
+              </>
+            )}
+            {!detail.pr.merged && (
+              <button
+                type="button"
+                onClick={() => (detail.pr.state === 'open' ? setConfirmAction('close') : void setState('open'))}
+                disabled={isBusy}
+                className="btn-ghost h-7 px-2 text-caption"
+              >
+                {detail.pr.state === 'open' ? t.closePr : t.reopenPr}
+              </button>
+            )}
+            <a href={detail.pr.htmlUrl} target="_blank" rel="noreferrer" className="btn-ghost inline-flex h-7 items-center gap-1.5 px-2 text-caption" title={t.openInBrowser}>
+              <ExternalLink size={12} aria-hidden /> {t.openOnGithub}
+            </a>
+          </span>
+        </div>
+        <h2 className="mt-3 text-[20px] font-semibold leading-snug tracking-[-0.015em] text-primary-text">
           {detail.pr.title} <span className="font-normal text-tertiary-text">#{detail.pr.number}</span>
         </h2>
-        <p className="mt-1 text-body text-secondary-text">
-          {detail.pr.merged
-            ? t.mergedBy(detail.pr.authorLogin, detail.pr.headRef, detail.pr.baseRef)
-            : t.wantsMerge(detail.pr.authorLogin, detail.pr.headRef, detail.pr.baseRef)}
+        <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-caption text-secondary-text">
+          <Avatar login={detail.pr.authorLogin} size={18} />
+          <span className="font-medium text-primary-text">{detail.pr.authorLogin}</span>
+          <span aria-hidden>·</span>
+          <time dateTime={detail.pr.createdAt}>{relativeTime(locale, detail.pr.createdAt)}</time>
+          <span aria-hidden>·</span>
+          <span>{t.filesShort(detail.files.length)}</span>
+          <span className="tabular-nums" aria-label={t.linesAria(totalAdditions, totalDeletions)}>
+            <span className="text-diff-add-ink">+{fmt.number(totalAdditions)}</span>{' '}
+            <span className="text-danger-red">−{fmt.number(totalDeletions)}</span>
+          </span>
         </p>
         {detail.pr.body && (
-          <div className="mt-3 max-h-36 overflow-y-auto text-body text-secondary-text">
+          <div className="pr-body mt-3 max-h-24 overflow-y-auto text-body text-secondary-text">
             <Markdown text={detail.pr.body} />
           </div>
         )}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <MergeMethodHint method={mergeMethod} />
-          <Combobox
-            value={mergeMethod}
-            onChange={(v) => setMergeMethod(v as typeof mergeMethod)}
-            options={MERGE_METHOD_OPTIONS}
-            ariaLabel={t.mergeMethodAria}
-            className="w-48"
-          />
-          <button
-            type="button"
-            onClick={() => setConfirmAction('merge')}
-            disabled={isBusy || !isOpen || Boolean(mergeBlocker)}
-            title={mergeBlocker ?? undefined}
-            className="btn-primary flex items-center gap-1.5"
-          >
-            {isMerging && <Loader2 size={13} className="animate-spin" aria-hidden />}
-            {isMerging ? t.merging : t.mergePr}
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirmAction('approve')}
-            disabled={isBusy || detail.pr.state !== 'open' || detail.pr.merged || isOwnPr}
-            title={isOwnPr ? t.cannotApproveOwn : undefined}
-            className="btn-secondary"
-          >
-            {t.approve}
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirmAction('changes')}
-            disabled={isBusy || detail.pr.state !== 'open' || detail.pr.merged || isOwnPr}
-            title={isOwnPr ? t.cannotRequestOwn : undefined}
-            className="btn-ghost"
-          >
-            {t.requestChanges}
-          </button>
-          <button
-            type="button"
-            onClick={() => (detail.pr.state === 'open' ? setConfirmAction('close') : void setState('open'))}
-            disabled={isBusy || detail.pr.merged}
-            title={detail.pr.merged ? t.cannotReopenMerged : undefined}
-            className="btn-ghost"
-          >
-            {detail.pr.merged ? t.merged : detail.pr.state === 'open' ? t.closePr : t.reopenPr}
-          </button>
-          <a
-            href={detail.pr.htmlUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="btn-ghost inline-flex items-center gap-1.5"
-            title={t.openInBrowser}
-          >
-            <ExternalLink size={13} aria-hidden /> {t.openOnGithub}
-          </a>
-        </div>
-        {(mergeBlocker || mergeWarning) && (
-          <p
-            role="status"
-            className={`mt-2 flex items-start gap-1.5 text-caption ${mergeBlocker ? 'text-danger-red' : 'text-warning-amber'}`}
-          >
-            <AlertTriangle size={13} className="mt-px shrink-0" aria-hidden />
-            <span>{mergeBlocker ?? mergeWarning}</span>
-          </p>
-        )}
-        {isOpen && detail.pr.mergeable === false && detail.pr.mergeableState === 'dirty' && (
-          <button
-            type="button"
-            className="btn-secondary mt-2"
-            disabled={repoBusy}
-            onClick={() => void integrateBaseIntoBranch(detail.pr.headRef, detail.pr.baseRef)}
-            title={t.integrateTitle(detail.pr.headRef, detail.pr.baseRef)}
-          >
-            <GitMerge size={13} aria-hidden /> {t.integrateBase(detail.pr.baseRef)}
-          </button>
-        )}
+
+        <section className={`merge-box mt-3.5 is-${mergeTone}`} aria-label={mergeTitle}>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2.5">
+            <span className="merge-box-icon" aria-hidden>
+              {mergeTone === 'ready' ? (
+                <CircleCheck size={16} />
+              ) : mergeTone === 'merged' ? (
+                <GitMerge size={16} />
+              ) : mergeTone === 'closed' ? (
+                <GitPullRequestClosed size={16} />
+              ) : mergeTone === 'checking' ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : mergeTone === 'draft' ? (
+                <GitPullRequestDraft size={16} />
+              ) : (
+                <AlertTriangle size={16} />
+              )}
+            </span>
+            <div className="min-w-[12rem] flex-1" role="status">
+              <p className="text-body font-semibold text-primary-text">{mergeTitle}</p>
+              {mergeHint && <p className="mt-0.5 text-caption text-secondary-text">{mergeHint}</p>}
+              {isOpen && detail.pr.mergeable === false && detail.pr.mergeableState === 'dirty' && (
+                <button
+                  type="button"
+                  className="btn-secondary mt-2.5 h-8 text-caption"
+                  disabled={repoBusy}
+                  onClick={() => void integrateBaseIntoBranch(detail.pr.headRef, detail.pr.baseRef)}
+                  title={t.integrateTitle(detail.pr.headRef, detail.pr.baseRef)}
+                >
+                  <GitMerge size={13} aria-hidden /> {t.integrateBase(detail.pr.baseRef)}
+                </button>
+              )}
+            </div>
+            {isOpen && (
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <MergeMethodHint method={mergeMethod} />
+                <Combobox
+                  value={mergeMethod}
+                  onChange={(v) => setMergeMethod(v as typeof mergeMethod)}
+                  options={MERGE_METHOD_OPTIONS}
+                  ariaLabel={t.mergeMethodAria}
+                  className="w-44"
+                />
+                <button
+                  type="button"
+                  onClick={() => setConfirmAction('merge')}
+                  disabled={isBusy || !isOpen || Boolean(mergeBlocker)}
+                  title={mergeBlocker ?? undefined}
+                  className="btn-primary flex items-center gap-1.5"
+                >
+                  {isMerging ? <Loader2 size={13} className="animate-spin" aria-hidden /> : <GitMerge size={14} aria-hidden />}
+                  {isMerging ? t.merging : t.mergePr}
+                </button>
+              </div>
+            )}
+          </div>
+
+        </section>
       </header>
 
       {!narrow && (
@@ -1390,26 +1562,20 @@ function PullRequestDetail(): JSX.Element | null {
           className={`min-h-0 overflow-y-auto ${narrow ? 'w-full' : 'shrink-0'} ${narrow && detail.selectedFile ? 'hidden' : ''}`}
           style={narrow ? undefined : { width: filesWidth }}
         >
-          <h3 className="sticky top-0 z-10 border-b border-default-border bg-obsidian-panel px-3 py-2 text-label uppercase tracking-wide text-tertiary-text">
-            {t.filesCount(detail.files.length)}
+          <h3 className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-default-border bg-obsidian-panel px-3 py-2.5">
+            <span className="flex items-center gap-1.5 text-caption font-semibold text-secondary-text">
+              {t.files} <span className="count-badge">{detail.files.length}</span>
+            </span>
+            <DiffBlocks additions={totalAdditions} deletions={totalDeletions} />
           </h3>
-          <ul>
+          <ul className="flex flex-col gap-0.5 p-1.5">
             {detail.files.map((file) => (
-              <li key={file.filename}>
-                <button
-                  type="button"
-                  onClick={() => selectPullRequestFile(file.filename)}
-                  className={`list-row w-full justify-between text-left ${file.filename === detail.selectedFile ? 'is-selected' : ''}`}
-                >
-                  <span className="truncate text-body text-primary-text" title={file.filename}>
-                    {file.filename}
-                  </span>
-                  <span className="shrink-0 text-caption tabular-nums">
-                    <span className="text-success-green">+{file.additions}</span>{' '}
-                    <span className="text-danger-red">-{file.deletions}</span>
-                  </span>
-                </button>
-              </li>
+              <PrFileRow
+                key={file.filename}
+                file={file}
+                selected={file.filename === detail.selectedFile}
+                onSelect={() => selectPullRequestFile(file.filename)}
+              />
             ))}
             {detail.files.length === 0 && (
               <li className="px-3 py-4 text-center text-caption text-tertiary-text">{t.noFiles}</li>
@@ -1495,22 +1661,27 @@ function PullRequestDetail(): JSX.Element | null {
       )}
 
       <footer
-        className="flex shrink-0 flex-col gap-2 border-t border-default-border px-5 py-3"
+        className="pr-thread flex shrink-0 flex-col gap-2.5 border-t border-default-border px-6 py-3.5"
         style={{ maxHeight: commentsHeight }}
       >
-        <h3 className="shrink-0 text-label uppercase tracking-wide text-tertiary-text">{t.comments}</h3>
+        <h3 className="flex shrink-0 items-center gap-1.5 text-caption font-semibold text-secondary-text">
+          {t.comments} <span className="count-badge">{detail.comments.length}</span>
+        </h3>
         {/* Only the thread scrolls: the composer stays in view however long it gets. */}
         <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
           {detail.comments.map((c) => (
-            <div key={c.id} className="rounded-md border border-default-border bg-obsidian-panel p-2.5">
-              <div className="flex items-baseline gap-2">
-                <strong className="text-body text-primary-text">{c.authorLogin}</strong>
-                <time dateTime={c.createdAt} className="text-caption text-tertiary-text">
-                  {formatDate(fmt, c.createdAt)}
-                </time>
-              </div>
-              <div className="mt-1 text-body text-secondary-text">
-                <Markdown text={c.body} />
+            <div key={c.id} className="flex items-start gap-2.5">
+              <Avatar login={c.authorLogin} size={26} />
+              <div className="pr-comment min-w-0 flex-1 rounded-md px-3 py-2">
+                <div className="flex items-baseline gap-2">
+                  <strong className="text-caption font-semibold text-primary-text">{c.authorLogin}</strong>
+                  <time dateTime={c.createdAt} className="text-caption text-tertiary-text" title={formatDate(fmt, c.createdAt)}>
+                    {relativeTime(locale, c.createdAt)}
+                  </time>
+                </div>
+                <div className="mt-0.5 text-body text-secondary-text">
+                  <Markdown text={c.body} />
+                </div>
               </div>
             </div>
           ))}
@@ -1518,17 +1689,23 @@ function PullRequestDetail(): JSX.Element | null {
             <p className="text-caption text-tertiary-text">{t.noComments}</p>
           )}
         </div>
-        <textarea
-          placeholder={t.commentPlaceholder}
-          aria-label={t.commentAria}
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          rows={2}
-          className="field shrink-0 resize-y"
-        />
-        <button onClick={handleComment} disabled={!comment.trim() || isBusy} className="btn-secondary shrink-0 self-end">
-          {t.comment}
-        </button>
+        <div className="flex shrink-0 items-end gap-2.5">
+          {user && <Avatar login={user.login} size={26} />}
+          <textarea
+            placeholder={t.commentPlaceholder}
+            aria-label={t.commentAria}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) void handleComment()
+            }}
+            rows={2}
+            className="field min-w-0 flex-1 resize-y"
+          />
+          <button onClick={handleComment} disabled={!comment.trim() || isBusy} className="btn-secondary shrink-0">
+            {t.comment}
+          </button>
+        </div>
       </footer>
 
       <ConfirmDialog
@@ -1615,6 +1792,7 @@ function PullRequestsView(): JSX.Element {
   const narrow = useMediaQuery(NARROW_LAYOUT_QUERY)
   const t = useT().pullRequests
   const fmt = useFormatters()
+  const locale = useLocale()
 
   const [page, setPage] = useState(1)
   const pageCount = Math.max(1, Math.ceil(pullRequests.length / PR_PAGE_SIZE))
@@ -1679,42 +1857,55 @@ function PullRequestsView(): JSX.Element {
       className={`flex h-full ${narrow ? 'w-full' : 'shrink-0'} flex-col overflow-hidden`}
       style={narrow ? undefined : { width: listWidth }}
     >
-      <div className="shrink-0 p-3 pb-0">
-        <div className="mb-3 flex gap-2">
-          <Combobox
-            value={stateFilter}
-            onChange={(v) => setStateFilter(v as PullRequestState)}
-            options={STATE_FILTERS.map((value) => ({ value, label: t.stateFilter[value] }))}
-            ariaLabel={t.filterAria}
-            className="flex-1"
-          />
-          <button
-            type="button"
-            onClick={() => void refreshPullRequests()}
-            disabled={isBusy}
-            className="btn-secondary shrink-0"
-            aria-label={t.refreshAria}
-            title={t.refresh}
-          >
-            <RefreshCw size={14} className={isBusy ? 'animate-spin' : undefined} aria-hidden />
-          </button>
-          {/* Opens only — closing goes through the wizard's own Cancelar/X, so a
-              second click can't silently throw away a half-filled draft. */}
-          <button
-            type="button"
-            onClick={() => setShowNewForm(true)}
-            aria-pressed={showNewForm}
-            className={`btn-secondary shrink-0 ${showNewForm ? 'border-command-blue/50! bg-command-blue-soft! text-command-blue!' : ''}`}
-          >
-            <Plus size={14} aria-hidden /> {t.newShort}
-          </button>
+      <div className="flex shrink-0 flex-col gap-3 border-b border-default-border px-4 pt-4 pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-title font-semibold text-primary-text">
+            Pull Requests
+            {pullRequests.length > 0 && <span className="count-badge">{pullRequests.length}</span>}
+          </h2>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={() => void refreshPullRequests()}
+              disabled={isBusy}
+              className="btn-ghost size-8 px-0"
+              aria-label={t.refreshAria}
+              title={t.refresh}
+            >
+              <RefreshCw size={14} className={isBusy ? 'animate-spin' : undefined} aria-hidden />
+            </button>
+            {/* Opens only — closing goes through the wizard's own Cancelar/X, so a
+                second click can't silently throw away a half-filled draft. */}
+            <button
+              type="button"
+              onClick={() => setShowNewForm(true)}
+              aria-pressed={showNewForm}
+              className="btn-primary h-8 px-3 text-caption"
+            >
+              <Plus size={14} aria-hidden /> {t.newShort}
+            </button>
+          </div>
+        </div>
+        <div className="clone-segmented w-full" role="radiogroup" aria-label={t.filterAria}>
+          {STATE_FILTERS.map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={stateFilter === value}
+              onClick={() => setStateFilter(value as PullRequestState)}
+              className="clone-segment flex-1 justify-center"
+            >
+              {t.stateFilter[value]}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3">
-        <ul className="flex flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+        <ul className="flex flex-col gap-0.5">
           {pagedPullRequests.map((pr) => (
-            <li key={pr.number} className="border-b border-default-border">
+            <li key={pr.number}>
               <button
                 type="button"
                 onClick={() => {
@@ -1724,31 +1915,42 @@ function PullRequestsView(): JSX.Element {
                   void selectPullRequest(pr.number)
                 }}
                 aria-disabled={showNewForm && wizardBusy ? true : undefined}
-                className={`list-row w-full flex-col items-stretch gap-0.5 py-2.5 text-left ${detail?.pr.number === pr.number ? 'is-selected' : ''}`}
+                className={`list-row w-full items-start gap-3 px-3 py-2.5 text-left ${detail?.pr.number === pr.number ? 'is-selected' : ''}`}
               >
-                <div className="flex items-center gap-1.5">
-                  {pr.merged ? (
-                    <GitMerge size={14} className="shrink-0 text-command-blue" aria-label={t.merged} />
-                  ) : pr.state === 'closed' ? (
-                    <GitPullRequestClosed size={14} className="shrink-0 text-danger-red" aria-label={t.closed} />
-                  ) : pr.draft ? (
-                    <GitPullRequestDraft size={14} className="shrink-0 text-tertiary-text" aria-label={t.draft} />
-                  ) : (
-                    <GitPullRequest size={14} className="shrink-0 text-success-green" aria-label={t.open} />
-                  )}
-                  <span className="min-w-0 flex-1 truncate text-body font-medium text-primary-text">{pr.title}</span>
-                  <span className="shrink-0 text-caption tabular-nums text-tertiary-text">#{pr.number}</span>
-                </div>
-                <div className="whitespace-normal text-caption text-tertiary-text [overflow-wrap:anywhere]">
-                  {pr.authorLogin} · {formatDate(fmt, pr.createdAt)} · {pr.headRef} → {pr.baseRef}
-                </div>
+                <span className={`pr-state-dot is-${prTone(pr)}`} aria-label={pr.merged ? t.merged : pr.state === 'closed' ? t.closed : pr.draft ? t.draft : t.open}>
+                  <PrStateIcon pr={pr} size={14} />
+                </span>
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="flex items-start gap-2">
+                    <span className="line-clamp-2 min-w-0 flex-1 text-body font-medium leading-snug text-primary-text">{pr.title}</span>
+                    <span className="shrink-0 pt-px text-caption tabular-nums text-tertiary-text">#{pr.number}</span>
+                  </span>
+                  <span className="flex min-w-0 items-center gap-1.5 text-caption text-tertiary-text">
+                    <Avatar login={pr.authorLogin} size={16} />
+                    <span className="truncate">{pr.authorLogin}</span>
+                    <span aria-hidden>·</span>
+                    <time dateTime={pr.createdAt} className="shrink-0" title={formatDate(fmt, pr.createdAt)}>
+                      {relativeTime(locale, pr.createdAt)}
+                    </time>
+                  </span>
+                  <BranchFlow head={pr.headRef} base={pr.baseRef} compact />
+                </span>
               </button>
             </li>
           ))}
-          {pullRequests.length === 0 && <li className="px-2 py-4 text-center text-caption text-tertiary-text">{t.noPrs}</li>}
+          {pullRequests.length === 0 && <li className="px-2 py-10 text-center text-caption text-tertiary-text">{t.noPrs}</li>}
         </ul>
       </div>
       <Pagination page={page} pageCount={pageCount} onChange={setPage} />
+      <div className="flex shrink-0 items-center gap-2 border-t border-default-border px-4 py-2.5">
+        <Avatar login={user.login} size={20} />
+        <span className="min-w-0 flex-1 truncate text-caption text-secondary-text" title={user.name ?? user.login}>
+          @{user.login}
+        </span>
+        <button type="button" onClick={() => logout()} className="shrink-0 text-caption text-tertiary-text hover:text-primary-text hover:underline">
+          {t.signOut}
+        </button>
+      </div>
     </div>
   )
 
@@ -1770,9 +1972,25 @@ function PullRequestsView(): JSX.Element {
       ) : detail ? (
         <PullRequestDetail />
       ) : (
-        <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-body text-tertiary-text">
+        <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
           <PostMergeActions />
-          {t.selectPr}
+          <span className="empty-medallion rise-in mb-1">
+            <GitPullRequest size={20} aria-hidden />
+          </span>
+          <p className="text-title font-semibold text-primary-text">{t.emptyTitle}</p>
+          <p className="max-w-sm text-caption text-secondary-text">{t.emptyHint}</p>
+          {stateFilter === 'open' && pullRequests.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-1.5">
+              <span className="pr-count-chip is-open">{t.openCount(pullRequests.filter((pr) => !pr.draft).length)}</span>
+              {pullRequests.some((pr) => pr.draft) && <span className="pr-count-chip">{t.draftCount(pullRequests.filter((pr) => pr.draft).length)}</span>}
+              {pullRequests.some((pr) => pr.authorLogin.toLowerCase() === user.login.toLowerCase()) && (
+                <span className="pr-count-chip">{t.mineCount(pullRequests.filter((pr) => pr.authorLogin.toLowerCase() === user.login.toLowerCase()).length)}</span>
+              )}
+            </div>
+          )}
+          <button type="button" onClick={() => setShowNewForm(true)} className="btn-secondary mt-2">
+            <Plus size={14} aria-hidden /> {t.newPr}
+          </button>
         </div>
       )}
     </div>
@@ -1781,14 +1999,6 @@ function PullRequestsView(): JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <h1 className="sr-only">Pull Requests</h1>
-      <div className="flex shrink-0 items-center gap-2 border-b border-default-border px-3 py-2">
-        <img src={user.avatarUrl} alt={user.login} className="h-6 w-6 rounded-full" />
-        <span className="truncate text-body text-primary-text">{user.name ?? user.login}</span>
-        <span className="truncate text-caption text-tertiary-text">@{user.login}</span>
-        <button type="button" onClick={() => logout()} className="ml-auto shrink-0 text-caption text-command-blue hover:underline">
-          {t.signOut}
-        </button>
-      </div>
 
       {narrow ? (
         <div className="min-h-0 flex-1 overflow-hidden">{detail || showNewForm ? detailPane : listPane}</div>

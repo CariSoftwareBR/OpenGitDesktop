@@ -30,7 +30,14 @@ const ptBR = {
     pull: 'Buscar alterações (pull)',
     switch_branch: 'Trocar de branch',
     stash: 'Guardar alterações (stash)',
-    stash_pop: 'Restaurar stash'
+    stash_pop: 'Restaurar stash',
+    show_in_history: 'Mostrar no Histórico',
+    explain_file_history: 'Histórico do arquivo',
+    list_tags: 'Listar tags',
+    create_tag: 'Criar tag',
+    push_tag: 'Enviar tag',
+    prepare_release_notes: 'Notas de release',
+    reorganize_local_commits: 'Reorganizar commits locais'
   } as Record<string, string>,
   exploring: 'Explorando',
   readings: (n: number) => `${n} ${n === 1 ? 'leitura' : 'leituras'}`,
@@ -440,7 +447,14 @@ const en: M = {
     pull: 'Pull changes',
     switch_branch: 'Switch branch',
     stash: 'Stash changes',
-    stash_pop: 'Restore stash'
+    stash_pop: 'Restore stash',
+    show_in_history: 'Show in History',
+    explain_file_history: 'File history',
+    list_tags: 'List tags',
+    create_tag: 'Create tag',
+    push_tag: 'Push tag',
+    prepare_release_notes: 'Release notes',
+    reorganize_local_commits: 'Reorganize local commits'
   },
   exploring: 'Exploring',
   readings: (n) => `${n} ${n === 1 ? 'read' : 'reads'}`,
@@ -832,7 +846,14 @@ const es: M = {
     pull: 'Traer cambios (pull)',
     switch_branch: 'Cambiar de rama',
     stash: 'Guardar cambios (stash)',
-    stash_pop: 'Restaurar stash'
+    stash_pop: 'Restaurar stash',
+    show_in_history: 'Mostrar en el Historial',
+    explain_file_history: 'Historial del archivo',
+    list_tags: 'Listar tags',
+    create_tag: 'Crear tag',
+    push_tag: 'Enviar tag',
+    prepare_release_notes: 'Notas de versión',
+    reorganize_local_commits: 'Reorganizar commits locales'
   },
   exploring: 'Explorando',
   readings: (n) => `${n} ${n === 1 ? 'lectura' : 'lecturas'}`,

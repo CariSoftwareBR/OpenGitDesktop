@@ -9,6 +9,8 @@ import { COMPACT_SHELL_QUERY, useMediaQuery } from './lib/useMediaQuery'
 import InitialView from './views/InitialView'
 import ChangesView from './views/ChangesView'
 import HistoryView from './views/HistoryView'
+import FileInsightPanel from './components/FileInsightPanel'
+import RebasePlannerDialog from './components/RebasePlannerDialog'
 import StashesView from './views/StashesView'
 import PullRequestsView from './views/PullRequestsView'
 import DashboardView from './views/DashboardView'
@@ -19,6 +21,7 @@ import TopBar from './components/TopBar'
 import UpdateBadge from './components/UpdateBadge'
 import ErrorExplainButton from './components/ErrorExplainButton'
 import { useDocumentLanguage, useT } from './lib/i18n'
+import { AI_CHAT_MIN_WIDTH } from './lib/chatLayout'
 
 // Shown after switching onto a branch whose changes were parked in a stash
 // (typically by the blocked-switch dialog), so getting them back is one click.
@@ -53,7 +56,7 @@ function BranchStashBanner(): JSX.Element | null {
   )
 }
 
-const MIN_CHAT_WIDTH = 320
+const MIN_CHAT_WIDTH = AI_CHAT_MIN_WIDTH
 const MAX_CHAT_WIDTH = 720
 const DEFAULT_CHAT_WIDTH = 400
 
@@ -256,7 +259,8 @@ function App(): JSX.Element {
       )}
       <BranchStashBanner />
       <div className="flex min-h-0 flex-1">
-        <main className="view-enter min-w-0 flex-1 overflow-hidden">
+        <main className="view-enter relative min-w-0 flex-1 overflow-hidden">
+          <FileInsightPanel />
           {view === 'changes' && <ChangesView />}
           {view === 'history' && <HistoryView />}
           {view === 'stash' && <StashesView />}
@@ -289,7 +293,7 @@ function App(): JSX.Element {
             />
             <aside
               className="flex h-full shrink-0 flex-col overflow-hidden border-l border-default-border bg-obsidian-panel"
-              style={{ width: chatWidth }}
+              style={{ width: Math.max(MIN_CHAT_WIDTH, chatWidth), minWidth: MIN_CHAT_WIDTH }}
               aria-label={t.aiChat}
             >
               <AiChatView />
@@ -309,16 +313,23 @@ function App(): JSX.Element {
         )}
       </div>
 
+      <RebasePlannerDialog />
+
       {overlayChat && (
         <div
           className="fixed z-30 flex flex-col overflow-hidden rounded-lg border border-default-border bg-obsidian-panel shadow-floating"
           style={
             floating
-              ? { left: floatingRect.x, top: floatingRect.y, width: floatingRect.width, height: floatingRect.height }
+              ? {
+                  left: floatingRect.x,
+                  top: floatingRect.y,
+                  width: Math.max(MIN_CHAT_WIDTH, floatingRect.width),
+                  height: floatingRect.height
+                }
               : {
                   right: 16,
                   bottom: 16,
-                  width: Math.min(chatWidth, window.innerWidth - 32),
+                  width: Math.min(Math.max(MIN_CHAT_WIDTH, chatWidth), window.innerWidth - 16),
                   height: Math.min(520, window.innerHeight - 96)
                 }
           }

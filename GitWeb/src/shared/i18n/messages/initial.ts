@@ -64,7 +64,23 @@ const ptBR = {
   deleteFolderConfirm: 'Excluir pasta',
   pullTitle: (name: string) => `Pull em ${name}?`,
   pullMessage: 'Isso altera o working tree desse repositório (git pull), mesmo que ele não esteja aberto agora.',
-  pullConfirm: 'Fazer pull'
+  pullConfirm: 'Fazer pull',
+  openRepository: 'Abrir repositório',
+  repositories: 'Repositórios',
+  filterPlaceholder: 'Filtrar por nome, branch ou pasta',
+  filterAria: 'Filtrar repositórios recentes',
+  clearFilter: 'Limpar filtro',
+  noMatches: (query: string) => `Nenhum repositório corresponde a “${query}”.`,
+  summaryBehind: (n: number) => `${n} para atualizar`,
+  summaryDiverged: (n: number) => `${n} divergente${n === 1 ? '' : 's'}`,
+  summaryChanges: (n: number) => `${n} com alterações`,
+  summaryOk: (n: number) => `${n} em dia`,
+  summaryFailed: (n: number) => `${n} com erro`,
+  summaryChecking: 'verificando…',
+  githubConnected: 'GitHub conectado',
+  githubAccount: (login: string) => `Conta do GitHub: ${login}`,
+  emptyTitle: 'Sua bancada está vazia',
+  emptyBody: 'Abra uma pasta com repositórios, clone um do GitHub ou crie um do zero. Cada repositório aparece aqui com o estado dele em relação ao remoto.'
 }
 
 type M = typeof ptBR
@@ -130,7 +146,23 @@ const en: M = {
   deleteFolderConfirm: 'Delete folder',
   pullTitle: (name) => `Pull in ${name}?`,
   pullMessage: 'This changes that repository’s working tree (git pull), even though it is not open right now.',
-  pullConfirm: 'Pull'
+  pullConfirm: 'Pull',
+  openRepository: 'Open repository',
+  repositories: 'Repositories',
+  filterPlaceholder: 'Filter by name, branch or folder',
+  filterAria: 'Filter recent repositories',
+  clearFilter: 'Clear filter',
+  noMatches: (query) => `No repository matches “${query}”.`,
+  summaryBehind: (n) => `${n} to update`,
+  summaryDiverged: (n) => `${n} diverged`,
+  summaryChanges: (n) => `${n} with changes`,
+  summaryOk: (n) => `${n} up to date`,
+  summaryFailed: (n) => `${n} with errors`,
+  summaryChecking: 'checking…',
+  githubConnected: 'GitHub connected',
+  githubAccount: (login) => `GitHub account: ${login}`,
+  emptyTitle: 'Your workbench is empty',
+  emptyBody: 'Open a folder with repositories, clone one from GitHub or create one from scratch. Each repository shows up here with its state against the remote.'
 }
 
 const es: M = {
@@ -195,7 +227,23 @@ const es: M = {
   deleteFolderConfirm: 'Eliminar carpeta',
   pullTitle: (name) => `¿Pull en ${name}?`,
   pullMessage: 'Esto modifica el working tree de ese repositorio (git pull), aunque no esté abierto ahora.',
-  pullConfirm: 'Hacer pull'
+  pullConfirm: 'Hacer pull',
+  openRepository: 'Abrir repositorio',
+  repositories: 'Repositorios',
+  filterPlaceholder: 'Filtrar por nombre, rama o carpeta',
+  filterAria: 'Filtrar repositorios recientes',
+  clearFilter: 'Limpiar filtro',
+  noMatches: (query) => `Ningún repositorio coincide con “${query}”.`,
+  summaryBehind: (n) => `${n} por actualizar`,
+  summaryDiverged: (n) => `${n} divergente${n === 1 ? '' : 's'}`,
+  summaryChanges: (n) => `${n} con cambios`,
+  summaryOk: (n) => `${n} al día`,
+  summaryFailed: (n) => `${n} con error`,
+  summaryChecking: 'verificando…',
+  githubConnected: 'GitHub conectado',
+  githubAccount: (login) => `Cuenta de GitHub: ${login}`,
+  emptyTitle: 'Tu banco de trabajo está vacío',
+  emptyBody: 'Abre una carpeta con repositorios, clona uno de GitHub o crea uno desde cero. Cada repositorio aparece aquí con su estado frente al remoto.'
 }
 
 export default { 'pt-BR': ptBR, en, es }

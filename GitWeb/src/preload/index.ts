@@ -8,8 +8,22 @@ import type {
   CloneProgress,
   CommitDetails,
   CommitFile,
+  CommitFileStat,
+  CommitRange,
+  CommitRef,
   CommitSummary,
+  CommitSummaryWithStats,
+  FileBlame,
   FileHistoryLocation,
+  FileTimelineEntry,
+  GraphCommit,
+  LocalRebaseInfo,
+  LocalRebaseResult,
+  BranchOverview,
+  RepoChurn,
+  WorkingTreeStats,
+  RebaseStep,
+  TagInfo,
   GitIdentity,
   GitResult,
   RecentReposData,
@@ -118,6 +132,27 @@ const api = {
     commitDetails: (cwd: string, ref: string): Promise<CommitDetails | null> =>
       invoke('git:commitDetails', cwd, ref),
     commitPatch: (cwd: string, ref: string): Promise<string> => invoke('git:commitPatch', cwd, ref),
+    graphLog: (cwd: string, limit?: number, path?: string): Promise<GraphCommit[]> => invoke('git:graphLog', cwd, limit, path),
+    logWithStats: (cwd: string, limit?: number): Promise<CommitSummaryWithStats[]> => invoke('git:logWithStats', cwd, limit),
+    commitFileStats: (cwd: string, ref: string): Promise<CommitFileStat[]> => invoke('git:commitFileStats', cwd, ref),
+    commitRange: (cwd: string, head: string, base: string | null, limit?: number): Promise<CommitRange> =>
+      invoke('git:commitRange', cwd, head, base, limit),
+    refsContaining: (cwd: string, ref: string): Promise<CommitRef[]> => invoke('git:refsContaining', cwd, ref),
+    fileBlame: (cwd: string, path: string, rev?: string): Promise<FileBlame> => invoke('git:fileBlame', cwd, path, rev),
+    fileTimeline: (cwd: string, path: string, limit?: number): Promise<FileTimelineEntry[]> =>
+      invoke('git:fileTimeline', cwd, path, limit),
+    listTags: (cwd: string): Promise<TagInfo[]> => invoke('git:listTags', cwd),
+    createTag: (cwd: string, name: string, ref?: string, message?: string): Promise<TagInfo> =>
+      invoke('git:createTag', cwd, name, ref, message),
+    pushTag: (cwd: string, name: string): Promise<void> => invoke('git:pushTag', cwd, name),
+    latestTag: (cwd: string, ref?: string, strict?: boolean): Promise<string | null> => invoke('git:latestTag', cwd, ref, strict),
+    localRebaseInfo: (cwd: string): Promise<LocalRebaseInfo> => invoke('git:localRebaseInfo', cwd),
+    workingTreeStats: (cwd: string): Promise<WorkingTreeStats> => invoke('git:workingTreeStats', cwd),
+    branchOverview: (cwd: string): Promise<BranchOverview[]> => invoke('git:branchOverview', cwd),
+    repoChurn: (cwd: string, sinceDays: number | null, limit?: number): Promise<RepoChurn> =>
+      invoke('git:repoChurn', cwd, sinceDays, limit),
+    runLocalRebase: (cwd: string, steps: RebaseStep[], expectedHead: string): Promise<LocalRebaseResult> =>
+      invoke('git:runLocalRebase', cwd, steps, expectedHead),
 
     remoteUrl: (cwd: string, remoteName?: string): Promise<string | null> =>
       invoke('git:remoteUrl', cwd, remoteName),

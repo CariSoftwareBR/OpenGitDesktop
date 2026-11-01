@@ -13,8 +13,22 @@ import type {
   CloneProgress,
   CommitDetails,
   CommitFile,
+  CommitFileStat,
+  CommitRange,
+  CommitRef,
   CommitSummary,
+  CommitSummaryWithStats,
+  FileBlame,
   FileHistoryLocation,
+  FileTimelineEntry,
+  GraphCommit,
+  LocalRebaseInfo,
+  LocalRebaseResult,
+  BranchOverview,
+  RepoChurn,
+  WorkingTreeStats,
+  RebaseStep,
+  TagInfo,
   GitIdentity,
   GitResult,
   RepoStatus,
@@ -25,6 +39,7 @@ import type {
   SwitchBranchResult
 } from '../shared/git'
 import { parseCheckoutBlockers } from '../shared/git'
+import { parseBlamePorcelain, parseBranchOverview, parseChurnLog, parseDecorations, parseNumstatZ, sumNumstat, validateRebasePlan } from '../shared/gitParsing'
 import { parseGitHubRemote, credentialKey } from '../shared/githubRemote'
 import { getSecret } from './credentials'
 import { tMain } from './i18n'
@@ -1755,4 +1770,404 @@ export async function stopTracking(
 
 export function resolveRepoPath(cwd: string, relativePath: string): string {
   return resolveWithinRepo(cwd, relativePath)
+}
+
+// --- History graph, stats, blame, tags, local reorganization ---------------
+
+const GS = '\x1d' // group separator: ends the formatted part of a log record
+
+/**
+ * Every local branch, remote branch and tag (plus a detached HEAD), so the
+ * History graph shows where branches split and meet. `--date-order` keeps
+ * parents below all of their children, which the lane layout relies on. The
+ * stash is deliberately not a source: its internal commits are not history.
+ * A file filter keeps the old behaviour — the current branch only.
+ */
+export async function getGraphLog(cwd: string, limit = 400, path?: string): Promise<GraphCommit[]> {
+  const format = [...LOG_FORMAT_FIELDS, '%P', '%D'].join(FS)
+  const args = ['log', '--date-order', '--decorate=full', `--pretty=format:${format}${RS}`, '-n', String(limit)]
+  if (path?.trim()) args.push('HEAD', '--', path.trim())
+  else args.push('--branches', '--remotes', '--tags', 'HEAD')
+  const result = await readGit(args, cwd)
+  if (result.exitCode !== 0) {
+    if (/does not have any commits yet|unknown revision|bad revision|ambiguous argument 'HEAD'/i.test(result.stderr)) return []
+    throwOnFailure(result, ['log'])
+  }
+  return result.stdout
+    .split(RS)
+    .map((record) => record.replace(/^\n/, ''))
+    .filter((record) => record.trim().length > 0)
+    .map((record) => {
+      const [hash, shortHash, authorName, authorEmail, date, summary, body, parents, decorations] = record.split(FS)
+      return {
+        hash,
+        shortHash,
+        authorName,
+        authorEmail,
+        date,
+        summary,
+        body: (body ?? '').trim(),
+        parents: (parents ?? '').trim().split(/\s+/).filter(Boolean),
+        refs: parseDecorations((decorations ?? '').trim())
+      }
+    })
+}
+
+function parseStatRecords(stdout: string): { commit: CommitSummary; stat: string }[] {
+  return stdout
+    .split(RS)
+    .filter((record) => record.includes(GS))
+    .map((record) => {
+      const [head, stat] = record.split(GS)
+      const [hash, shortHash, authorName, authorEmail, date, summary, body] = head.replace(/^\n/, '').split(FS)
+      return { commit: { hash, shortHash, authorName, authorEmail, date, summary, body: (body ?? '').trim() }, stat: stat ?? '' }
+    })
+}
+
+/** Recent commits of the current branch with their +/− totals (numstat, so no locale parsing). */
+export async function getLogWithStats(cwd: string, limit = 20): Promise<CommitSummaryWithStats[]> {
+  const format = `${RS}${LOG_FORMAT_FIELDS.join(FS)}${GS}`
+  const result = await readGit(['log', '-n', String(limit), `--pretty=format:${format}`, '--numstat'], cwd)
+  if (result.exitCode !== 0) {
+    if (/does not have any commits yet|unknown revision/i.test(result.stderr)) return []
+    throwOnFailure(result, ['log'])
+  }
+  return parseStatRecords(result.stdout).map(({ commit, stat }) => ({ ...commit, ...sumNumstat(stat) }))
+}
+
+/** Per-file +/− of one commit (merges diffed against their first parent). */
+export async function getCommitFileStats(cwd: string, ref: string): Promise<CommitFileStat[]> {
+  assertNotOption(ref, tMain().git.labels.commitRef)
+  const [numstat, files] = await Promise.all([
+    runShowWithMergeDiff(['--numstat', '--pretty=format:', ref], cwd),
+    getCommitFiles(ref, cwd)
+  ])
+  throwOnFailure(numstat, ['show', '--numstat'])
+  const rows = numstat.stdout.split('\n').filter((line) => /^(\d+|-)\t(\d+|-)\t/.test(line))
+  return rows.map((line, index) => {
+    const [adds, dels, ...rest] = line.split('\t')
+    const binary = adds === '-'
+    const listed = files[index]
+    return {
+      path: listed ? (listed.path.split('\t').pop() ?? rest.join('\t')) : rest.join('\t'),
+      status: listed?.status ?? 'M',
+      additions: binary ? 0 : Number(adds),
+      deletions: binary ? 0 : Number(dels),
+      binary
+    }
+  })
+}
+
+/**
+ * Commits on `head` missing from `base`, newest first. With `base` null the
+ * comparison is against every remote-tracking branch — "what only exists here".
+ */
+export async function getCommitRange(cwd: string, head: string, base: string | null, limit = 30): Promise<CommitRange> {
+  assertNotOption(head, tMain().git.labels.ref)
+  if (base) assertNotOption(base, tMain().git.labels.ref)
+  const range = base ? [`${base}..${head}`] : [head, '--not', '--remotes']
+  const [count, log] = await Promise.all([
+    readGit(['rev-list', '--count', ...range], cwd),
+    readGit(['log', `--pretty=format:${LOG_FORMAT_FIELDS.join(FS)}${RS}`, '-n', String(limit), ...range], cwd)
+  ])
+  throwOnFailure(count, ['rev-list', '--count'])
+  throwOnFailure(log, ['log'])
+  return { commits: parseCommitRecords(log.stdout), total: Number(count.stdout.trim()) || 0 }
+}
+
+/** Branches and tags (local and remote) that already contain a commit. */
+export async function getRefsContaining(cwd: string, ref: string): Promise<CommitRef[]> {
+  assertNotOption(ref, tMain().git.labels.commitRef)
+  const result = await readGit(
+    ['for-each-ref', '--contains', ref, '--format=%(refname)', 'refs/heads', 'refs/remotes', 'refs/tags'],
+    cwd
+  )
+  throwOnFailure(result, ['for-each-ref', '--contains'])
+  return parseDecorations(
+    result.stdout
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((name) => (name.startsWith('refs/tags/') ? `tag: ${name}` : name))
+      .join(', ')
+  )
+}
+
+const BLAME_MAX_LINES = 8000
+
+/** Line-by-line authorship of a file — the working tree version, or `rev`'s. */
+export async function getFileBlame(cwd: string, relativePath: string, rev?: string): Promise<FileBlame> {
+  const path = normalizeGitIgnorePattern(relativePath)
+  resolveWithinRepo(cwd, path)
+  if (rev) assertNotOption(rev, tMain().git.labels.commitRef)
+  const args = ['blame', '--porcelain', ...(rev ? [rev] : []), '--', path]
+  const result = await readGit(args, cwd)
+  throwOnFailure(result, ['blame'])
+  const { lines, commits } = parseBlamePorcelain(result.stdout)
+  const kept = lines.slice(0, BLAME_MAX_LINES)
+  const used = new Set(kept.map((l) => l.hash))
+  return {
+    path,
+    rev: rev ?? null,
+    lines: kept,
+    commits: Object.fromEntries(Object.entries(commits).filter(([hash]) => used.has(hash))),
+    totalLines: lines.length,
+    truncated: lines.length > kept.length
+  }
+}
+
+/** Commits that touched a file, following renames, with that file's +/−. */
+export async function getFileTimeline(cwd: string, relativePath: string, limit = 200): Promise<FileTimelineEntry[]> {
+  const path = normalizeGitIgnorePattern(relativePath)
+  resolveWithinRepo(cwd, path)
+  const format = `${RS}${LOG_FORMAT_FIELDS.join(FS)}${GS}`
+  const result = await readGit(['log', '--follow', '-n', String(limit), `--pretty=format:${format}`, '--numstat', '--', path], cwd)
+  if (result.exitCode !== 0) {
+    if (/does not have any commits yet|unknown revision/i.test(result.stderr)) return []
+    throwOnFailure(result, ['log', '--follow'])
+  }
+  return parseStatRecords(result.stdout).map(({ commit, stat }) => {
+    const { additions, deletions } = sumNumstat(stat)
+    return { ...commit, additions, deletions }
+  })
+}
+
+export async function listTags(cwd: string): Promise<TagInfo[]> {
+  const format = [
+    '%(refname:short)',
+    '%(objecttype)',
+    '%(objectname)',
+    '%(*objectname)',
+    '%(creatordate:iso-strict)',
+    '%(contents:subject)'
+  ].join(FS)
+  const result = await readGit(['for-each-ref', 'refs/tags', '--sort=-creatordate', `--format=${format}`], cwd)
+  throwOnFailure(result, ['for-each-ref', 'refs/tags'])
+  return result.stdout
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const [name, type, object, peeled, date, subject] = line.split(FS)
+      const annotated = type === 'tag'
+      const target = annotated && peeled ? peeled : object
+      return { name, target, shortTarget: target.slice(0, 7), date, annotated, message: annotated ? (subject ?? '') : '' }
+    })
+}
+
+async function assertValidTagName(cwd: string, name: string): Promise<void> {
+  if (!name.trim() || name.startsWith('-')) throw new Error(tMain().git.tagNameInvalid(name))
+  const check = await readGit(['check-ref-format', `refs/tags/${name}`], cwd)
+  if (check.exitCode !== 0) throw new Error(tMain().git.tagNameInvalid(name))
+}
+
+async function tagExists(cwd: string, name: string): Promise<boolean> {
+  return (await readGit(['rev-parse', '-q', '--verify', `refs/tags/${name}`], cwd)).exitCode === 0
+}
+
+/** Annotated tag (the message defaults to the name), so it carries a date and an author. */
+export async function createTag(cwd: string, name: string, ref = 'HEAD', message?: string): Promise<TagInfo> {
+  await assertValidTagName(cwd, name)
+  assertNotOption(ref, tMain().git.labels.commitRef)
+  if (await tagExists(cwd, name)) throw new Error(tMain().git.tagExists(name))
+  const args = ['tag', '-a', name, '-m', message?.trim() || name, ref]
+  throwOnFailure(await runGit(args, cwd), ['tag', '-a', name])
+  const created = (await listTags(cwd)).find((tag) => tag.name === name)
+  if (!created) throw new Error(tMain().git.tagMissing(name))
+  return created
+}
+
+/** Publishes one tag — never `--tags`, which would push every local tag at once. */
+export async function pushTag(cwd: string, name: string): Promise<void> {
+  await assertValidTagName(cwd, name)
+  if (!(await tagExists(cwd, name))) throw new Error(tMain().git.tagMissing(name))
+  const extraEnv = await buildAuthEnv(await getRemoteUrl(cwd))
+  const args = ['push', 'origin', `refs/tags/${name}`]
+  throwOnFailure(await runGit(args, cwd, { extraEnv }), args)
+}
+
+/** Nearest tag reachable from `ref` (from its parent when `strict`, so a tag on `ref` itself is skipped), or null. */
+export async function getLatestTag(cwd: string, ref = 'HEAD', strict = false): Promise<string | null> {
+  assertNotOption(ref, tMain().git.labels.ref)
+  const target = strict ? `${ref}^` : ref
+  const result = await readGit(['describe', '--tags', '--abbrev=0', target], cwd)
+  return result.exitCode === 0 ? result.stdout.trim() || null : null
+}
+
+const MAX_LOCAL_REBASE_COMMITS = 100
+
+async function operationInProgress(cwd: string): Promise<boolean> {
+  for (const ref of ['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'REBASE_HEAD']) {
+    if ((await readGit(['rev-parse', '-q', '--verify', ref], cwd)).exitCode === 0) return true
+  }
+  const gitDir = await readGit(['rev-parse', '--absolute-git-dir'], cwd)
+  if (gitDir.exitCode === 0) {
+    for (const dir of ['rebase-merge', 'rebase-apply']) {
+      try {
+        await access(join(gitDir.stdout.trim(), dir))
+        return true
+      } catch {
+        // not present
+      }
+    }
+  }
+  return false
+}
+
+export async function getLocalRebaseInfo(cwd: string): Promise<LocalRebaseInfo> {
+  const branchResult = await readGit(['symbolic-ref', '--short', '-q', 'HEAD'], cwd)
+  const branch = branchResult.exitCode === 0 ? branchResult.stdout.trim() || null : null
+  const headResult = await readGit(['rev-parse', '--verify', '-q', 'HEAD'], cwd)
+  const head = headResult.exitCode === 0 ? headResult.stdout.trim() : null
+  const empty: LocalRebaseInfo = { branch, head, base: null, commits: [], blocked: null }
+  if (!branch || !head) return { ...empty, blocked: 'detached' }
+
+  const range = await getCommitRange(cwd, 'HEAD', null, MAX_LOCAL_REBASE_COMMITS + 1)
+  const commits = [...range.commits].reverse()
+  const info: LocalRebaseInfo = { ...empty, commits: commits.slice(-MAX_LOCAL_REBASE_COMMITS) }
+  if (range.total > MAX_LOCAL_REBASE_COMMITS) return { ...info, blocked: 'tooMany' }
+  if (commits.length < 2) return { ...info, blocked: 'tooFew' }
+
+  const merges = await readGit(['rev-list', '--merges', '-n', '1', 'HEAD', '--not', '--remotes'], cwd)
+  if (merges.stdout.trim()) return { ...info, blocked: 'merges' }
+
+  const parent = await readGit(['rev-parse', '-q', '--verify', `${commits[0].hash}^`], cwd)
+  if (parent.exitCode !== 0) return { ...info, blocked: 'root' }
+  const withBase = { ...info, base: parent.stdout.trim() }
+
+  if (await operationInProgress(cwd)) return { ...withBase, blocked: 'operationInProgress' }
+  const dirty = await readGit(['status', '--porcelain', '--untracked-files=no'], cwd)
+  if (dirty.stdout.trim()) return { ...withBase, blocked: 'dirty' }
+  return withBase
+}
+
+/**
+ * Replays the local commits on their base in the planned order, on a detached
+ * HEAD. The branch itself only moves at the very end, with a compare-and-swap
+ * against the head the plan was built from — so a failure at any step leaves
+ * it exactly where it was, and nothing that was published is ever touched
+ * (getLocalRebaseInfo only offers commits no remote has).
+ */
+export async function runLocalRebase(cwd: string, steps: RebaseStep[], expectedHead: string): Promise<LocalRebaseResult> {
+  return enqueue(queueKey(cwd), async () => {
+    const m = tMain().git
+    const info = await getLocalRebaseInfo(cwd)
+    if (info.head !== expectedHead) throw new Error(m.rebaseHeadChanged)
+    if (info.blocked) throw new Error(m.rebaseBlocked(m.rebaseBlockReason[info.blocked] ?? info.blocked))
+    const validation = validateRebasePlan(
+      steps,
+      info.commits.map((c) => c.hash)
+    )
+    if (!validation.ok) throw new Error(m.rebasePlanMismatch)
+    const branch = info.branch as string
+    const base = info.base as string
+    const byHash = new Map(info.commits.map((c) => [c.hash, c]))
+
+    // No editor may ever open: every message is given on the command line.
+    const env = { GIT_EDITOR: 'true', GIT_SEQUENCE_EDITOR: 'true', LC_ALL: 'C', LANGUAGE: 'C' }
+    const git = (args: string[]): Promise<GitResult> => runGit(args, cwd, { serialize: false, extraEnv: env })
+
+    const restore = async (): Promise<void> => {
+      await git(['cherry-pick', '--abort'])
+      // The tracked tree was clean when this started, so forcing the checkout
+      // only discards the half-applied step, never the user's own work.
+      await git(['checkout', '-f', '-q', branch])
+    }
+
+    const detach = await git(['checkout', '-q', '--detach', base])
+    if (detach.exitCode !== 0) {
+      await git(['checkout', '-q', branch])
+      throwOnFailure(detach, ['checkout', '--detach'])
+    }
+
+    for (const step of validation.steps) {
+      if (step.action === 'drop') continue
+      const commit = byHash.get(step.hash)
+      const fail = async (result: GitResult): Promise<never> => {
+        await restore()
+        const detail = (result.stderr || result.stdout).trim().split('\n').slice(0, 6).join(' ')
+        throw new Error(m.rebaseStepFailed(commit?.summary ?? step.hash.slice(0, 7), detail))
+      }
+
+      if (step.action === 'pick' || step.action === 'reword') {
+        const pick = await git(['cherry-pick', '--allow-empty', step.hash])
+        if (pick.exitCode !== 0) await fail(pick)
+        if (step.action === 'reword') {
+          const amend = await git(['commit', '--amend', '--allow-empty', '-m', (step.message ?? '').trim()])
+          if (amend.exitCode !== 0) await fail(amend)
+        }
+        continue
+      }
+
+      // squash / fixup: fold this commit's changes into the one just made.
+      const previous = await git(['log', '-1', '--format=%B'])
+      const pick = await git(['cherry-pick', '--no-commit', step.hash])
+      if (pick.exitCode !== 0) await fail(pick)
+      let message = previous.stdout.trim()
+      if (step.action === 'squash') {
+        const own = commit ? [commit.summary, commit.body].filter(Boolean).join('\n\n') : ''
+        message = step.message?.trim() || [message, own].filter(Boolean).join('\n\n')
+      }
+      const amend = await git(['commit', '--amend', '--allow-empty', '-m', message])
+      if (amend.exitCode !== 0) await fail(amend)
+    }
+
+    const newHead = (await git(['rev-parse', 'HEAD'])).stdout.trim()
+    const update = await git([
+      'update-ref',
+      '-m',
+      'OpenGitDesktop: reorganize local commits',
+      `refs/heads/${branch}`,
+      newHead,
+      expectedHead
+    ])
+    if (update.exitCode !== 0) {
+      await restore()
+      throwOnFailure(update, ['update-ref'])
+    }
+    const back = await git(['checkout', '-q', branch])
+    throwOnFailure(back, ['checkout', branch])
+    const count = await git(['rev-list', '--count', `${base}..${newHead}`])
+    return { newHead, commitCount: Number(count.stdout.trim()) || 0 }
+  })
+}
+
+/* ── Read-only overviews for Changes and Dashboard ─────────────────────── */
+
+/** +/− per file, for the index and for the working tree. */
+export async function getWorkingTreeStats(cwd: string): Promise<WorkingTreeStats> {
+  const [unstaged, staged] = await Promise.all([
+    readGit(['diff', '--numstat', '-z'], cwd),
+    readGit(['diff', '--cached', '--numstat', '-z'], cwd)
+  ])
+  return {
+    staged: staged.exitCode === 0 ? parseNumstatZ(staged.stdout) : [],
+    unstaged: unstaged.exitCode === 0 ? parseNumstatZ(unstaged.stdout) : []
+  }
+}
+
+/** Every local branch, most recently moved first. */
+export async function getBranchOverview(cwd: string): Promise<BranchOverview[]> {
+  const fields = [
+    '%(refname:short)',
+    '%(HEAD)',
+    '%(committerdate:iso-strict)',
+    '%(upstream:short)',
+    '%(upstream:track,nobracket)',
+    '%(contents:subject)'
+  ]
+  const result = await readGit(['for-each-ref', '--sort=-committerdate', `--format=${fields.join('%1f')}`, 'refs/heads'], cwd)
+  if (result.exitCode !== 0) return []
+  return parseBranchOverview(result.stdout)
+}
+
+/** Line churn since `sinceDays` ago (or the whole history when null), merges left out. */
+export async function getRepoChurn(cwd: string, sinceDays: number | null, limit = 3000): Promise<RepoChurn> {
+  const args = ['log', '--no-merges', '-n', String(limit), '--numstat', `--format=${RS}%aI`]
+  if (sinceDays !== null) args.push(`--since=${Math.max(1, Math.round(sinceDays))}.days.ago`)
+  const result = await readGit(args, cwd)
+  if (result.exitCode !== 0) {
+    if (/does not have any commits yet|unknown revision/i.test(result.stderr)) return { commits: [], hotspots: [], truncated: false }
+    throwOnFailure(result, ['log', '--numstat'])
+  }
+  return parseChurnLog(result.stdout, limit)
 }

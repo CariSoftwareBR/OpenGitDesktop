@@ -10,6 +10,9 @@ import { isConflicted, type BranchIntegration, type BranchIntegrationReport, typ
 import { parseConflictBlocks, renderResolvedWithChoices, type ConflictBlock, type ConflictResolutionChoice } from '../conflicts'
 import type { ToolCallRequest } from '../../../../shared/aiChat'
 import { getFmt, getT } from '../i18n'
+import { parseRebasePlan, validateRebasePlan, type RebasePlanProblem } from '../../../../shared/gitParsing'
+import type { RebaseStep } from '../../../../shared/git'
+import type { ToolOutput, ToolVisual } from './toolVisuals'
 
 /** Visual gate tier for the approval card — drives border/button severity. */
 export type ToolSeverity = 'read' | 'write' | 'danger'
@@ -19,6 +22,8 @@ export interface ToolPreview {
   fields: { label: string; value: string }[]
   warning?: string
   severity?: ToolSeverity
+  /** Drawn above the fields: what the action will do, as a picture. */
+  visual?: ToolVisual
 }
 
 export interface ToolPrepareResult {
@@ -27,7 +32,7 @@ export interface ToolPrepareResult {
 }
 
 // Public, remote-visible, or not automatically undoable.
-const DANGER_TOOLS = new Set(['merge_pull_request', 'merge_branch', 'push', 'review_pull_request', 'delete_merged_branches'])
+const DANGER_TOOLS = new Set(['merge_pull_request', 'merge_branch', 'push', 'review_pull_request', 'delete_merged_branches', 'push_tag'])
 const WRITE_TOOLS = new Set([
   'commit',
   'undo_last_commit',
@@ -45,7 +50,9 @@ const WRITE_TOOLS = new Set([
   'comment_pull_request',
   'set_pull_request_state',
   'fetch_all',
-  'set_git_identity'
+  'set_git_identity',
+  'create_tag',
+  'reorganize_local_commits'
 ])
 
 export function toolSeverity(name: string): ToolSeverity {
@@ -174,6 +181,47 @@ async function listFilesBeyondTruncation(repoPath: string, hash: string, sentPat
   for (const h of headers.slice(0, -1)) complete.add(h)
 
   return files.map((f) => effectivePath(f.path)).filter((p) => !complete.has(p))
+}
+
+const TAG_NAME = /^[\w][\w.\-/]*$/
+
+function isValidTagName(name: string): boolean {
+  return TAG_NAME.test(name) && !name.includes('..') && !name.endsWith('.') && !name.endsWith('/') && !name.endsWith('.lock')
+}
+
+function describeRebaseProblem(problem: RebasePlanProblem): string {
+  const p = getT().graphTools.rebaseProblem
+  switch (problem.kind) {
+    case 'unknown':
+      return p.unknown(problem.hash)
+    case 'ambiguous':
+      return p.ambiguous(problem.hash)
+    case 'duplicate':
+      return p.duplicate(problem.hash)
+    case 'missing':
+      return p.missing(problem.hashes.map((h) => h.slice(0, 7)).join(', '))
+    case 'squashFirst':
+      return p.squashFirst
+    case 'nothingKept':
+      return p.nothingKept
+    case 'emptyMessage':
+      return p.emptyMessage(problem.hash)
+  }
+}
+
+/** The release range: explicit, or from the newest tag below `to` (skipping a tag on `to` itself). */
+async function resolveReleaseRange(repoPath: string, fromRef: string | undefined, toRef: string): Promise<{ from: string | null; to: string }> {
+  if (fromRef) return { from: fromRef, to: toRef }
+  const latest = await window.api.git.latestTag(repoPath, toRef)
+  if (!latest) return { from: null, to: toRef }
+  const [tagCommit, toCommit] = await Promise.all([
+    window.api.git.commitDetails(repoPath, latest),
+    window.api.git.commitDetails(repoPath, toRef)
+  ])
+  if (tagCommit && toCommit && tagCommit.hash === toCommit.hash) {
+    return { from: await window.api.git.latestTag(repoPath, toRef, true), to: toRef }
+  }
+  return { from: latest, to: toRef }
 }
 
 async function requireCurrentRepo(): Promise<string> {
@@ -509,6 +557,8 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       }
 
       const localChanges = status.entries.length
+      // What the merge actually brings: the source's commits the target lacks.
+      const incoming = await window.api.git.commitRange(repoPath, source, 'HEAD', 8).catch(() => null)
       return {
         preview: {
           headline: t.mergeBranchHeadline(source, current),
@@ -517,7 +567,8 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
             { label: t.sourceBranch, value: source },
             { label: t.localChanges, value: localChanges === 0 ? t.none : t.fileCount(localChanges) }
           ],
-          warning: localChanges > 0 ? t.mergeDirtyWarning(localChanges) : t.mergeConflictWarning
+          warning: localChanges > 0 ? t.mergeDirtyWarning(localChanges) : t.mergeConflictWarning,
+          ...(incoming ? { visual: { kind: 'flow' as const, source, target: current, commits: incoming.commits, total: incoming.total } } : {})
         },
         resolvedArgs: a
       }
@@ -923,6 +974,10 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
         }
       }
 
+      const outgoing = await window.api.git
+        .commitRange(repoPath, 'HEAD', setUpstream ? null : status.upstream, 8)
+        .catch(() => null)
+      const remoteTarget = status.upstream ?? `origin/${branch}`
       return {
         preview: {
           headline: setUpstream ? t.publishHeadline(branch) : t.pushHeadline(branch),
@@ -930,7 +985,19 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
             { label: 'Branch', value: branch },
             { label: t.status, value: info }
           ],
-          warning
+          warning,
+          ...(outgoing
+            ? {
+                visual: {
+                  kind: 'flow' as const,
+                  source: branch,
+                  target: remoteTarget,
+                  commits: outgoing.commits,
+                  total: outgoing.total,
+                  newBranch: setUpstream
+                }
+              }
+            : {})
         },
         resolvedArgs: { set_upstream: setUpstream ? 'true' : 'false', branch }
       }
@@ -996,6 +1063,140 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
         resolvedArgs: a
       }
 
+    case 'show_in_history': {
+      const g = getT().graphTools
+      const ref = a.ref || 'HEAD'
+      const repoPath = await requireCurrentRepo()
+      const details = await window.api.git.commitDetails(repoPath, ref)
+      if (!details) throw new Error(t.commitNotFound(ref))
+      return {
+        preview: {
+          headline: g.showInHistoryHeadline(details.shortHash),
+          fields: [{ label: 'Commit', value: `${details.shortHash} — ${details.summary}` }]
+        },
+        resolvedArgs: { ...a, ref: details.hash }
+      }
+    }
+
+    case 'explain_file_history': {
+      const g = getT().graphTools
+      if (!a.path) throw new Error(t.paramRequired('path'))
+      const repoPath = await requireCurrentRepo()
+      const path = a.path.replace(/\\/g, '/').replace(/^\.\//, '')
+      const files = await window.api.git.listFiles(repoPath)
+      let resolved = files.find((f) => f === path)
+      if (!resolved) {
+        const suffix = files.filter((f) => f.toLowerCase().endsWith(`/${path.toLowerCase()}`) || f.toLowerCase() === path.toLowerCase())
+        if (suffix.length === 1) resolved = suffix[0]
+        else if (suffix.length > 1) throw new Error(t.ambiguousPath(a.path, formatFileList(suffix)))
+        else throw new Error(t.pathMissing(a.path))
+      }
+      const line = Number(a.line) || undefined
+      return {
+        preview: {
+          headline: g.fileHistoryHeadline(resolved, line),
+          fields: [{ label: g.pathLabel, value: resolved }, ...(line ? [{ label: g.lineLabel, value: String(line) }] : [])]
+        },
+        resolvedArgs: { ...a, path: resolved, ...(line ? { line: String(line) } : {}) }
+      }
+    }
+
+    case 'list_tags':
+      return { preview: { headline: getT().graphTools.listTagsHeadline, fields: [] }, resolvedArgs: a }
+
+    case 'create_tag': {
+      const g = getT().graphTools
+      const name = (a.tag_name ?? '').trim()
+      if (!name) throw new Error(t.paramRequired('tag_name'))
+      if (!isValidTagName(name)) throw new Error(g.tagInvalid(name))
+      const repoPath = await requireCurrentRepo()
+      const tags = await window.api.git.listTags(repoPath)
+      if (tags.some((tag) => tag.name === name)) throw new Error(g.tagTaken(name))
+      const ref = a.ref || 'HEAD'
+      const details = await window.api.git.commitDetails(repoPath, ref)
+      if (!details) throw new Error(t.commitNotFound(ref))
+      const message = a.message?.trim() || name
+      return {
+        preview: {
+          headline: g.createTagHeadline(name, details.shortHash),
+          fields: [
+            { label: 'Commit', value: `${details.shortHash} — ${details.summary}` },
+            { label: g.messageLabel, value: message }
+          ],
+          warning: g.createTagWarning
+        },
+        resolvedArgs: { tag_name: name, ref: details.hash, message }
+      }
+    }
+
+    case 'push_tag': {
+      const g = getT().graphTools
+      const name = (a.tag_name ?? '').trim()
+      if (!name) throw new Error(t.paramRequired('tag_name'))
+      const repoPath = await requireCurrentRepo()
+      const tags = await window.api.git.listTags(repoPath)
+      const tag = tags.find((x) => x.name === name)
+      if (!tag) throw new Error(g.tagUnknown(name, tags.map((x) => x.name).slice(0, 20).join(', ')))
+      const details = await window.api.git.commitDetails(repoPath, tag.target)
+      return {
+        preview: {
+          headline: g.pushTagHeadline(name),
+          fields: [
+            { label: g.tagLabel, value: name },
+            { label: 'Commit', value: details ? `${details.shortHash} — ${details.summary}` : tag.shortTarget },
+            { label: 'Remote', value: 'origin' }
+          ],
+          warning: g.pushTagWarning
+        },
+        resolvedArgs: { tag_name: name }
+      }
+    }
+
+    case 'prepare_release_notes': {
+      const g = getT().graphTools
+      const repoPath = await requireCurrentRepo()
+      const to = a.to_ref || 'HEAD'
+      const range = await resolveReleaseRange(repoPath, a.from_ref || undefined, to)
+      return {
+        preview: {
+          headline: g.releaseHeadline(range.from ?? g.releaseFromStart, to),
+          fields: []
+        },
+        resolvedArgs: { from_ref: range.from ?? '', to_ref: to }
+      }
+    }
+
+    case 'reorganize_local_commits': {
+      const g = getT().graphTools
+      const repoPath = await requireCurrentRepo()
+      const info = await window.api.git.localRebaseInfo(repoPath)
+      const reasons = getT().main.git.rebaseBlockReason
+      if (info.blocked) throw new Error(g.rebaseBlocked(reasons[info.blocked] ?? info.blocked))
+      const listing = [g.localCommitsHeader, ...info.commits.map((c) => `- ${c.shortHash} ${c.summary}`)].join('\n')
+      let steps: RebaseStep[]
+      try {
+        steps = parseRebasePlan(a.plan ?? '')
+      } catch (err) {
+        throw new Error(`${g.rebaseBadLine(err instanceof Error ? err.message : String(err))}\n\n${listing}`)
+      }
+      const validation = validateRebasePlan(steps, info.commits.map((c) => c.hash))
+      if (!validation.ok) throw new Error(`${describeRebaseProblem(validation.problem)}\n\n${listing}`)
+      const kept = validation.steps.filter((s) => s.action === 'pick' || s.action === 'reword').length
+      const byHash = new Map(info.commits.map((c) => [c.hash, c]))
+      const planText = validation.steps
+        .map((s) => `${s.action} ${byHash.get(s.hash)?.shortHash ?? s.hash.slice(0, 7)} ${s.message ?? byHash.get(s.hash)?.summary ?? ''}`.trim())
+        .join('\n')
+      return {
+        preview: {
+          headline: g.rebaseHeadline(info.commits.length, kept),
+          fields: [{ label: g.rebasePlanLabel, value: ['```', planText, '```'].join('\n') }],
+          warning: g.rebaseWarning,
+          visual: { kind: 'rebase', before: info.commits, steps: validation.steps }
+        },
+        resolvedArgs: { plan: JSON.stringify(validation.steps), expected_head: info.head ?? '' }
+      }
+    }
+
     default:
       return {
         preview: { headline: call.name, fields: Object.entries(a).map(([label, value]) => ({ label, value })) },
@@ -1011,7 +1212,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
 // detected head branch, etc.) is what actually gets applied.
 // ---------------------------------------------------------------------------
 
-export async function executeToolCall(call: ToolCallRequest): Promise<string> {
+export async function executeToolCall(call: ToolCallRequest): Promise<string | ToolOutput> {
   const repo = useRepoStore.getState()
   const pr = usePullRequestStore.getState()
   const a = call.arguments
@@ -1086,7 +1287,7 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string> {
     case 'check_pull_request_status': {
       const { host, owner, repo: repoName } = requireGitHubRemote()
       const status = await window.api.github.getPullRequestStatus(host, owner, repoName, Number(a.pull_request_number))
-      return formatPullRequestStatus(status, t)
+      return { text: formatPullRequestStatus(status, t), visual: { kind: 'prStatus', status } }
     }
 
     case 'read_commit': {
@@ -1107,6 +1308,7 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string> {
       ].filter((l) => l !== '')
 
       const path = a.path || undefined
+      const fileStats = await window.api.git.commitFileStats(repoPath, details.hash).catch(() => [])
 
       if (a.include_files !== 'false') {
         const files = await window.api.git.commitFiles(details.hash, repoPath)
@@ -1145,15 +1347,31 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string> {
         }
       }
 
-      return lines.join('\n')
+      return {
+        text: lines.join('\n'),
+        visual: { kind: 'commit', commit: details, files: fileStats, ...(path ? { focusPath: path } : {}) }
+      }
     }
 
     case 'list_commits': {
       const repoPath = await requireCurrentRepo()
       const limit = Math.min(Number(a.limit) || 20, 100)
-      const commits = await window.api.git.log(repoPath, limit)
+      const [commits, unpublished] = await Promise.all([
+        window.api.git.logWithStats(repoPath, limit),
+        window.api.git.commitRange(repoPath, 'HEAD', null, 100).catch(() => null)
+      ])
       if (commits.length === 0) return t.noCommitsInRepo
-      return commits.map((c) => `${c.shortHash}  ${c.date}  ${c.authorName}  ${c.summary}`).join('\n')
+      // With no remote at all every commit is "local", which says nothing.
+      const hasRemote = (await window.api.git.remoteBranches(repoPath).catch(() => [])).length > 0
+      const localOnly = hasRemote && unpublished ? unpublished.commits.map((c) => c.hash) : []
+      const local = new Set(localOnly)
+      const marker = getT().graphTools.localMarker
+      return {
+        text: commits
+          .map((c) => `${c.shortHash}  ${c.date}  ${c.authorName}  ${c.summary}  (+${c.additions}/-${c.deletions})${local.has(c.hash) ? `  ${marker}` : ''}`)
+          .join('\n'),
+        visual: { kind: 'commits', commits, localOnly }
+      }
     }
 
     case 'merge_pull_request': {
@@ -1411,23 +1629,35 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string> {
     case 'check_all_repos': {
       const repos = useRepoStore.getState().recentRepos
       const lines: string[] = []
+      const cards: Extract<ToolVisual, { kind: 'repos' }>['repos'] = []
       for (const r of repos) {
         try {
           const dry = await window.api.git.fetchDryRun(r.path)
           const output = (dry.stderr + dry.stdout).trim()
+          const status = await window.api.git.status(r.path)
+          cards.push({
+            name: r.name,
+            path: r.path,
+            branch: status.branch,
+            ahead: status.ahead,
+            behind: status.behind,
+            dirty: status.entries.length,
+            incoming: Boolean(output)
+          })
           if (output) {
             lines.push(t.remoteUpdates(r.name, output))
             continue
           }
-          const status = await window.api.git.status(r.path)
           lines.push(
             status.behind > 0 ? t.repoBehind(r.name, status.behind) : t.repoUpToDate(r.name)
           )
         } catch (err) {
-          lines.push(t.repoError(r.name, err instanceof Error ? err.message : String(err)))
+          const message = err instanceof Error ? err.message : String(err)
+          cards.push({ name: r.name, path: r.path, branch: null, ahead: 0, behind: 0, dirty: 0, incoming: false, error: message })
+          lines.push(t.repoError(r.name, message))
         }
       }
-      return lines.join('\n')
+      return { text: lines.join('\n'), visual: { kind: 'repos', repos: cards } }
     }
 
     case 'fetch_all': {
@@ -1507,6 +1737,113 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string> {
       await repo.popStash(ref)
       if (useRepoStore.getState().error) throw new Error(useRepoStore.getState().error ?? t.stashPopFailed)
       return t.stashPopped(ref)
+    }
+
+    case 'show_in_history': {
+      const g = getT().graphTools
+      const repoPath = await requireCurrentRepo()
+      const details = await window.api.git.commitDetails(repoPath, a.ref)
+      if (!details) throw new Error(t.commitNotFound(a.ref))
+      const shown = await useRepoStore.getState().focusCommitInHistory(details.hash)
+      if (!shown) throw new Error(g.notInGraph(details.shortHash))
+      const containedIn = await window.api.git.refsContaining(repoPath, details.hash).catch(() => [])
+      const lines = [
+        g.shownInHistory(details.shortHash, details.summary),
+        containedIn.length > 0 ? g.containedInLine(containedIn.map((r) => (r.kind === 'tag' ? `tag ${r.name}` : r.name)).join(', ')) : g.containedInNone,
+        details.parents.length > 0 ? g.parentsLine(details.parents.map((p) => p.slice(0, 7)).join(', ')) : ''
+      ].filter(Boolean)
+      return { text: lines.join('\n'), visual: { kind: 'focus', commit: details, containedIn } }
+    }
+
+    case 'explain_file_history': {
+      const g = getT().graphTools
+      const repoPath = await requireCurrentRepo()
+      const path = a.path
+      const line = Number(a.line) || undefined
+      const [blame, timeline] = await Promise.all([
+        window.api.git.fileBlame(repoPath, path),
+        window.api.git.fileTimeline(repoPath, path, 12)
+      ])
+      const lines: string[] = []
+      let lineCommit: Extract<ToolVisual, { kind: 'blame' }>['commit']
+      let lineText: string | undefined
+      if (line) {
+        const entry = blame.lines.find((l) => l.line === line)
+        if (!entry) throw new Error(g.lineOutOfRange(line, blame.totalLines))
+        lineText = entry.content
+        lineCommit = blame.commits[entry.hash]
+        lines.push(g.lineHeader(line, entry.content.trim()))
+        if (lineCommit?.uncommitted) lines.push(g.uncommittedLine)
+        else if (lineCommit) {
+          lines.push(g.lastChange(lineCommit.shortHash, lineCommit.summary, lineCommit.authorName, lineCommit.date))
+          const details = await window.api.git.commitDetails(repoPath, lineCommit.hash)
+          if (details?.body) lines.push(g.fullMessage, details.summary, details.body)
+        }
+        lines.push('')
+      }
+      const counts = new Map<string, number>()
+      for (const l of blame.lines) {
+        const author = blame.commits[l.hash]?.uncommitted ? getT().graph.uncommitted : (blame.commits[l.hash]?.authorName ?? '?')
+        counts.set(author, (counts.get(author) ?? 0) + 1)
+      }
+      const authors = [...counts.entries()].sort((x, y) => y[1] - x[1]).map(([name, n]) => ({ name, lines: n }))
+      lines.push(g.authorsHeader, ...authors.slice(0, 8).map((x) => `- ${x.name}: ${x.lines}`))
+      if (timeline.length > 0) {
+        lines.push('', g.timelineHeader(timeline.length))
+        for (const c of timeline) lines.push(`- ${c.shortHash} ${c.date.slice(0, 10)} ${c.authorName}: ${c.summary} (+${c.additions}/-${c.deletions})`)
+      }
+      useRepoStore.getState().openFileInsight(path, line)
+      lines.push('', g.insightOpened)
+      return {
+        text: lines.join('\n'),
+        visual: { kind: 'blame', path, line, lineText, commit: lineCommit, authors: authors.slice(0, 6), timeline: timeline.slice(0, 6) }
+      }
+    }
+
+    case 'list_tags': {
+      const g = getT().graphTools
+      const tags = await window.api.git.listTags(await requireCurrentRepo())
+      if (tags.length === 0) return g.noTags
+      return {
+        text: [g.tagsHeader(tags.length), ...tags.slice(0, 50).map((x) => `- ${x.name} → ${x.shortTarget} (${x.date.slice(0, 10)})${x.message && x.message !== x.name ? ` — ${x.message}` : ''}`)].join('\n'),
+        visual: { kind: 'tags', tags: tags.slice(0, 12).map((x) => ({ name: x.name, shortTarget: x.shortTarget, date: x.date, message: x.message })) }
+      }
+    }
+
+    case 'create_tag': {
+      const g = getT().graphTools
+      const ok = await repo.createTag(a.tag_name, a.ref, a.message)
+      if (!ok) throw new Error(useRepoStore.getState().error ?? g.tagInvalid(a.tag_name))
+      return g.tagCreated(a.tag_name, a.ref.slice(0, 7))
+    }
+
+    case 'push_tag': {
+      const g = getT().graphTools
+      const ok = await repo.pushTag(a.tag_name)
+      if (!ok) throw new Error(useRepoStore.getState().error ?? g.tagUnknown(a.tag_name, ''))
+      return g.tagPushed(a.tag_name)
+    }
+
+    case 'prepare_release_notes': {
+      const g = getT().graphTools
+      const repoPath = await requireCurrentRepo()
+      const from = a.from_ref || null
+      const to = a.to_ref || 'HEAD'
+      const range = await window.api.git.commitRange(repoPath, to, from, 150)
+      const label = `${from ?? g.releaseFromStart}..${to}`
+      if (range.total === 0) return g.releaseEmpty(label)
+      const lines = [g.releaseHeader(range.total, label), ...range.commits.map((c) => `- ${c.summary} (${c.authorName})`)]
+      if (range.total > range.commits.length) lines.push(g.releaseMore(range.total - range.commits.length))
+      lines.push('', g.releaseInstruction)
+      return { text: lines.join('\n'), visual: { kind: 'release', from, to, commits: range.commits, total: range.total } }
+    }
+
+    case 'reorganize_local_commits': {
+      const g = getT().graphTools
+      const steps = JSON.parse(a.plan) as RebaseStep[]
+      const count = await repo.runLocalRebase(steps, a.expected_head)
+      if (count === null) throw new Error(useRepoStore.getState().error ?? g.rebaseBlocked(''))
+      return g.rebaseDone(count)
     }
 
     default:

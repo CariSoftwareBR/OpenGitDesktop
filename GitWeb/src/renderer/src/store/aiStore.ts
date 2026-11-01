@@ -43,6 +43,7 @@ import {
 } from '../../../shared/aiChat'
 import { listModels, sendToolAwareChatRequest, sendChatRequest, abortChatRequest, type ChatMessage } from '../lib/ai/providers'
 import { prepareToolCall, executeToolCall, toolSeverity, type ToolPreview } from '../lib/ai/tools'
+import { toToolOutput, type ToolVisual } from '../lib/ai/toolVisuals'
 import { useRepoStore } from './repoStore'
 import CREATE_PULL_REQUEST_SKILL_PT from '../lib/ai/skills/pt-BR/create-pull-request.md?raw'
 import MERGE_PULL_REQUEST_SKILL_PT from '../lib/ai/skills/pt-BR/merge-pull-request.md?raw'
@@ -118,6 +119,8 @@ export interface UiToolCall {
   resolvedArgs: Record<string, string>
   status: ToolCallStatus
   result?: string
+  /** Card the chat draws for the result; the model only ever sees `result`. */
+  visual?: ToolVisual
 }
 
 export interface ToolFeedbackEntry {
@@ -794,16 +797,19 @@ async function runToolCall(
   updateToolCall(set, messageId, callId, 'running', uiCall.result ?? '')
 
   let result: string
+  let visual: ToolVisual | undefined
   let status: ToolCallStatus
   try {
-    result = await executeToolCall({ ...uiCall.call, arguments: uiCall.resolvedArgs })
+    const output = toToolOutput(await executeToolCall({ ...uiCall.call, arguments: uiCall.resolvedArgs }))
+    result = output.text
+    visual = output.visual
     status = 'completed'
   } catch (err) {
     result = err instanceof Error ? err.message : String(err)
     status = 'failed'
   }
 
-  updateToolCall(set, messageId, callId, status, result)
+  updateToolCall(set, messageId, callId, status, result, visual)
 }
 
 function updateToolCall(
@@ -811,7 +817,8 @@ function updateToolCall(
   messageId: string,
   callId: string,
   status: ToolCallStatus,
-  result: string
+  result: string,
+  visual?: ToolVisual
 ): void {
   set((state) => ({
     messages: state.messages.map((m) =>
@@ -819,7 +826,7 @@ function updateToolCall(
         ? m
         : {
             ...m,
-            toolCalls: m.toolCalls?.map((c) => (c.call.id === callId ? { ...c, status, result } : c))
+            toolCalls: m.toolCalls?.map((c) => (c.call.id === callId ? { ...c, status, result, visual } : c))
           }
     )
   }))

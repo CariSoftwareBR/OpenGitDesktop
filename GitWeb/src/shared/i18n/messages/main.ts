@@ -70,7 +70,24 @@ const ptBR = {
     agentReadBinary: (path: string) => `"${path}" parece ser um arquivo binário e não pode ser lido como texto.`,
     gitignorePatternExists: 'O padrão já existe no .gitignore.',
     gitignoreAdded: (patterns: string) => `Adicionado ao .gitignore: ${patterns}`,
-    stopTrackingFailed: 'Falha ao parar o tracking dos arquivos.'
+    stopTrackingFailed: 'Falha ao parar o tracking dos arquivos.',
+    tagNameInvalid: (name: string) => `Nome de tag inválido: "${name}".`,
+    tagExists: (name: string) => `A tag "${name}" já existe.`,
+    tagMissing: (name: string) => `A tag "${name}" não existe neste repositório.`,
+    rebaseHeadChanged: 'A branch mudou desde que o plano foi montado. Abra o plano de novo para ver os commits atuais.',
+    rebaseBlocked: (reason: string) => `Não dá para reorganizar agora: ${reason}`,
+    rebasePlanMismatch: 'O plano não corresponde aos commits locais desta branch. Monte o plano de novo.',
+    rebaseStepFailed: (summary: string, detail: string) =>
+      `A reorganização parou em "${summary}" e foi desfeita; a branch voltou ao estado anterior. Detalhe do git: ${detail}`,
+    rebaseBlockReason: {
+      detached: 'não há branch em uso (HEAD destacado).',
+      dirty: 'há mudanças não commitadas. Faça commit ou stash antes.',
+      operationInProgress: 'há um merge, rebase ou cherry-pick em andamento.',
+      merges: 'há commits de merge entre os commits locais.',
+      root: 'os commits locais começam no primeiro commit do repositório.',
+      tooFew: 'é preciso ter pelo menos 2 commits que ainda não foram enviados.',
+      tooMany: 'há commits locais demais (mais de 100).'
+    } as Record<string, string>
   },
   shell: {
     fileNotFound: (path: string) => `Arquivo não encontrado: ${path}`
@@ -189,7 +206,24 @@ const en: MainMessages = {
     agentReadBinary: (path) => `"${path}" looks like a binary file and cannot be read as text.`,
     gitignorePatternExists: 'The pattern already exists in .gitignore.',
     gitignoreAdded: (patterns) => `Added to .gitignore: ${patterns}`,
-    stopTrackingFailed: 'Failed to stop tracking the files.'
+    stopTrackingFailed: 'Failed to stop tracking the files.',
+    tagNameInvalid: (name) => `Invalid tag name: "${name}".`,
+    tagExists: (name) => `The tag "${name}" already exists.`,
+    tagMissing: (name) => `The tag "${name}" does not exist in this repository.`,
+    rebaseHeadChanged: 'The branch changed since the plan was built. Open the plan again to see the current commits.',
+    rebaseBlocked: (reason) => `Cannot reorganize right now: ${reason}`,
+    rebasePlanMismatch: 'The plan does not match this branch’s local commits. Build the plan again.',
+    rebaseStepFailed: (summary, detail) =>
+      `The reorganization stopped at "${summary}" and was rolled back; the branch is as it was. Git said: ${detail}`,
+    rebaseBlockReason: {
+      detached: 'no branch is checked out (detached HEAD).',
+      dirty: 'there are uncommitted changes. Commit or stash them first.',
+      operationInProgress: 'a merge, rebase or cherry-pick is in progress.',
+      merges: 'there are merge commits among the local commits.',
+      root: 'the local commits start at the repository’s first commit.',
+      tooFew: 'at least 2 commits that were not pushed yet are needed.',
+      tooMany: 'there are too many local commits (more than 100).'
+    }
   },
   shell: {
     fileNotFound: (path) => `File not found: ${path}`
@@ -306,7 +340,24 @@ const es: MainMessages = {
     agentReadBinary: (path) => `"${path}" parece ser un archivo binario y no se puede leer como texto.`,
     gitignorePatternExists: 'El patrón ya existe en .gitignore.',
     gitignoreAdded: (patterns) => `Añadido a .gitignore: ${patterns}`,
-    stopTrackingFailed: 'Error al dejar de rastrear los archivos.'
+    stopTrackingFailed: 'Error al dejar de rastrear los archivos.',
+    tagNameInvalid: (name) => `Nombre de tag no válido: "${name}".`,
+    tagExists: (name) => `El tag "${name}" ya existe.`,
+    tagMissing: (name) => `El tag "${name}" no existe en este repositorio.`,
+    rebaseHeadChanged: 'La rama cambió desde que se armó el plan. Abre el plan de nuevo para ver los commits actuales.',
+    rebaseBlocked: (reason) => `No se puede reorganizar ahora: ${reason}`,
+    rebasePlanMismatch: 'El plan no corresponde a los commits locales de esta rama. Arma el plan de nuevo.',
+    rebaseStepFailed: (summary, detail) =>
+      `La reorganización se detuvo en "${summary}" y se deshizo; la rama volvió al estado anterior. Detalle de git: ${detail}`,
+    rebaseBlockReason: {
+      detached: 'no hay una rama en uso (HEAD separado).',
+      dirty: 'hay cambios sin commit. Haz commit o stash antes.',
+      operationInProgress: 'hay un merge, rebase o cherry-pick en curso.',
+      merges: 'hay commits de merge entre los commits locales.',
+      root: 'los commits locales empiezan en el primer commit del repositorio.',
+      tooFew: 'hacen falta al menos 2 commits que todavía no se enviaron.',
+      tooMany: 'hay demasiados commits locales (más de 100).'
+    }
   },
   shell: {
     fileNotFound: (path) => `Archivo no encontrado: ${path}`

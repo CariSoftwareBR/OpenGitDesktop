@@ -62,7 +62,23 @@ import {
   isCommitPublished,
   undoUnpublishedCommit,
   isPathIgnored,
-  resolveRepoPath
+  resolveRepoPath,
+  getGraphLog,
+  getLogWithStats,
+  getCommitFileStats,
+  getCommitRange,
+  getRefsContaining,
+  getFileBlame,
+  getFileTimeline,
+  listTags,
+  createTag,
+  pushTag,
+  getLatestTag,
+  getLocalRebaseInfo,
+  runLocalRebase,
+  getWorkingTreeStats,
+  getBranchOverview,
+  getRepoChurn
 } from './gitProcess'
 import { openPath, pathExists, showItemInFolder } from './shell'
 import { saveSecret, getSecret, deleteSecret } from './credentials'
@@ -88,6 +104,7 @@ import { applyLanguagePreference, systemLocale } from './language'
 import { sendChatRequest, sendToolAwareChatRequest, listModels, abortChatRequest } from './aiProxy'
 import type { AiSettings, ResolvedAiConfig } from '../shared/ai'
 import type { ChatMessage, ToolDefinition } from '../shared/aiChat'
+import type { RebaseStep } from '../shared/git'
 import { withProjectCoAuthor, type AppSettings } from '../shared/settings'
 import { checkForUpdates, getUpdateStatus, quitAndInstall } from './updater'
 
@@ -201,6 +218,26 @@ export function registerIpcHandlers(): void {
   handle('git:commitDiff', (_e, hash: string, path: string, cwd: string) => getCommitDiff(hash, path, cwd))
   handle('git:commitDetails', (_e, cwd: string, ref: string) => getCommitDetails(cwd, ref))
   handle('git:commitPatch', (_e, cwd: string, ref: string) => getCommitPatch(cwd, ref))
+  handle('git:graphLog', (_e, cwd: string, limit?: number, path?: string) => getGraphLog(cwd, limit, path))
+  handle('git:logWithStats', (_e, cwd: string, limit?: number) => getLogWithStats(cwd, limit))
+  handle('git:commitFileStats', (_e, cwd: string, ref: string) => getCommitFileStats(cwd, ref))
+  handle('git:commitRange', (_e, cwd: string, head: string, base: string | null, limit?: number) =>
+    getCommitRange(cwd, head, base, limit)
+  )
+  handle('git:refsContaining', (_e, cwd: string, ref: string) => getRefsContaining(cwd, ref))
+  handle('git:fileBlame', (_e, cwd: string, path: string, rev?: string) => getFileBlame(cwd, path, rev))
+  handle('git:fileTimeline', (_e, cwd: string, path: string, limit?: number) => getFileTimeline(cwd, path, limit))
+  handle('git:listTags', (_e, cwd: string) => listTags(cwd))
+  handle('git:createTag', (_e, cwd: string, name: string, ref?: string, message?: string) => createTag(cwd, name, ref, message))
+  handle('git:pushTag', (_e, cwd: string, name: string) => pushTag(cwd, name))
+  handle('git:latestTag', (_e, cwd: string, ref?: string, strict?: boolean) => getLatestTag(cwd, ref, strict))
+  handle('git:localRebaseInfo', (_e, cwd: string) => getLocalRebaseInfo(cwd))
+  handle('git:workingTreeStats', (_e, cwd: string) => getWorkingTreeStats(cwd))
+  handle('git:branchOverview', (_e, cwd: string) => getBranchOverview(cwd))
+  handle('git:repoChurn', (_e, cwd: string, sinceDays: number | null, limit?: number) => getRepoChurn(cwd, sinceDays, limit))
+  handle('git:runLocalRebase', (_e, cwd: string, steps: RebaseStep[], expectedHead: string) =>
+    runLocalRebase(cwd, steps, expectedHead)
+  )
 
   handle('git:remoteUrl', (_e, cwd: string, remoteName?: string) => getRemoteUrl(cwd, remoteName))
 

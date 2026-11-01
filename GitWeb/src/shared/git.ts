@@ -213,6 +213,123 @@ export interface CommitDetails extends CommitSummary {
   parents: string[]
 }
 
+/** A ref pointing at a commit, as git decorates it in the log. */
+export type CommitRefKind = 'head' | 'local' | 'remote' | 'tag'
+
+export interface CommitRef {
+  /** Short name: "main", "origin/main", "v1.2.0", or "HEAD" when detached. */
+  name: string
+  kind: CommitRefKind
+  /** The local branch HEAD points at. */
+  current?: boolean
+}
+
+/** A commit of the History graph: every branch, remote and tag, newest first. */
+export interface GraphCommit extends CommitSummary {
+  parents: string[]
+  refs: CommitRef[]
+}
+
+export interface CommitStats {
+  additions: number
+  deletions: number
+  files: number
+}
+
+export interface CommitSummaryWithStats extends CommitSummary, CommitStats {}
+
+export interface CommitFileStat {
+  path: string
+  status: string
+  additions: number
+  deletions: number
+  binary: boolean
+}
+
+/** Commits on `head` that `base` does not have, newest first. */
+export interface CommitRange {
+  commits: CommitSummary[]
+  /** Full count — `commits` is capped. */
+  total: number
+}
+
+export interface BlameCommit {
+  hash: string
+  shortHash: string
+  authorName: string
+  /** ISO date of the authoring. */
+  date: string
+  summary: string
+  /** Lines not committed yet (the all-zero hash git uses for the working tree). */
+  uncommitted: boolean
+}
+
+export interface BlameLine {
+  /** 1-based line number in the blamed version. */
+  line: number
+  content: string
+  hash: string
+}
+
+export interface FileBlame {
+  path: string
+  /** The revision blamed, or null for the working tree. */
+  rev: string | null
+  lines: BlameLine[]
+  commits: Record<string, BlameCommit>
+  totalLines: number
+  /** Only the first lines were kept (very large files). */
+  truncated: boolean
+}
+
+export interface FileTimelineEntry extends CommitSummary {
+  additions: number
+  deletions: number
+}
+
+export interface TagInfo {
+  name: string
+  /** Commit the tag points at (peeled for annotated tags). */
+  target: string
+  shortTarget: string
+  date: string
+  annotated: boolean
+  /** First line of the annotation, empty for lightweight tags. */
+  message: string
+}
+
+export type RebaseAction = 'pick' | 'reword' | 'squash' | 'fixup' | 'drop'
+
+export interface RebaseStep {
+  hash: string
+  action: RebaseAction
+  /** New message for reword; optional combined message for squash. */
+  message?: string
+}
+
+export type LocalRebaseBlock = 'detached' | 'dirty' | 'operationInProgress' | 'merges' | 'root' | 'tooFew' | 'tooMany'
+
+/**
+ * The commits the app lets the user reorganize: those of the current branch
+ * that no remote has yet. Anything already published is off limits, which is
+ * what keeps a reorganization from ever rewriting shared history.
+ */
+export interface LocalRebaseInfo {
+  branch: string | null
+  head: string | null
+  /** Parent of the oldest local commit; the new history is rebuilt on it. */
+  base: string | null
+  /** Oldest first, the order a rebase replays them. */
+  commits: CommitSummary[]
+  blocked: LocalRebaseBlock | null
+}
+
+export interface LocalRebaseResult {
+  newHead: string
+  /** Commits on the branch after the reorganization (from the base). */
+  commitCount: number
+}
+
 /** A user-created folder on the initial screen. Purely an organisation device. */
 export interface RepoGroup {
   id: string
@@ -328,4 +445,51 @@ export function pushTargetBranch(status: Pick<RepoStatus, 'branch' | 'upstream'>
   if (!status.branch) return null
   if (!status.upstream) return status.branch
   return status.upstream.startsWith('origin/') ? status.upstream.slice('origin/'.length) : null
+}
+
+/** Lines added/removed in one file of the working tree or the index. */
+export interface FileLineStat {
+  path: string
+  additions: number
+  deletions: number
+  binary: boolean
+}
+
+export interface WorkingTreeStats {
+  staged: FileLineStat[]
+  unstaged: FileLineStat[]
+}
+
+/** One local branch at a glance — when it last moved and how it sits against its upstream. */
+export interface BranchOverview {
+  name: string
+  isCurrent: boolean
+  /** Committer date of the tip, ISO 8601. */
+  date: string
+  subject: string
+  upstream: string | null
+  ahead: number
+  behind: number
+  /** The upstream was deleted on the remote. */
+  gone: boolean
+}
+
+export interface ChurnPoint {
+  date: string
+  additions: number
+  deletions: number
+}
+
+export interface FileHotspot {
+  path: string
+  commits: number
+  additions: number
+  deletions: number
+}
+
+/** Line churn of a period: one point per commit plus the files touched most often. */
+export interface RepoChurn {
+  commits: ChurnPoint[]
+  hotspots: FileHotspot[]
+  truncated: boolean
 }

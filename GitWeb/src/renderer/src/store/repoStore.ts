@@ -3,7 +3,8 @@ import { isConflicted, isHistoryRewrittenMessage, sameRepoStatus, stashBranchNam
 import type {
   BranchInfo,
   CommitFile,
-  CommitSummary,
+  GraphCommit,
+  RebaseStep,
   RecentReposData,
   RecentRepository,
   RepoGroup,
@@ -60,7 +61,13 @@ interface RepoState {
   switchBlocked: { from: string; target: string; remote: boolean; files: string[] } | null
   /** Just switched onto a branch that has changes parked in a stash. */
   branchStashHint: { repoPath: string; branch: string } | null
-  log: CommitSummary[]
+  /** Every branch, remote and tag with parents and refs — the History graph's input. */
+  log: GraphCommit[]
+  /** Commit the History view should scroll to and flash (set by the agent's show_in_history). */
+  historyFocus: { hash: string; nonce: number } | null
+  /** File whose timeline/blame dialog is open, optionally on one line. */
+  fileInsight: { path: string; line?: number; nonce: number } | null
+  rebasePlannerOpen: boolean
   stashes: StashEntry[]
   view: ViewName
   selectedFile: SelectedFile | null
@@ -89,6 +96,12 @@ interface RepoState {
   moveRepoToGroup: (path: string, groupId: string | null) => Promise<void>
   toggleRepoGroupCollapsed: (id: string) => Promise<void>
   scanRecentRepos: () => Promise<void>
+  /**
+   * Re-measures every recent repo in the background without the "checking"
+   * placeholders, writing only what changed — keeps the start screen in step
+   * with edits made outside the app. `fetch` also refreshes remote refs.
+   */
+  refreshRecentRepoChecks: (options?: { fetch?: boolean }) => Promise<void>
   addRecentRepositories: (paths: string[]) => Promise<void>
   removeRecentRepo: (path: string) => Promise<void>
   openRepository: (path: string) => Promise<void>
@@ -156,9 +169,21 @@ interface RepoState {
   selectCommit: (hash: string) => Promise<void>
   clearSelectedCommit: () => void
   selectCommitFile: (path: string) => Promise<void>
+  /** Opens History on `hash` (loading deeper history if needed); false when the commit is unknown. */
+  focusCommitInHistory: (hash: string) => Promise<boolean>
+  openFileInsight: (path: string, line?: number) => void
+  closeFileInsight: () => void
+  setRebasePlannerOpen: (open: boolean) => void
+  createTag: (name: string, ref: string, message?: string) => Promise<boolean>
+  pushTag: (name: string) => Promise<boolean>
+  runLocalRebase: (steps: RebaseStep[], expectedHead: string) => Promise<number | null>
   clearError: () => void
   setError: (message: string | null) => void
 }
+
+const GRAPH_LOG_LIMIT = 400
+const GRAPH_LOG_DEEP_LIMIT = 3000
+let historyFocusNonce = 0
 
 /** The order the initial screen renders cards in: each folder, then the loose ones. */
 function displayOrderedRepos(state: Pick<RepoState, 'recentRepos' | 'repoGroups'>): RecentRepository[] {
@@ -194,6 +219,15 @@ let recentRepoScanGeneration = 0
 function isUpdatable(check: RepoUpdateStatus | undefined): boolean {
   return Boolean(check?.canFastForward && !check.refreshing)
 }
+// A full scan owns the checks while it runs (its `refreshing` results are
+// placeholders for the fetch pass); a quiet refresh never overlaps it or itself.
+let recentScanInFlight = false
+let quietRefreshInFlight = false
+
+function sameCheck(a: RepoUpdateStatus | undefined, b: RepoUpdateStatus): boolean {
+  return a !== undefined && JSON.stringify(a) === JSON.stringify(b)
+}
+
 // Bumped on every open/close so in-flight status/log/diff refreshes for a
 // previous repo cannot overwrite the newly selected one.
 let repoOpenGeneration = 0
@@ -219,6 +253,9 @@ export const useRepoStore = create<RepoState>((set, get) => ({
   switchBlocked: null,
   branchStashHint: null,
   log: [],
+  historyFocus: null,
+  fileInsight: null,
+  rebasePlannerOpen: false,
   stashes: [],
   view: 'changes',
   selectedFile: null,
@@ -263,13 +300,54 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       return { recentRepoChecks: checking }
     })
 
-    await scanReposForUpdates(
-      repos.map((r) => r.path),
-      (path, check) => {
-        if (generation !== recentRepoScanGeneration) return
-        set((state) => ({ recentRepoChecks: { ...state.recentRepoChecks, [path]: check } }))
-      }
-    )
+    recentScanInFlight = true
+    try {
+      await scanReposForUpdates(
+        repos.map((r) => r.path),
+        (path, check) => {
+          if (generation !== recentRepoScanGeneration) return
+          set((state) => ({ recentRepoChecks: { ...state.recentRepoChecks, [path]: check } }))
+        }
+      )
+    } finally {
+      if (generation === recentRepoScanGeneration) recentScanInFlight = false
+    }
+  },
+
+  refreshRecentRepoChecks: async (options) => {
+    if (recentScanInFlight || quietRefreshInFlight || get().isBatchUpdating || get().currentRepoPath) return
+    const repos = displayOrderedRepos(get()).filter((r) => !r.missing)
+    if (repos.length === 0) return
+    quietRefreshInFlight = true
+    const generation = recentRepoScanGeneration
+    try {
+      await runWithConcurrency(
+        repos.map((r) => r.path),
+        async (path) => {
+          const current = get().recentRepoChecks[path]
+          // A row still waiting on its first real answer belongs to the scan.
+          if (current?.state === 'checking' || current?.refreshing) return
+          // A failed fetch is only re-judged by another fetch; a local pass
+          // would flip the row between "error" and stale counts every tick.
+          if (current?.state === 'failed' && !options?.fetch) return
+          // No remote: a fetch has nothing to bring, the local check is the answer.
+          const fetch = Boolean(options?.fetch) && current?.state !== 'noRemote'
+          let check: RepoUpdateStatus
+          try {
+            check = await checkRepoUpdate(path, fetch)
+          } catch {
+            // A transient failure (file lock, network blip) keeps the last good answer.
+            return
+          }
+          if (generation !== recentRepoScanGeneration || recentScanInFlight) return
+          if (sameCheck(get().recentRepoChecks[path], check)) return
+          set((state) => ({ recentRepoChecks: { ...state.recentRepoChecks, [path]: check } }))
+        },
+        options?.fetch ? 4 : 6
+      )
+    } finally {
+      quietRefreshInFlight = false
+    }
   },
 
   createRepoGroup: async (name: string) => {
@@ -361,6 +439,9 @@ export const useRepoStore = create<RepoState>((set, get) => ({
         selectedCommit: null,
         lastFetchedAt: null,
         logPath: null,
+        historyFocus: null,
+        fileInsight: null,
+        rebasePlannerOpen: false,
         commitSummary: '',
         commitDescription: '',
         switchBlocked: null,
@@ -429,6 +510,9 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       selectedCommit: null,
       commitDiffText: '',
       logPath: null,
+      historyFocus: null,
+      fileInsight: null,
+      rebasePlannerOpen: false,
       commitSummary: '',
       commitDescription: ''
     })
@@ -478,7 +562,9 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     const path = currentRepoPath
     const generation = repoOpenGeneration
     try {
-      const log = await window.api.git.log(path, 200, get().logPath ?? undefined)
+      // Keeps a deeper load (from focusing an old commit) instead of shrinking back.
+      const limit = Math.max(GRAPH_LOG_LIMIT, get().log.length)
+      const log = await window.api.git.graphLog(path, limit, get().logPath ?? undefined)
       if (generation !== repoOpenGeneration || get().currentRepoPath !== path) return
       set({ log })
     } catch (err) {
@@ -1211,6 +1297,83 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     } catch (err) {
       if (generation !== repoOpenGeneration || get().currentRepoPath !== repoPath) return
       set({ error: describeError(err) })
+    }
+  },
+
+  focusCommitInHistory: async (hash: string) => {
+    const { currentRepoPath } = get()
+    if (!currentRepoPath) return false
+    const path = currentRepoPath
+    // A file filter shows one branch's commits only; the graph needs them all.
+    const hadFilter = get().logPath !== null
+    if (hadFilter) set({ logPath: null })
+    if (hadFilter || !get().log.some((c) => c.hash === hash)) {
+      const log = await window.api.git.graphLog(path, GRAPH_LOG_LIMIT, undefined)
+      if (get().currentRepoPath !== path) return false
+      set({ log })
+    }
+    if (!get().log.some((c) => c.hash === hash)) {
+      const deep = await window.api.git.graphLog(path, GRAPH_LOG_DEEP_LIMIT, undefined)
+      if (get().currentRepoPath !== path) return false
+      set({ log: deep })
+    }
+    if (!get().log.some((c) => c.hash === hash)) return false
+    set({ view: 'history', historyFocus: { hash, nonce: ++historyFocusNonce } })
+    await get().selectCommit(hash)
+    return true
+  },
+
+  openFileInsight: (path, line) => set({ fileInsight: { path, line, nonce: ++historyFocusNonce } }),
+  closeFileInsight: () => set({ fileInsight: null }),
+  setRebasePlannerOpen: (open) => set({ rebasePlannerOpen: open }),
+
+  createTag: async (name, ref, message) => {
+    const { currentRepoPath } = get()
+    if (!currentRepoPath) return false
+    set({ isBusy: true, error: null })
+    try {
+      await window.api.git.createTag(currentRepoPath, name, ref, message)
+      await get().refreshLog()
+      return true
+    } catch (err) {
+      set({ error: describeError(err) })
+      return false
+    } finally {
+      set({ isBusy: false })
+    }
+  },
+
+  pushTag: async (name) => {
+    const { currentRepoPath } = get()
+    if (!currentRepoPath) return false
+    set({ isBusy: true, error: null })
+    try {
+      await window.api.git.pushTag(currentRepoPath, name)
+      await get().refreshLog()
+      return true
+    } catch (err) {
+      set({ error: describeError(err) })
+      return false
+    } finally {
+      set({ isBusy: false })
+    }
+  },
+
+  runLocalRebase: async (steps, expectedHead) => {
+    const { currentRepoPath } = get()
+    if (!currentRepoPath) return null
+    set({ isBusy: true, error: null })
+    try {
+      const result = await window.api.git.runLocalRebase(currentRepoPath, steps, expectedHead)
+      set({ selectedCommit: null, commitDiffText: '' })
+      await Promise.all([get().refreshStatus(), get().refreshLog()])
+      return result.commitCount
+    } catch (err) {
+      await Promise.all([get().refreshStatus(), get().refreshLog()])
+      set({ error: describeError(err) })
+      return null
+    } finally {
+      set({ isBusy: false })
     }
   },
 

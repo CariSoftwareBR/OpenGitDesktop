@@ -9,12 +9,14 @@ import {
   Loader2,
   Minus,
   RefreshCw,
+  Tag,
   TrendingDown,
   TrendingUp,
   Users
 } from 'lucide-react'
 import { useRepoStore } from '../store/repoStore'
-import type { CommitSummary } from '../../../shared/git'
+import type { BranchOverview, CommitSummary, RepoChurn, TagInfo } from '../../../shared/git'
+import { BranchList, ChurnChart, ContributionCalendar, Hotspots, RecentCommits } from '../components/RepoInsights'
 import type { Messages } from '../../../shared/i18n'
 import { useFormatters, useT } from '../lib/i18n'
 
@@ -788,7 +790,13 @@ function StatItem({
 interface RepoData {
   commits: CommitSummary[]
   files: string[]
+  branches: BranchOverview[]
+  tags: TagInfo[]
 }
+
+// Churn depends on the period too, so it has its own small cache keyed by both.
+const churnCache = new Map<string, RepoChurn>()
+const CHURN_LIMIT = 3000
 
 // Views unmount on every tab switch, so without this each visit to the tab
 // would rerun a 5 000-commit `git log` and a full `ls-files`. A short-lived
@@ -818,13 +826,15 @@ function DashboardView(): JSX.Element {
     setLoading(true)
     setError(null)
     try {
-      const [commits, files] = await Promise.all([
+      const [commits, files, branchList, tags] = await Promise.all([
         window.api.git.log(currentRepoPath, LOG_LIMIT),
         window.api.git.listFiles(currentRepoPath).catch((): string[] => []),
+        window.api.git.branchOverview(currentRepoPath).catch((): BranchOverview[] => []),
+        window.api.git.listTags(currentRepoPath).catch((): TagInfo[] => []),
         useRepoStore.getState().refreshStashes()
       ])
       if (request !== requestRef.current) return
-      const next = { commits, files }
+      const next = { commits, files, branches: branchList, tags }
       cache = { path: currentRepoPath, data: next, at: Date.now() }
       setData(next)
     } catch (err) {
@@ -846,6 +856,44 @@ function DashboardView(): JSX.Element {
     [t, data, period, now]
   )
   const languages = useMemo(() => (data ? computeLanguages(data.files) : []), [data])
+
+  // Line churn for the selected period — fetched on its own so the rest of
+  // the page never waits for a `log --numstat`.
+  const churnKey = `${currentRepoPath}|${period}`
+  const [churn, setChurn] = useState<RepoChurn | null>(() => churnCache.get(churnKey) ?? null)
+  useEffect(() => {
+    if (!currentRepoPath || !data) return
+    setChurn(churnCache.get(churnKey) ?? null)
+    let alive = true
+    window.api.git
+      .repoChurn(currentRepoPath, period === 'all' ? null : PERIOD_DAYS[period], CHURN_LIMIT)
+      .then((result) => {
+        churnCache.set(churnKey, result)
+        if (alive) setChurn(result)
+      })
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [currentRepoPath, period, churnKey, data])
+
+  // The latest tag reachable from HEAD, and how many commits came after it.
+  const release = useMemo(() => {
+    if (!data || data.tags.length === 0) return null
+    const position = new Map(data.commits.map((c, i) => [c.hash, i]))
+    let best: { name: string; since: number } | null = null
+    for (const tag of data.tags) {
+      const index = position.get(tag.target)
+      if (index !== undefined && (best === null || index < best.since)) best = { name: tag.name, since: index }
+    }
+    return best
+  }, [data])
+
+  const openInHistory = useCallback((hash: string) => {
+    const store = useRepoStore.getState()
+    store.setView('history')
+    void store.focusCommitInHistory(hash)
+  }, [])
   const periodInfo = t.period[period]
 
   const pending = status?.entries.length ?? 0
@@ -860,6 +908,20 @@ function DashboardView(): JSX.Element {
             <p className="mt-0.5 truncate text-body text-secondary-text">
               {t.howIsRepo} <span className="font-medium text-primary-text">{repoName}</span>
             </p>
+            {(status?.branch || release) && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                {status?.branch && (
+                  <span className="insight-chip is-blue">
+                    <GitBranch size={11} aria-hidden /> {status.branch}
+                  </span>
+                )}
+                {release && (
+                  <span className="insight-chip is-green" title={t.releaseTitle}>
+                    <Tag size={11} aria-hidden /> {t.releaseChip(release.name, release.since)}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <div className="flex rounded-md border border-default-border bg-obsidian-panel p-1 shadow-[var(--shadow-raised)]" role="radiogroup" aria-label={t.periodAria}>
@@ -981,11 +1043,49 @@ function DashboardView(): JSX.Element {
             </section>
 
             <div className="grid grid-cols-1 gap-5 @[900px]:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+              <Card title={t.churnTitle} subtitle={t.churnHint} className="[animation-delay:90ms]">
+                {churn ? (
+                  <ChurnChart key={period} points={churn.commits} bins={stats.bins} />
+                ) : (
+                  <div className="flex h-56 items-center justify-center">
+                    <Loader2 size={16} className="animate-spin text-tertiary-text" aria-hidden />
+                  </div>
+                )}
+              </Card>
+              <Card title={t.hotspotsTitle} subtitle={t.hotspotsHint} className="[animation-delay:110ms]">
+                {churn ? (
+                  <Hotspots key={period} items={churn.hotspots} />
+                ) : (
+                  <div className="flex h-56 items-center justify-center">
+                    <Loader2 size={16} className="animate-spin text-tertiary-text" aria-hidden />
+                  </div>
+                )}
+              </Card>
+            </div>
+
+            <Card
+              title={t.calendarTitle}
+              subtitle={t.calendarHint(fmt.number(data.commits.filter((c) => Date.parse(c.date) > now - 365 * DAY).length))}
+              className="[animation-delay:130ms]"
+            >
+              <ContributionCalendar commits={data.commits} now={now} />
+            </Card>
+
+            <div className="grid grid-cols-1 gap-5 @[900px]:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
               <Card title={t.whenCommits} subtitle={t.whenCommitsHint} className="[animation-delay:120ms]">
                 <Heatmap key={period} grid={stats.heatmap} max={stats.heatmapMax} />
               </Card>
               <Card title={t.topContributors} subtitle={t.commitsInPeriod(fmt.number(stats.total))} className="[animation-delay:160ms]">
                 <Contributors key={period} people={stats.contributors} total={stats.total} />
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 @[900px]:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+              <Card title={t.branchesTitle} subtitle={t.branchesHint(data.branches.length)} className="[animation-delay:180ms]">
+                <BranchList branches={data.branches} now={now} />
+              </Card>
+              <Card title={t.recentTitle} subtitle={t.recentHint} className="[animation-delay:190ms]">
+                <RecentCommits commits={data.commits} now={now} onOpen={openInHistory} />
               </Card>
             </div>
 
@@ -998,6 +1098,7 @@ function DashboardView(): JSX.Element {
               {data.commits.length >= LOG_LIMIT
                 ? t.basedOnRecent(fmt.number(LOG_LIMIT))
                 : t.basedOnBranch}
+              {churn?.truncated ? ` ${t.churnTruncated(fmt.number(CHURN_LIMIT))}` : ''}
             </p>
           </div>
         )}

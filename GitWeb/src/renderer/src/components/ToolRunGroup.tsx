@@ -4,6 +4,7 @@ import type { UiToolCall } from '../store/aiStore'
 import type { ToolRunStep } from '../lib/ai/chatGrouping'
 import { getToolDisplay } from '../lib/ai/toolDisplay'
 import ToolResult from './ToolResult'
+import ToolVisualCard from './ToolVisualCard'
 import { useT } from '../lib/i18n'
 
 function basename(path: string): string {
@@ -116,8 +117,14 @@ function ToolRunGroup({
                   </p>
                 )}
                 {isOpen && result && (
-                  <div className="mt-1 ml-6 rounded-md border border-default-border bg-midnight-base px-2.5 py-2">
-                    <ToolResult text={result} tone={step.uiCall.status === 'failed' ? 'danger' : 'default'} />
+                  <div className="mt-1 ml-6">
+                    {step.uiCall.visual ? (
+                      <ToolVisualCard visual={step.uiCall.visual} />
+                    ) : (
+                      <div className="rounded-md border border-default-border bg-midnight-base px-2.5 py-2">
+                        <ToolResult text={result} tone={step.uiCall.status === 'failed' ? 'danger' : 'default'} />
+                      </div>
+                    )}
                   </div>
                 )}
               </li>

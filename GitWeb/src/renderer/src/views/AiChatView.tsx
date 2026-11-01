@@ -25,6 +25,7 @@ import EffortSlider from '../components/EffortSlider'
 import Markdown from '../components/Markdown'
 import ToolResult from '../components/ToolResult'
 import ToolRunGroup from '../components/ToolRunGroup'
+import ToolVisualCard from '../components/ToolVisualCard'
 import InvestigationRunGroup from '../components/InvestigationRunGroup'
 import PatchPreviewDialog from '../components/PatchPreviewDialog'
 import ErrorExplainButton from '../components/ErrorExplainButton'
@@ -34,6 +35,8 @@ import { isEmptyInvestigationMarkdown } from '../lib/ai/commitInvestigation'
 import { toolSeverity, type ToolPreview, type ToolSeverity } from '../lib/ai/tools'
 import { openAiSettings } from '../lib/openAiSettings'
 import { useAiUi } from '../lib/useAiUi'
+import { useT } from '../lib/i18n'
+import { AI_CHAT_MIN_HEIGHT, AI_CHAT_MIN_WIDTH } from '../lib/chatLayout'
 
 function severityStyles(severity: ToolSeverity | undefined, status: string): string {
   if (status === 'completed') return 'border-success-green/40'
@@ -96,6 +99,25 @@ function groupPreviewFields(fields: ToolPreview['fields']): PreviewFieldGroup[] 
   return groups
 }
 
+/** The plain-text result the model read, one click away from the card. */
+function TextResultToggle({ text }: { text: string }): JSX.Element | null {
+  const [open, setOpen] = useState(false)
+  const g = useT().graph
+  if (!text.trim()) return null
+  return (
+    <div className="mt-1.5">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="text-[11px] text-tertiary-text hover:text-command-blue hover:underline">
+        {open ? g.hideText : g.showText}
+      </button>
+      {open && (
+        <div className="mt-1 max-h-60 overflow-y-auto rounded-md border border-default-border bg-midnight-base px-2.5 py-2">
+          <ToolResult text={text} tone="default" />
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ToolCallCard({ messageId, uiCall }: { messageId: string; uiCall: import('../store/aiStore').UiToolCall }): JSX.Element {
   const ui = useAiUi()
   const approveToolCall = useAiStore((s) => s.approveToolCall)
@@ -117,6 +139,12 @@ function ToolCallCard({ messageId, uiCall }: { messageId: string; uiCall: import
         )}
         <span className="min-w-0 [overflow-wrap:anywhere]">{uiCall.preview.headline}</span>
       </div>
+      {/* The approval's picture (what moves where) leads; the fields back it up. */}
+      {uiCall.preview.visual && uiCall.status !== 'completed' && (
+        <div className="mt-2.5">
+          <ToolVisualCard visual={uiCall.preview.visual} />
+        </div>
+      )}
       {groupPreviewFields(uiCall.preview.fields).map((group, index) =>
         group.block ? (
           <div key={group.field.label} className="mt-2.5 text-caption">
@@ -176,7 +204,13 @@ function ToolCallCard({ messageId, uiCall }: { messageId: string; uiCall: import
           </button>
         </div>
       )}
-      {(uiCall.status === 'completed' || uiCall.status === 'cancelled') && (
+      {uiCall.status === 'completed' && uiCall.visual && (
+        <div className="mt-2.5 border-t border-default-border pt-2.5">
+          <ToolVisualCard visual={uiCall.visual} />
+          <TextResultToggle text={uiCall.result ?? ''} />
+        </div>
+      )}
+      {(uiCall.status === 'cancelled' || (uiCall.status === 'completed' && !uiCall.visual)) && (
         <div className="mt-2.5 border-t border-default-border pt-2">
           <ToolResult
             text={uiCall.result ?? ''}
@@ -443,8 +477,8 @@ function AiChatView(): JSX.Element {
       const maxWidth = window.innerWidth - startRect.x
       const maxHeight = window.innerHeight - startRect.y
       setFloatingRect({
-        width: Math.min(maxWidth, Math.max(360, startRect.width + (moveEvent.clientX - startX))),
-        height: Math.min(maxHeight, Math.max(320, startRect.height + (moveEvent.clientY - startY)))
+        width: Math.min(maxWidth, Math.max(AI_CHAT_MIN_WIDTH, startRect.width + (moveEvent.clientX - startX))),
+        height: Math.min(maxHeight, Math.max(AI_CHAT_MIN_HEIGHT, startRect.height + (moveEvent.clientY - startY)))
       })
     }
     function onMouseUp(): void {
@@ -470,8 +504,8 @@ function AiChatView(): JSX.Element {
           role="separator"
           aria-orientation="horizontal"
           aria-label={ui.chatFloatResize}
-          aria-valuemin={360}
-          aria-valuemax={Math.max(360, Math.floor(typeof window !== 'undefined' ? window.innerWidth - floatingRect.x : 360))}
+          aria-valuemin={AI_CHAT_MIN_WIDTH}
+          aria-valuemax={Math.max(AI_CHAT_MIN_WIDTH, Math.floor(typeof window !== 'undefined' ? window.innerWidth - floatingRect.x : AI_CHAT_MIN_WIDTH))}
           aria-valuenow={Math.round(floatingRect.width)}
           tabIndex={0}
           onMouseDown={handleResizeStart}
@@ -484,7 +518,7 @@ function AiChatView(): JSX.Element {
               })
             } else if (e.key === 'ArrowLeft') {
               e.preventDefault()
-              setFloatingRect({ width: Math.max(360, floatingRect.width - step) })
+              setFloatingRect({ width: Math.max(AI_CHAT_MIN_WIDTH, floatingRect.width - step) })
             } else if (e.key === 'ArrowDown') {
               e.preventDefault()
               setFloatingRect({
@@ -492,7 +526,7 @@ function AiChatView(): JSX.Element {
               })
             } else if (e.key === 'ArrowUp') {
               e.preventDefault()
-              setFloatingRect({ height: Math.max(320, floatingRect.height - step) })
+              setFloatingRect({ height: Math.max(AI_CHAT_MIN_HEIGHT, floatingRect.height - step) })
             }
           }}
           className="absolute bottom-0 right-0 z-10 size-6 cursor-nwse-resize rounded-tl-sm hover:bg-command-blue/30 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
