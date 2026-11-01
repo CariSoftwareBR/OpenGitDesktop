@@ -36,6 +36,8 @@ export interface PullRequest {
   merged: boolean
   headRef: string
   headSha: string
+  /** Owner of the repository the head branch lives in — differs from the base's on PRs from forks. */
+  headOwner?: string | null
   baseRef: string
   /** Only the single-PR endpoint reports these; null from list results, and
    *  null from GitHub itself while it is still computing the merge. */

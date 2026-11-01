@@ -87,7 +87,7 @@ export interface Api {
     commitDiff: (hash: string, path: string, cwd: string) => Promise<string>
     commitDetails: (cwd: string, ref: string) => Promise<CommitDetails | null>
     commitPatch: (cwd: string, ref: string) => Promise<string>
-    graphLog: (cwd: string, limit?: number, path?: string) => Promise<GraphCommit[]>
+    graphLog: (cwd: string, limit?: number, path?: string, allBranches?: boolean) => Promise<GraphCommit[]>
     logWithStats: (cwd: string, limit?: number) => Promise<CommitSummaryWithStats[]>
     commitFileStats: (cwd: string, ref: string) => Promise<CommitFileStat[]>
     commitRange: (cwd: string, head: string, base: string | null, limit?: number) => Promise<CommitRange>

@@ -1777,18 +1777,35 @@ export function resolveRepoPath(cwd: string, relativePath: string): string {
 const GS = '\x1d' // group separator: ends the formatted part of a log record
 
 /**
- * Every local branch, remote branch and tag (plus a detached HEAD), so the
- * History graph shows where branches split and meet. `--date-order` keeps
- * parents below all of their children, which the lane layout relies on. The
- * stash is deliberately not a source: its internal commits are not history.
- * A file filter keeps the old behaviour — the current branch only.
+ * History graph source. By default only what is reachable from HEAD — the
+ * checked-out branch's own history, so switching branches changes the list.
+ * `allBranches` adds every local branch, remote branch and tag, so the graph
+ * shows where branches split and meet. `--date-order` keeps parents below all
+ * of their children, which the lane layout relies on. The stash is
+ * deliberately not a source: its internal commits are not history. A file
+ * filter always follows the current branch only.
  */
-export async function getGraphLog(cwd: string, limit = 400, path?: string): Promise<GraphCommit[]> {
+/**
+ * Commits on local branches (or a detached HEAD) that no remote-tracking ref
+ * reaches. Asked of git directly: the graph may show only the current branch,
+ * whose log need not contain any remote ref to reason from. Null when there is
+ * no remote, or git could not answer.
+ */
+async function getUnpublishedHashes(cwd: string): Promise<Set<string> | null> {
+  const remotes = await readGit(['remote'], cwd)
+  if (remotes.exitCode !== 0 || !remotes.stdout.trim()) return null
+  const result = await readGit(['rev-list', 'HEAD', '--branches', '--not', '--remotes'], cwd)
+  if (result.exitCode !== 0) return null
+  return new Set(result.stdout.split('\n').map((line) => line.trim()).filter(Boolean))
+}
+
+export async function getGraphLog(cwd: string, limit = 400, path?: string, allBranches = false): Promise<GraphCommit[]> {
   const format = [...LOG_FORMAT_FIELDS, '%P', '%D'].join(FS)
   const args = ['log', '--date-order', '--decorate=full', `--pretty=format:${format}${RS}`, '-n', String(limit)]
   if (path?.trim()) args.push('HEAD', '--', path.trim())
-  else args.push('--branches', '--remotes', '--tags', 'HEAD')
-  const result = await readGit(args, cwd)
+  else if (allBranches) args.push('--branches', '--remotes', '--tags', 'HEAD')
+  else args.push('HEAD')
+  const [result, unpublished] = await Promise.all([readGit(args, cwd), getUnpublishedHashes(cwd)])
   if (result.exitCode !== 0) {
     if (/does not have any commits yet|unknown revision|bad revision|ambiguous argument 'HEAD'/i.test(result.stderr)) return []
     throwOnFailure(result, ['log'])
@@ -1808,7 +1825,8 @@ export async function getGraphLog(cwd: string, limit = 400, path?: string): Prom
         summary,
         body: (body ?? '').trim(),
         parents: (parents ?? '').trim().split(/\s+/).filter(Boolean),
-        refs: parseDecorations((decorations ?? '').trim())
+        refs: parseDecorations((decorations ?? '').trim()),
+        ...(unpublished ? { unpublished: unpublished.has(hash) } : {})
       }
     })
 }

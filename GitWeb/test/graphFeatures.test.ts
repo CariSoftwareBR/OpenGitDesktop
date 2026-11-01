@@ -126,6 +126,38 @@ describe('git history features', () => {
     expect(graph[3].refs).toEqual([{ name: 'origin/main', kind: 'remote' }])
   })
 
+  it('shows only the checked-out branch unless every branch is asked for', async () => {
+    git(repo, 'checkout', '-q', '-b', 'feature')
+    commitFile(repo, 'f.txt', 'f\n', 'feature work')
+    git(repo, 'checkout', '-q', 'main')
+    commitFile(repo, 'm.txt', 'm\n', 'main work')
+
+    expect((await getGraphLog(repo)).map((c) => c.summary)).toEqual(['main work', 'second', 'initial'])
+    expect((await getGraphLog(repo, 400, undefined, true)).map((c) => c.summary).sort()).toEqual(
+      ['feature work', 'initial', 'main work', 'second']
+    )
+    git(repo, 'checkout', '-q', 'feature')
+    expect((await getGraphLog(repo)).map((c) => c.summary)).toEqual(['feature work', 'second', 'initial'])
+  })
+
+  it('marks unpublished commits even when no remote ref is in the branch log', async () => {
+    // origin/main moves past the point the feature branch started from.
+    commitFile(repo, 'a.txt', 'one\ntwo\nthree\n', 'third')
+    git(repo, 'push', '-q', 'origin', 'main')
+    git(repo, 'checkout', '-q', '-b', 'feature', 'HEAD~1')
+    commitFile(repo, 'f.txt', 'f\n', 'feature work')
+
+    const graph = await getGraphLog(repo)
+    expect(graph.map((c) => c.summary)).toEqual(['feature work', 'second', 'initial'])
+    expect(graph.every((c) => c.refs.every((r) => r.kind !== 'remote'))).toBe(true)
+    expect(graph.map((c) => c.unpublished)).toEqual([true, false, false])
+  })
+
+  it('leaves unpublished unset when the repository has no remote', async () => {
+    git(repo, 'remote', 'remove', 'origin')
+    expect((await getGraphLog(repo)).every((c) => c.unpublished === undefined)).toBe(true)
+  })
+
   it('reports stats, ranges, containing refs, blame and the file timeline', async () => {
     const third = commitFile(repo, 'a.txt', 'one\nTWO\nthree\n', 'third')
     const stats = await getLogWithStats(repo, 5)

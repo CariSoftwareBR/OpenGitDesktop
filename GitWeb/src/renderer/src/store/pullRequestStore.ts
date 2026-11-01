@@ -35,6 +35,11 @@ interface PullRequestStoreState {
   lastMerged: { number: number; headRef: string; baseRef: string } | null
 
   detectRemote: () => Promise<void>
+  /**
+   * The current branch changed (or the session just became available): show
+   * that branch's open pull request, or nothing when it has none.
+   */
+  syncWithBranch: (branch: string | null) => Promise<void>
   loginWithToken: (token: string) => Promise<void>
   loginSuccess: (user: GitHubUser) => void
   logout: () => Promise<void>
@@ -79,6 +84,29 @@ async function ensurePullRequestStillOpen(remote: RemoteInfo, pr: PullRequest): 
 }
 
 let detectRemoteGeneration = 0
+let syncBranchGeneration = 0
+
+/**
+ * The open pull request whose head is `branch` in this repository. A PR from a
+ * fork can carry the same branch name, so the head's owner has to match too
+ * (when GitHub reported it).
+ */
+export function pullRequestForBranch(
+  pullRequests: PullRequest[],
+  branch: string | null | undefined,
+  owner: string | null | undefined
+): PullRequest | null {
+  if (!branch) return null
+  return (
+    pullRequests.find(
+      (pr) =>
+        pr.state === 'open' &&
+        !pr.merged &&
+        pr.headRef === branch &&
+        (!pr.headOwner || !owner || pr.headOwner.toLowerCase() === owner.toLowerCase())
+    ) ?? null
+  )
+}
 let selectPullRequestGeneration = 0
 
 // A failed review/merge/state change refreshes the list first and only then
@@ -136,6 +164,22 @@ export const usePullRequestStore = create<PullRequestStoreState>((set, get) => (
     } catch (err) {
       if (generation !== detectRemoteGeneration) return
       set({ error: describeError(err) })
+    }
+  },
+
+  syncWithBranch: async (branch) => {
+    const { remote, user } = get()
+    if (!remote || !user || !branch) return
+    const generation = ++syncBranchGeneration
+    await get().refreshPullRequests()
+    if (generation !== syncBranchGeneration) return
+    const pr = pullRequestForBranch(get().pullRequests, branch, remote.owner)
+    const detail = get().detail
+    if (pr) {
+      if (detail?.pr.number !== pr.number) await get().selectPullRequest(pr.number)
+    } else if (detail && detail.pr.headRef !== branch) {
+      // The PR on screen belongs to the branch we just left.
+      set({ detail: null })
     }
   },
 

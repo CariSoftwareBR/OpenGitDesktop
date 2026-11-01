@@ -132,6 +132,29 @@ function App(): JSX.Element {
     else usePullRequestStore.getState().reset()
   }, [currentRepoPath, detectRemote])
 
+  // Pull Requests follow the checked-out branch: switching branches (here or
+  // from a terminal) brings up that branch's open PR.
+  const checkedOutBranch = useRepoStore((s) => s.status?.branch ?? null)
+  const prSessionUser = usePullRequestStore((s) => s.user?.login ?? null)
+  useEffect(() => {
+    if (checkedOutBranch && prSessionUser) void usePullRequestStore.getState().syncWithBranch(checkedOutBranch)
+  }, [checkedOutBranch, prSessionUser])
+
+  // A switch made outside the app (terminal, editor) only shows up through the
+  // status poll; History and the branch list have to follow it too. Switches
+  // made here already refresh both while the store is busy.
+  const lastBranchRef = useRef<{ repo: string | null; branch: string | null } | null>(null)
+  useEffect(() => {
+    const previous = lastBranchRef.current
+    lastBranchRef.current = { repo: currentRepoPath, branch: checkedOutBranch }
+    if (!previous || previous.repo !== currentRepoPath || !previous.branch || !checkedOutBranch) return
+    if (previous.branch === checkedOutBranch) return
+    const repo = useRepoStore.getState()
+    if (repo.isBusy) return
+    void repo.refreshLog()
+    void repo.refreshBranches()
+  }, [currentRepoPath, checkedOutBranch])
+
   useEffect(() => {
     if (!prSuccessMessage) return
     const id = setTimeout(() => clearPrSuccessMessage(), 5000)

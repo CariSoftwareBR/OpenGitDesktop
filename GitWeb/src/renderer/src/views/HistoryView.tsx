@@ -6,7 +6,9 @@ import {
   Check,
   Copy,
   FileClock,
+  GitBranch,
   GitBranchPlus,
+  GitFork,
   GitCommitHorizontal,
   History,
   ListOrdered,
@@ -54,6 +56,10 @@ function formatDate(fmt: Formatters, iso: string): string {
  * carries a remote ref; whatever is left was never pushed.
  */
 function computeLocalOnly(commits: GraphCommit[]): Set<string> {
+  // The main process asked git directly; the walk below is only a fallback.
+  if (commits.some((c) => c.unpublished !== undefined)) {
+    return new Set(commits.filter((c) => c.unpublished).map((c) => c.hash))
+  }
   const byHash = new Map(commits.map((c) => [c.hash, c]))
   const published = new Set<string>()
   const stack = commits.filter((c) => c.refs.some((r) => r.kind === 'remote')).map((c) => c.hash)
@@ -244,6 +250,12 @@ function ContainedIn({ hash }: { hash: string }): JSX.Element {
   )
 }
 
+/** Long names like dependabot/npm_and_yarn/x/y keep their identifying tail. */
+function shortBranchName(name: string): string {
+  if (name.length <= 22) return name
+  return `…/${name.split('/').pop() ?? name}`
+}
+
 function HistoryView(): JSX.Element {
   const selectedCommit = useRepoStore((s) => s.selectedCommit)
   const commitDiffText = useRepoStore((s) => s.commitDiffText)
@@ -253,6 +265,9 @@ function HistoryView(): JSX.Element {
   const log = useRepoStore((s) => s.log)
   const logPath = useRepoStore((s) => s.logPath)
   const setLogPath = useRepoStore((s) => s.setLogPath)
+  const logScope = useRepoStore((s) => s.logScope)
+  const status = useRepoStore((s) => s.status)
+  const setLogScope = useRepoStore((s) => s.setLogScope)
   const historyFocus = useRepoStore((s) => s.historyFocus)
   const openFileInsight = useRepoStore((s) => s.openFileInsight)
   const setRebasePlannerOpen = useRepoStore((s) => s.setRebasePlannerOpen)
@@ -428,6 +443,34 @@ function HistoryView(): JSX.Element {
             )}
           </button>
         </div>
+        {!logPath && (
+          <div role="radiogroup" aria-label={g.scopeLabel} className="flex rounded-md border border-default-border p-0.5">
+            {(['branch', 'all'] as const).map((scope) => {
+              const active = logScope === scope
+              const branchName = status?.branch ?? 'HEAD'
+              return (
+                <button
+                  key={scope}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => void setLogScope(scope)}
+                  title={scope === 'branch' ? g.scopeBranchTitle(branchName) : g.scopeAllTitle}
+                  className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[5px] px-2 py-1 text-caption transition-colors ${
+                    active
+                      ? 'bg-selection font-medium text-primary-text'
+                      : 'text-secondary-text hover:bg-hover-overlay hover:text-primary-text'
+                  }`}
+                >
+                  {scope === 'branch' ? <GitBranch size={12} aria-hidden /> : <GitFork size={12} aria-hidden />}
+                  <span className="truncate">
+                    {scope === 'branch' ? (narrow ? g.scopeBranch : shortBranchName(branchName)) : g.scopeAll}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        )}
         {logPath && (
           <button
             type="button"

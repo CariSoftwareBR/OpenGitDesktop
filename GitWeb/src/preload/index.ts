@@ -132,7 +132,8 @@ const api = {
     commitDetails: (cwd: string, ref: string): Promise<CommitDetails | null> =>
       invoke('git:commitDetails', cwd, ref),
     commitPatch: (cwd: string, ref: string): Promise<string> => invoke('git:commitPatch', cwd, ref),
-    graphLog: (cwd: string, limit?: number, path?: string): Promise<GraphCommit[]> => invoke('git:graphLog', cwd, limit, path),
+    graphLog: (cwd: string, limit?: number, path?: string, allBranches?: boolean): Promise<GraphCommit[]> =>
+      invoke('git:graphLog', cwd, limit, path, allBranches),
     logWithStats: (cwd: string, limit?: number): Promise<CommitSummaryWithStats[]> => invoke('git:logWithStats', cwd, limit),
     commitFileStats: (cwd: string, ref: string): Promise<CommitFileStat[]> => invoke('git:commitFileStats', cwd, ref),
     commitRange: (cwd: string, head: string, base: string | null, limit?: number): Promise<CommitRange> =>

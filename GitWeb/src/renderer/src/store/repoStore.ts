@@ -77,6 +77,8 @@ interface RepoState {
   commitDiffText: string
   lastFetchedAt: number | null
   logPath: string | null
+  /** History shows the checked-out branch ('branch') or every branch, remote and tag ('all'). */
+  logScope: 'branch' | 'all'
   isBusy: boolean
   /** A hunk apply is in flight; hunk indexes from the current diff are stale until it settles. */
   isHunkBusy: boolean
@@ -133,6 +135,7 @@ interface RepoState {
   clearBatchResults: () => void
   updateSelectedRepos: () => Promise<void>
   setLogPath: (path: string | null) => Promise<void>
+  setLogScope: (scope: 'branch' | 'all') => Promise<void>
   /**
    * Resolves true once the branch is checked out. When local changes block it,
    * `interactive` (the default) opens the stash-and-switch dialog; otherwise
@@ -265,6 +268,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
   commitDiffText: '',
   lastFetchedAt: null,
   logPath: null,
+  logScope: 'branch',
   isBusy: false,
   isHunkBusy: false,
   error: null,
@@ -564,7 +568,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     try {
       // Keeps a deeper load (from focusing an old commit) instead of shrinking back.
       const limit = Math.max(GRAPH_LOG_LIMIT, get().log.length)
-      const log = await window.api.git.graphLog(path, limit, get().logPath ?? undefined)
+      const log = await window.api.git.graphLog(path, limit, get().logPath ?? undefined, get().logScope === 'all')
       if (generation !== repoOpenGeneration || get().currentRepoPath !== path) return
       set({ log })
     } catch (err) {
@@ -904,6 +908,12 @@ export const useRepoStore = create<RepoState>((set, get) => ({
 
   setLogPath: async (path) => {
     set({ logPath: path, selectedCommit: null, commitDiffText: '' })
+    await get().refreshLog()
+  },
+
+  setLogScope: async (scope) => {
+    if (get().logScope === scope) return
+    set({ logScope: scope, selectedCommit: null, commitDiffText: '' })
     await get().refreshLog()
   },
 
@@ -1307,15 +1317,22 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     // A file filter shows one branch's commits only; the graph needs them all.
     const hadFilter = get().logPath !== null
     if (hadFilter) set({ logPath: null })
+    const allBranches = get().logScope === 'all'
     if (hadFilter || !get().log.some((c) => c.hash === hash)) {
-      const log = await window.api.git.graphLog(path, GRAPH_LOG_LIMIT, undefined)
+      const log = await window.api.git.graphLog(path, GRAPH_LOG_LIMIT, undefined, allBranches)
       if (get().currentRepoPath !== path) return false
       set({ log })
     }
     if (!get().log.some((c) => c.hash === hash)) {
-      const deep = await window.api.git.graphLog(path, GRAPH_LOG_DEEP_LIMIT, undefined)
+      const deep = await window.api.git.graphLog(path, GRAPH_LOG_DEEP_LIMIT, undefined, allBranches)
       if (get().currentRepoPath !== path) return false
       set({ log: deep })
+    }
+    // Not on the checked-out branch: widen History to every branch to show it.
+    if (!get().log.some((c) => c.hash === hash) && !allBranches) {
+      const everywhere = await window.api.git.graphLog(path, GRAPH_LOG_DEEP_LIMIT, undefined, true)
+      if (get().currentRepoPath !== path) return false
+      if (everywhere.some((c) => c.hash === hash)) set({ log: everywhere, logScope: 'all' })
     }
     if (!get().log.some((c) => c.hash === hash)) return false
     set({ view: 'history', historyFocus: { hash, nonce: ++historyFocusNonce } })
