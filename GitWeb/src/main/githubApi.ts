@@ -145,12 +145,6 @@ interface ApiRepo {
   owner: { login: string }
   clone_url: string
   private: boolean
-  description?: string | null
-  language?: string | null
-  pushed_at?: string | null
-  updated_at?: string | null
-  fork?: boolean
-  archived?: boolean
 }
 
 interface ApiPullRequest {
@@ -179,12 +173,7 @@ function toRepo(repo: ApiRepo): GitHubRepoSummary {
     name: repo.name,
     owner: repo.owner.login,
     cloneUrl: repo.clone_url,
-    private: repo.private,
-    description: repo.description ?? null,
-    language: repo.language ?? null,
-    updatedAt: repo.pushed_at ?? repo.updated_at ?? null,
-    fork: Boolean(repo.fork),
-    archived: Boolean(repo.archived)
+    private: repo.private
   }
 }
 

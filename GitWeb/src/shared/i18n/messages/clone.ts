@@ -33,28 +33,7 @@ const ptBR = {
   },
   destinationPlaceholder: 'Pasta de destino',
   destinationAria: 'Pasta de destino do clone',
-  baseFoldersAria: 'Pastas-base cadastradas',
-  subtitle: 'Traga um repositório para a sua bancada.',
-  ownerFilterAria: 'Filtrar por dono',
-  allOwners: 'Todos',
-  fork: 'fork',
-  forkTitle: 'Fork de outro repositório',
-  archived: 'arquivado',
-  privateTitle: 'Repositório privado',
-  onBench: 'na bancada',
-  onBenchTitle: (path: string) => `Já existe um repositório com esse nome na bancada: ${path}`,
-  loadingRepos: 'Carregando seus repositórios…',
-  emptyAccount: 'Nenhum repositório nesta conta.',
-  signInTitle: 'Seus repositórios, a um clique',
-  signInBody: 'Entre com o GitHub para escolher da lista em vez de colar a URL.',
-  routeAria: 'Origem e destino do clone',
-  routeSourceEmpty: 'Escolha um repositório',
-  routeDestEmpty: 'Escolha uma pasta',
-  urlHint: 'HTTPS ou SSH — funciona com GitHub, GitLab, Bitbucket ou qualquer servidor Git.',
-  urlRecognized: 'Repositório reconhecido',
-  tokenLoadedFrom: (host: string) => `Repositórios de ${host}`,
-  repoCount: (n: number) => (n === 1 ? '1 repositório' : `${n} repositórios`),
-  listAria: 'Repositórios disponíveis'
+  baseFoldersAria: 'Pastas-base cadastradas'
 }
 
 type M = typeof ptBR
@@ -94,28 +73,7 @@ const en: M = {
   },
   destinationPlaceholder: 'Destination folder',
   destinationAria: 'Clone destination folder',
-  baseFoldersAria: 'Saved base folders',
-  subtitle: 'Bring a repository onto your bench.',
-  ownerFilterAria: 'Filter by owner',
-  allOwners: 'All',
-  fork: 'fork',
-  forkTitle: 'Fork of another repository',
-  archived: 'archived',
-  privateTitle: 'Private repository',
-  onBench: 'on bench',
-  onBenchTitle: (path) => `A repository with this name is already on your bench: ${path}`,
-  loadingRepos: 'Loading your repositories…',
-  emptyAccount: 'This account has no repositories.',
-  signInTitle: 'Your repositories, one click away',
-  signInBody: 'Sign in with GitHub to pick from a list instead of pasting a URL.',
-  routeAria: 'Clone source and destination',
-  routeSourceEmpty: 'Pick a repository',
-  routeDestEmpty: 'Pick a folder',
-  urlHint: 'HTTPS or SSH — works with GitHub, GitLab, Bitbucket or any Git server.',
-  urlRecognized: 'Repository recognized',
-  tokenLoadedFrom: (host) => `Repositories on ${host}`,
-  repoCount: (n) => (n === 1 ? '1 repository' : `${n} repositories`),
-  listAria: 'Available repositories'
+  baseFoldersAria: 'Saved base folders'
 }
 
 const es: M = {
@@ -153,28 +111,7 @@ const es: M = {
   },
   destinationPlaceholder: 'Carpeta de destino',
   destinationAria: 'Carpeta de destino del clonado',
-  baseFoldersAria: 'Carpetas base guardadas',
-  subtitle: 'Trae un repositorio a tu banco de trabajo.',
-  ownerFilterAria: 'Filtrar por dueño',
-  allOwners: 'Todos',
-  fork: 'fork',
-  forkTitle: 'Fork de otro repositorio',
-  archived: 'archivado',
-  privateTitle: 'Repositorio privado',
-  onBench: 'en el banco',
-  onBenchTitle: (path) => `Ya hay un repositorio con ese nombre en tu banco: ${path}`,
-  loadingRepos: 'Cargando tus repositorios…',
-  emptyAccount: 'Esta cuenta no tiene repositorios.',
-  signInTitle: 'Tus repositorios, a un clic',
-  signInBody: 'Inicia sesión con GitHub para elegir de la lista en vez de pegar la URL.',
-  routeAria: 'Origen y destino del clonado',
-  routeSourceEmpty: 'Elige un repositorio',
-  routeDestEmpty: 'Elige una carpeta',
-  urlHint: 'HTTPS o SSH — funciona con GitHub, GitLab, Bitbucket o cualquier servidor Git.',
-  urlRecognized: 'Repositorio reconocido',
-  tokenLoadedFrom: (host) => `Repositorios de ${host}`,
-  repoCount: (n) => (n === 1 ? '1 repositorio' : `${n} repositorios`),
-  listAria: 'Repositorios disponibles'
+  baseFoldersAria: 'Carpetas base guardadas'
 }
 
 export default { 'pt-BR': ptBR, en, es }
