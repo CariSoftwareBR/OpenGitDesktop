@@ -1410,3 +1410,245 @@
     animation: none;
   }
 }
+
+/* ── Clone dialog: "from there to here" ───────────────────────────────────
+   The clone is drawn as a trip between two nodes in the app's lane colors:
+   the remote (Attention Orange) and the folder on this machine (Command
+   Blue). The lane draws itself once both ends are known and fills while git
+   works — the dialog's one authored moment. */
+@layer components {
+  .clone-sheet {
+    animation: clone-sheet-in 320ms var(--ease-out-expo) backwards;
+  }
+  .clone-dock {
+    background: color-mix(in oklab, var(--color-midnight-base) 55%, var(--color-obsidian-panel));
+  }
+
+  .clone-segmented {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border-radius: 9px;
+    border: 1px solid var(--color-default-border);
+    background: var(--color-midnight-base);
+  }
+  .clone-segment {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 12px;
+    border-radius: 6px;
+    font-size: var(--text-caption);
+    font-weight: 500;
+    color: var(--color-secondary-text);
+    transition:
+      background-color 150ms var(--ease-out-expo),
+      color 150ms var(--ease-out-expo),
+      box-shadow 150ms var(--ease-out-expo);
+  }
+  .clone-segment:hover {
+    color: var(--color-primary-text);
+    background: var(--color-hover-overlay);
+  }
+  .clone-segment[aria-selected='true'] {
+    color: var(--color-primary-text);
+    background: var(--color-obsidian-panel);
+    box-shadow: var(--shadow-raised);
+  }
+  .clone-segment[aria-selected='true'] svg {
+    color: var(--color-command-blue);
+  }
+
+  .clone-monogram {
+    color: var(--lane);
+    background: color-mix(in oklab, var(--lane) 15%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--lane) 30%, transparent);
+    letter-spacing: 0.02em;
+  }
+
+  .clone-owner-strip {
+    scrollbar-width: none;
+    mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent);
+  }
+  .clone-owner-strip::-webkit-scrollbar {
+    display: none;
+  }
+  .clone-owner-chip {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 6px;
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--color-default-border);
+    font-size: var(--text-caption);
+    color: var(--color-secondary-text);
+    white-space: nowrap;
+    transition:
+      background-color 150ms var(--ease-out-expo),
+      border-color 150ms var(--ease-out-expo),
+      color 150ms var(--ease-out-expo);
+  }
+  .clone-owner-chip:hover {
+    color: var(--color-primary-text);
+    border-color: color-mix(in oklab, var(--color-primary-text) 25%, transparent);
+  }
+  .clone-owner-chip[aria-pressed='true'] {
+    color: var(--color-command-blue);
+    background: var(--color-command-blue-soft);
+    border-color: color-mix(in oklab, var(--color-command-blue) 35%, transparent);
+  }
+
+  .clone-row-enter {
+    animation: clone-row-in 380ms var(--ease-out-expo) backwards;
+    animation-delay: calc(var(--i, 0) * 16ms);
+  }
+
+  .clone-end {
+    color: var(--color-tertiary-text);
+    background: var(--color-hover-overlay);
+    box-shadow: inset 0 0 0 1px var(--color-default-border);
+    transition:
+      background-color 240ms var(--ease-out-expo),
+      color 240ms var(--ease-out-expo),
+      box-shadow 240ms var(--ease-out-expo);
+  }
+  .clone-end.is-remote {
+    color: var(--color-attention-orange);
+    background: var(--color-attention-orange-soft);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-attention-orange) 30%, transparent);
+  }
+  .clone-end.is-local {
+    color: var(--color-command-blue);
+    background: var(--color-command-blue-soft);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-command-blue) 30%, transparent);
+  }
+
+  .clone-lane {
+    --inset: 7px;
+  }
+  .clone-lane-track {
+    position: absolute;
+    left: var(--inset);
+    right: var(--inset);
+    top: 50%;
+    height: 2px;
+    margin-top: -1px;
+    background-image: repeating-linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--color-tertiary-text) 55%, transparent) 0 5px,
+      transparent 5px 10px
+    );
+  }
+  .clone-lane[data-state='cloning'] .clone-lane-track {
+    animation: clone-track-flow 700ms linear infinite;
+  }
+  .clone-lane-fill {
+    position: absolute;
+    left: var(--inset);
+    top: 50%;
+    width: 0;
+    height: 2px;
+    margin-top: -1px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--color-attention-orange), var(--color-command-blue));
+  }
+  .clone-lane[data-state='ready'] .clone-lane-fill {
+    width: calc(100% - 2 * var(--inset));
+    animation: clone-lane-draw 720ms var(--ease-out-expo) both;
+  }
+  .clone-lane[data-state='cloning'] .clone-lane-fill {
+    width: calc((100% - 2 * var(--inset)) * var(--p, 0));
+    transition: width 420ms var(--ease-out-expo);
+  }
+  .clone-lane-node {
+    position: absolute;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    margin-top: -7px;
+    border-radius: 999px;
+    border: 2px solid color-mix(in oklab, var(--color-tertiary-text) 70%, transparent);
+    background: var(--color-obsidian-panel);
+    transition:
+      border-color 240ms var(--ease-out-expo),
+      background-color 240ms var(--ease-out-expo);
+  }
+  .clone-lane-node.is-start {
+    left: 0;
+  }
+  .clone-lane-node.is-end {
+    right: 0;
+  }
+  .clone-lane:not([data-state='idle']) .clone-lane-node.is-start {
+    border-color: var(--color-attention-orange);
+    background: var(--color-attention-orange);
+  }
+  .clone-lane:not([data-state='idle']) .clone-lane-node.is-end {
+    border-color: var(--color-command-blue);
+  }
+  .clone-lane[data-state='ready'] .clone-lane-node.is-end {
+    animation: clone-node-arrive 460ms var(--ease-out-expo) 420ms backwards;
+  }
+  .clone-lane-head {
+    position: absolute;
+    top: 50%;
+    left: calc(var(--inset) + (100% - 2 * var(--inset)) * var(--p, 0));
+    width: 8px;
+    height: 8px;
+    margin: -4px 0 0 -4px;
+    border-radius: 999px;
+    background: var(--color-command-blue);
+    transition: left 420ms var(--ease-out-expo);
+    animation: clone-head-pulse 1.1s ease-in-out infinite;
+  }
+}
+
+@keyframes clone-sheet-in {
+  from {
+    opacity: 0.55;
+    transform: translateY(8px) scale(0.985);
+  }
+}
+@keyframes clone-row-in {
+  from {
+    opacity: 0.3;
+    transform: translateY(4px);
+  }
+}
+@keyframes clone-lane-draw {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes clone-node-arrive {
+  from {
+    transform: scale(0.55);
+  }
+}
+@keyframes clone-track-flow {
+  to {
+    background-position: 10px 0;
+  }
+}
+@keyframes clone-head-pulse {
+  50% {
+    transform: scale(1.45);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .clone-sheet,
+  .clone-row-enter,
+  .clone-lane-fill,
+  .clone-lane-node,
+  .clone-lane-track,
+  .clone-lane-head {
+    animation: none !important;
+  }
+}
