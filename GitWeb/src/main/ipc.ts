@@ -218,7 +218,9 @@ export function registerIpcHandlers(): void {
   handle('git:commitDiff', (_e, hash: string, path: string, cwd: string) => getCommitDiff(hash, path, cwd))
   handle('git:commitDetails', (_e, cwd: string, ref: string) => getCommitDetails(cwd, ref))
   handle('git:commitPatch', (_e, cwd: string, ref: string) => getCommitPatch(cwd, ref))
-  handle('git:graphLog', (_e, cwd: string, limit?: number, path?: string) => getGraphLog(cwd, limit, path))
+  handle('git:graphLog', (_e, cwd: string, limit?: number, path?: string, allBranches?: boolean) =>
+    getGraphLog(cwd, limit, path, allBranches)
+  )
   handle('git:logWithStats', (_e, cwd: string, limit?: number) => getLogWithStats(cwd, limit))
   handle('git:commitFileStats', (_e, cwd: string, ref: string) => getCommitFileStats(cwd, ref))
   handle('git:commitRange', (_e, cwd: string, head: string, base: string | null, limit?: number) =>

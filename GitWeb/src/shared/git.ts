@@ -228,6 +228,11 @@ export interface CommitRef {
 export interface GraphCommit extends CommitSummary {
   parents: string[]
   refs: CommitRef[]
+  /**
+   * Not reachable from any remote-tracking ref — never pushed. Left out when
+   * the repository has no remote (nothing could have been pushed anywhere).
+   */
+  unpublished?: boolean
 }
 
 export interface CommitStats {

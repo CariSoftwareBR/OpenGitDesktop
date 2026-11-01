@@ -24,7 +24,7 @@ import {
 } from 'lucide-react'
 import Github from '../components/icons/Github'
 import PostMergeActions from '../components/PostMergeActions'
-import { usePullRequestStore } from '../store/pullRequestStore'
+import { pullRequestForBranch, usePullRequestStore } from '../store/pullRequestStore'
 import { useRepoStore } from '../store/repoStore'
 import { getActiveAiConfig, isAiConfigured, useAiStore } from '../store/aiStore'
 import { generatePrDraft } from '../lib/ai/prDraft'
@@ -1794,6 +1794,11 @@ function PullRequestsView(): JSX.Element {
   const fmt = useFormatters()
   const locale = useLocale()
 
+  // The checked-out branch's own PR leads the list.
+  const checkedOutBranch = useRepoStore((s) => s.status?.branch ?? null)
+  const branchPr = pullRequestForBranch(pullRequests, checkedOutBranch, remote?.owner)
+  const orderedPullRequests = branchPr ? [branchPr, ...pullRequests.filter((pr) => pr !== branchPr)] : pullRequests
+
   const [page, setPage] = useState(1)
   const pageCount = Math.max(1, Math.ceil(pullRequests.length / PR_PAGE_SIZE))
   useEffect(() => {
@@ -1802,7 +1807,7 @@ function PullRequestsView(): JSX.Element {
   useEffect(() => {
     setPage((p) => Math.min(p, pageCount))
   }, [pageCount])
-  const pagedPullRequests = pullRequests.slice((page - 1) * PR_PAGE_SIZE, page * PR_PAGE_SIZE)
+  const pagedPullRequests = orderedPullRequests.slice((page - 1) * PR_PAGE_SIZE, page * PR_PAGE_SIZE)
 
   const [listWidth, setListWidth] = useState(DEFAULT_LIST_WIDTH)
   const listDraggingRef = useRef(false)
@@ -1925,6 +1930,11 @@ function PullRequestsView(): JSX.Element {
                     <span className="line-clamp-2 min-w-0 flex-1 text-body font-medium leading-snug text-primary-text">{pr.title}</span>
                     <span className="shrink-0 pt-px text-caption tabular-nums text-tertiary-text">#{pr.number}</span>
                   </span>
+                  {pr === branchPr && (
+                    <span className="inline-flex w-fit items-center gap-1 rounded-pill bg-command-blue-soft px-2 py-px text-label font-medium text-command-blue">
+                      <GitBranch size={11} aria-hidden /> {t.currentBranchBadge}
+                    </span>
+                  )}
                   <span className="flex min-w-0 items-center gap-1.5 text-caption text-tertiary-text">
                     <Avatar login={pr.authorLogin} size={16} />
                     <span className="truncate">{pr.authorLogin}</span>
