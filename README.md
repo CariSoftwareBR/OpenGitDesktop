@@ -28,16 +28,16 @@
 
 <h3 align="center">A complete Git client — AI optional</h3>
 
-<img src="docs/readme/showcase-en.png" alt="OpenGitDesktop in dark and light themes: pull request review and staged changes with the diff" width="100%">
+<img src="docs/readme/showcase-en.png" alt="OpenGitDesktop in dark and light themes: the history branch graph and changes with +/− per file and the diff" width="100%">
 
-<img src="docs/readme/features-en.svg" alt="Changes and commits, history, branches and merges, pull requests, stash and sync, local-first" width="100%">
+<img src="docs/readme/features-en.svg" alt="Changes and commits, history graph, branches and sync, pull requests, dashboard, local-first" width="100%">
 
 <br>
 <br>
 
 <h3 align="center">Every view, built for the way you work</h3>
 
-<img src="docs/readme/gallery-en.png" alt="History, AI approval, stash and pull request views" width="100%">
+<img src="docs/readme/gallery-en.png" alt="Dashboard, AI approval, the start screen with every repository’s state, and a pull request ready to merge" width="100%">
 
 <br>
 <br>

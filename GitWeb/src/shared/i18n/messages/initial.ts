@@ -79,7 +79,7 @@ const ptBR = {
   summaryChecking: 'verificando…',
   githubConnected: 'GitHub conectado',
   githubAccount: (login: string) => `Conta do GitHub: ${login}`,
-  emptyTitle: 'Sua bancada está vazia',
+  emptyTitle: 'Nenhum repositório ainda',
   emptyBody: 'Abra uma pasta com repositórios, clone um do GitHub ou crie um do zero. Cada repositório aparece aqui com o estado dele em relação ao remoto.'
 }
 
@@ -161,7 +161,7 @@ const en: M = {
   summaryChecking: 'checking…',
   githubConnected: 'GitHub connected',
   githubAccount: (login) => `GitHub account: ${login}`,
-  emptyTitle: 'Your workbench is empty',
+  emptyTitle: 'No repositories yet',
   emptyBody: 'Open a folder with repositories, clone one from GitHub or create one from scratch. Each repository shows up here with its state against the remote.'
 }
 
@@ -242,7 +242,7 @@ const es: M = {
   summaryChecking: 'verificando…',
   githubConnected: 'GitHub conectado',
   githubAccount: (login) => `Cuenta de GitHub: ${login}`,
-  emptyTitle: 'Tu banco de trabajo está vacío',
+  emptyTitle: 'Todavía no hay repositorios',
   emptyBody: 'Abre una carpeta con repositorios, clona uno de GitHub o crea uno desde cero. Cada repositorio aparece aquí con su estado frente al remoto.'
 }
 
