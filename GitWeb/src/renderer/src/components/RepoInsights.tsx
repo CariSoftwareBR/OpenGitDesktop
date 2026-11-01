@@ -122,7 +122,7 @@ export function ChurnChart({ points, bins }: { points: ChurnPoint[]; bins: Perio
             </div>
           ))}
         </div>
-        <div className="mt-2 flex justify-between text-[11px] text-tertiary-text" aria-hidden>
+        <div className="mt-2 flex justify-between text-meta text-tertiary-text" aria-hidden>
           <span>{bins[0]?.label}</span>
           {bins.length > 2 && <span>{bins[Math.floor(bins.length / 2)]?.label}</span>}
           <span>{bins[bins.length - 1]?.label}</span>
@@ -261,7 +261,7 @@ export function ContributionCalendar({ commits, now }: { commits: CommitSummary[
           </div>
         ))}
       </div>
-      <div className="mt-3 flex items-center justify-end gap-1.5 text-[11px] text-tertiary-text" aria-hidden>
+      <div className="mt-3 flex items-center justify-end gap-1.5 text-meta text-tertiary-text" aria-hidden>
         {t.less}
         {[0, 1, 2, 3, 4, 5].map((lvl) => (
           <span key={lvl} className="size-2.5 rounded-[2px]" style={{ backgroundColor: fill(lvl) }} />
@@ -386,7 +386,7 @@ export function RecentCommits({ commits, now, onOpen }: { commits: CommitSummary
                   {c.authorName} · {relativeTime(locale, c.date, now)}
                 </span>
               </span>
-              <span className="flex shrink-0 items-center gap-1 font-mono text-[11px] text-tertiary-text">
+              <span className="flex shrink-0 items-center gap-1 font-mono text-meta text-tertiary-text">
                 <GitCommitHorizontal size={12} aria-hidden />
                 {c.shortHash}
               </span>

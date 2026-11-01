@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from 'child_process'
 import { shell } from 'electron'
-import { lstat, readFile, rm, writeFile, mkdir, access, realpath } from 'fs/promises'
+import { lstat, readFile, rm, writeFile, mkdir, access, realpath, stat } from 'fs/promises'
 import { join, dirname, basename, resolve, sep, normalize } from 'path'
 import type {
   BranchDeleteCheck,
@@ -890,12 +890,105 @@ function firstErrorLine(value: string, fallback: string): string {
  * refreshes the remote-tracking refs first (working tree untouched), which is
  * what makes the counts trustworthy — `fetch --dry-run` never updates them.
  */
+/**
+ * The Start screen re-checks every recent repository every few seconds. Two of
+ * its git calls rarely change between ticks, so they are kept briefly:
+ * - the origin URL, until .git/config changes (adding, removing or re-pointing
+ *   a remote always rewrites it; a worktree, whose .git is a file, is simply
+ *   not cached);
+ * - the ahead/behind counts, keyed by the exact commits compared and computed
+ *   from those same object ids — one for-each-ref replaces three
+ *   rev-list/rev-parse calls until any of those refs moves.
+ * git status itself is never cached: it is what sees files edited elsewhere.
+ */
+const remoteUrlCache = new Map<string, { url: string | null; stamp: string }>()
+const defaultComparisonCache = new Map<string, { key: string; result: DefaultComparison }>()
+
+interface DefaultComparison {
+  vsHead: { ahead: number; behind: number } | null
+  hasLocalDefault: boolean
+  vsLocalDefault: { ahead: number; behind: number } | null
+}
+
+async function getRemoteUrlForPolling(cwd: string): Promise<string | null> {
+  const key = queueKey(cwd)
+  let stamp: string | null = null
+  try {
+    const config = await stat(join(cwd, '.git', 'config'))
+    stamp = `${config.mtimeMs}:${config.size}`
+  } catch {
+    stamp = null
+  }
+  const cached = remoteUrlCache.get(key)
+  if (stamp && cached?.stamp === stamp) return cached.url
+  const url = await getRemoteUrl(cwd)
+  if (stamp) remoteUrlCache.set(key, { url, stamp })
+  else remoteUrlCache.delete(key)
+  return url
+}
+
+async function compareWithDefault(
+  cwd: string,
+  currentBranch: string | null | undefined,
+  localRef: string,
+  remoteRef: string
+): Promise<DefaultComparison> {
+  const cacheKey = queueKey(cwd)
+  const headRef = currentBranch && currentBranch !== 'HEAD' ? `refs/heads/${currentBranch}` : null
+  let fingerprint: string | null = null
+  let ids: Map<string, string> | null = null
+  if (headRef) {
+    const refs = [...new Set([headRef, localRef, remoteRef])]
+    const listed = await readGit(['for-each-ref', '--format=%(refname) %(objectname)', ...refs], cwd)
+    if (listed.exitCode === 0) {
+      // for-each-ref matches by prefix, so keep exact names only.
+      const found = new Map<string, string>()
+      for (const line of listed.stdout.split('\n')) {
+        const [name, id] = line.trim().split(' ')
+        if (name && id && refs.includes(name)) found.set(name, id)
+      }
+      // Unborn current branch: nothing stable to key on.
+      if (found.has(headRef)) {
+        ids = found
+        fingerprint = [headRef, localRef, remoteRef].map((r) => `${r}=${found.get(r) ?? '-'}`).join(' ')
+      }
+    }
+  }
+  const cached = defaultComparisonCache.get(cacheKey)
+  if (fingerprint && cached?.key === fingerprint) return cached.result
+
+  if (ids && headRef && fingerprint) {
+    // Count against the very ids the key was built from, so a ref moving
+    // mid-check can never file new counts under the old key.
+    const head = ids.get(headRef) as string
+    const remote = ids.get(remoteRef) ?? remoteRef
+    const local = ids.get(localRef)
+    const [vsHead, vsLocalDefault] = await Promise.all([
+      countAheadBehind(cwd, head, remote),
+      local ? countAheadBehind(cwd, local, remote) : Promise.resolve(null)
+    ])
+    const result = { vsHead, hasLocalDefault: Boolean(local), vsLocalDefault }
+    defaultComparisonCache.set(cacheKey, { key: fingerprint, result })
+    return result
+  }
+
+  // Detached or unborn HEAD: the uncached path. A missing local default just
+  // makes its rev-list fail (null), so all three can run at once.
+  const [vsHead, hasLocalDefault, vsLocalDefaultRaw] = await Promise.all([
+    countAheadBehind(cwd, 'HEAD', remoteRef),
+    refExists(cwd, localRef),
+    countAheadBehind(cwd, localRef, remoteRef)
+  ])
+  defaultComparisonCache.delete(cacheKey)
+  return { vsHead, hasLocalDefault, vsLocalDefault: hasLocalDefault ? vsLocalDefaultRaw : null }
+}
+
 export async function getRepoUpdateStatus(
   cwd: string,
   options?: { fetch?: boolean }
 ): Promise<RepoUpdateStatus> {
   // Both are read-only and skip the repo queue, so they can overlap.
-  const [status, remoteUrl] = await Promise.all([getStatus(cwd), getRemoteUrl(cwd)])
+  const [status, remoteUrl] = await Promise.all([getStatus(cwd), getRemoteUrlForPolling(cwd)])
   const common = {
     branch: status.branch,
     defaultBranch: null as string | null,
@@ -937,14 +1030,7 @@ export async function getRepoUpdateStatus(
 
   const remoteRef = `refs/remotes/origin/${defaultBranch}`
   const localRef = `refs/heads/${defaultBranch}`
-  // A missing local default just makes its rev-list fail (null), so all three
-  // can run at once instead of waiting on refExists first.
-  const [vsHead, hasLocalDefault, vsLocalDefaultRaw] = await Promise.all([
-    countAheadBehind(cwd, 'HEAD', remoteRef),
-    refExists(cwd, localRef),
-    countAheadBehind(cwd, localRef, remoteRef)
-  ])
-  const vsLocalDefault = hasLocalDefault ? vsLocalDefaultRaw : null
+  const { vsHead, hasLocalDefault, vsLocalDefault } = await compareWithDefault(cwd, status.branch, localRef, remoteRef)
 
   const behindDefault = vsHead?.behind ?? 0
   const localDefaultBehind = vsLocalDefault?.behind ?? 0

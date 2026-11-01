@@ -99,7 +99,7 @@ function DiffLine({
         <button
           type="button"
           onClick={() => onComment(line.newLine!)}
-          className="w-6 shrink-0 text-center text-[11px] text-tertiary-text opacity-0 hover:text-command-blue group-hover:opacity-100 focus-visible:opacity-100"
+          className="w-6 shrink-0 text-center text-meta text-tertiary-text opacity-0 hover:text-command-blue group-hover:opacity-100 focus-visible:opacity-100"
           aria-label={t.commentLine(line.newLine!)}
           title={t.commentLine(line.newLine!)}
         >

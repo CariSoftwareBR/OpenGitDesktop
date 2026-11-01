@@ -408,10 +408,10 @@ function WizardSteps({ step }: { step: 1 | 2 | 3 | 4 }): JSX.Element {
                 <span
                   className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-caption font-semibold tabular-nums transition-[background-color,border-color,color,box-shadow] duration-300 ${
                     active
-                      ? 'border-command-blue bg-command-blue text-midnight-base shadow-[0_0_0_4px_var(--color-command-blue-soft)]'
+                      ? 'border-command-blue bg-command-blue text-on-command shadow-[0_0_0_4px_var(--color-command-blue-soft)]'
                       : done
                         ? 'border-command-blue/50 bg-command-blue-soft text-command-blue'
-                        : 'border-default-border bg-coal-raised text-tertiary-text'
+                        : 'border-default-border bg-coal-raised text-secondary-text'
                   }`}
                 >
                   {done ? <Check size={13} strokeWidth={2.5} aria-hidden /> : n}
@@ -1273,11 +1273,13 @@ function PullRequestDetail(): JSX.Element | null {
         headerDraggingRef.current = false
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
-        document.removeEventListener('mousemove', onMouseMove)
-        document.removeEventListener('mouseup', onMouseUp)
+        document.removeEventListener('pointermove', onMouseMove)
+        document.removeEventListener('pointerup', onMouseUp)
+        document.removeEventListener('pointercancel', onMouseUp)
       }
-      document.addEventListener('mousemove', onMouseMove)
-      document.addEventListener('mouseup', onMouseUp)
+      document.addEventListener('pointermove', onMouseMove)
+      document.addEventListener('pointerup', onMouseUp)
+      document.addEventListener('pointercancel', onMouseUp)
     },
     [headerHeight]
   )
@@ -1302,11 +1304,13 @@ function PullRequestDetail(): JSX.Element | null {
         filesDraggingRef.current = false
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
-        document.removeEventListener('mousemove', onMouseMove)
-        document.removeEventListener('mouseup', onMouseUp)
+        document.removeEventListener('pointermove', onMouseMove)
+        document.removeEventListener('pointerup', onMouseUp)
+        document.removeEventListener('pointercancel', onMouseUp)
       }
-      document.addEventListener('mousemove', onMouseMove)
-      document.addEventListener('mouseup', onMouseUp)
+      document.addEventListener('pointermove', onMouseMove)
+      document.addEventListener('pointerup', onMouseUp)
+      document.addEventListener('pointercancel', onMouseUp)
     },
     [filesWidth]
   )
@@ -1332,11 +1336,13 @@ function PullRequestDetail(): JSX.Element | null {
         commentsDraggingRef.current = false
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
-        document.removeEventListener('mousemove', onMouseMove)
-        document.removeEventListener('mouseup', onMouseUp)
+        document.removeEventListener('pointermove', onMouseMove)
+        document.removeEventListener('pointerup', onMouseUp)
+        document.removeEventListener('pointercancel', onMouseUp)
       }
-      document.addEventListener('mousemove', onMouseMove)
-      document.addEventListener('mouseup', onMouseUp)
+      document.addEventListener('pointermove', onMouseMove)
+      document.addEventListener('pointerup', onMouseUp)
+      document.addEventListener('pointercancel', onMouseUp)
     },
     [commentsHeight]
   )
@@ -1543,7 +1549,7 @@ function PullRequestDetail(): JSX.Element | null {
           aria-valuemax={MAX_HEADER_HEIGHT}
           aria-valuenow={headerHeight ?? MIN_HEADER_HEIGHT}
           tabIndex={0}
-          onMouseDown={handleHeaderResizeStart}
+          onPointerDown={handleHeaderResizeStart}
           onKeyDown={(e) => {
             if (e.key === 'ArrowUp') {
               e.preventDefault()
@@ -1553,7 +1559,7 @@ function PullRequestDetail(): JSX.Element | null {
               setHeaderHeight((h) => Math.min(MAX_HEADER_HEIGHT, (h ?? headerRef.current?.getBoundingClientRect().height ?? MIN_HEADER_HEIGHT) + 16))
             }
           }}
-          className="h-1.5 shrink-0 cursor-row-resize border-t border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
+          className="touch-none h-1.5 shrink-0 cursor-row-resize border-t border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
         />
       )}
 
@@ -1592,7 +1598,7 @@ function PullRequestDetail(): JSX.Element | null {
             aria-valuemax={MAX_FILES_WIDTH}
             aria-valuenow={filesWidth}
             tabIndex={0}
-            onMouseDown={handleFilesResizeStart}
+            onPointerDown={handleFilesResizeStart}
             onKeyDown={(e) => {
               if (e.key === 'ArrowLeft') {
                 e.preventDefault()
@@ -1602,7 +1608,7 @@ function PullRequestDetail(): JSX.Element | null {
                 setFilesWidth((w) => Math.min(MAX_FILES_WIDTH, w + 16))
               }
             }}
-            className="w-1 shrink-0 cursor-col-resize border-r border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
+            className="touch-none w-1 shrink-0 cursor-col-resize border-r border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
           />
         )}
 
@@ -1646,7 +1652,7 @@ function PullRequestDetail(): JSX.Element | null {
           aria-valuemax={MAX_COMMENTS_HEIGHT}
           aria-valuenow={commentsHeight}
           tabIndex={0}
-          onMouseDown={handleCommentsResizeStart}
+          onPointerDown={handleCommentsResizeStart}
           onKeyDown={(e) => {
             if (e.key === 'ArrowUp') {
               e.preventDefault()
@@ -1656,7 +1662,7 @@ function PullRequestDetail(): JSX.Element | null {
               setCommentsHeight((h) => Math.max(MIN_COMMENTS_HEIGHT, h - 16))
             }
           }}
-          className="h-1.5 shrink-0 cursor-row-resize border-t border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
+          className="touch-none h-1.5 shrink-0 cursor-row-resize border-t border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
         />
       )}
 
@@ -1829,11 +1835,13 @@ function PullRequestsView(): JSX.Element {
         listDraggingRef.current = false
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
-        document.removeEventListener('mousemove', onMouseMove)
-        document.removeEventListener('mouseup', onMouseUp)
+        document.removeEventListener('pointermove', onMouseMove)
+        document.removeEventListener('pointerup', onMouseUp)
+        document.removeEventListener('pointercancel', onMouseUp)
       }
-      document.addEventListener('mousemove', onMouseMove)
-      document.addEventListener('mouseup', onMouseUp)
+      document.addEventListener('pointermove', onMouseMove)
+      document.addEventListener('pointerup', onMouseUp)
+      document.addEventListener('pointercancel', onMouseUp)
     },
     [listWidth]
   )
@@ -2023,7 +2031,7 @@ function PullRequestsView(): JSX.Element {
             aria-valuemax={MAX_LIST_WIDTH}
             aria-valuenow={listWidth}
             tabIndex={0}
-            onMouseDown={handleListResizeStart}
+            onPointerDown={handleListResizeStart}
             onKeyDown={(e) => {
               if (e.key === 'ArrowLeft') {
                 e.preventDefault()
@@ -2033,7 +2041,7 @@ function PullRequestsView(): JSX.Element {
                 setListWidth((w) => Math.min(MAX_LIST_WIDTH, w + 16))
               }
             }}
-            className="w-1 shrink-0 cursor-col-resize border-r border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
+            className="touch-none w-1 shrink-0 cursor-col-resize border-r border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
           />
           {detailPane}
         </div>

@@ -446,7 +446,7 @@ function InitialView(): JSX.Element {
             <span className="flex min-w-0 items-center gap-2">
               <span className="truncate text-body font-semibold text-primary-text">{repo.name}</span>
               {check?.branch && (
-                <span className="inline-flex min-w-0 shrink items-center gap-1 rounded-pill border border-default-border bg-coal-raised px-1.5 py-px font-mono text-[11px] leading-4 text-secondary-text">
+                <span className="inline-flex min-w-0 shrink items-center gap-1 rounded-pill border border-default-border bg-coal-raised px-1.5 py-px font-mono text-meta leading-4 text-secondary-text">
                   <GitBranch size={10} className="shrink-0" aria-hidden />
                   <span className="truncate">{check.branch}</span>
                 </span>
@@ -476,7 +476,7 @@ function InitialView(): JSX.Element {
               chips.map((chip) => (
                 <span
                   key={chip.title}
-                  className="inline-flex items-center gap-1 rounded-pill bg-attention-orange-soft px-1.5 py-px text-[11px] font-semibold leading-4 tabular-nums text-attention-orange"
+                  className="inline-flex items-center gap-1 rounded-pill bg-attention-orange-soft px-1.5 py-px text-meta font-semibold leading-4 tabular-nums text-attention-orange"
                   title={chip.title}
                   aria-label={chip.title}
                 >
@@ -486,7 +486,7 @@ function InitialView(): JSX.Element {
               ))
             ) : (
               <span
-                className={`truncate text-[11px] leading-4 ${check?.state === 'failed' ? 'text-danger-red' : 'text-tertiary-text'}`}
+                className={`truncate text-meta leading-4 ${check?.state === 'failed' ? 'text-danger-red' : 'text-tertiary-text'}`}
                 title={check?.message}
               >
                 {check?.message ?? ''}
@@ -625,7 +625,7 @@ function InitialView(): JSX.Element {
               </span>
               <span className="flex min-w-0 flex-col">
                 <span className="truncate text-caption font-semibold text-primary-text">{user.name || user.login}</span>
-                <span className="truncate text-[11px] text-tertiary-text">
+                <span className="truncate text-meta text-tertiary-text">
                   @{user.login} · {t.githubConnected}
                 </span>
               </span>

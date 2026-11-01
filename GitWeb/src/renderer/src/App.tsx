@@ -104,11 +104,13 @@ function App(): JSX.Element {
         draggingRef.current = false
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
-        document.removeEventListener('mousemove', onMouseMove)
-        document.removeEventListener('mouseup', onMouseUp)
+        document.removeEventListener('pointermove', onMouseMove)
+        document.removeEventListener('pointerup', onMouseUp)
+        document.removeEventListener('pointercancel', onMouseUp)
       }
-      document.addEventListener('mousemove', onMouseMove)
-      document.addEventListener('mouseup', onMouseUp)
+      document.addEventListener('pointermove', onMouseMove)
+      document.addEventListener('pointerup', onMouseUp)
+      document.addEventListener('pointercancel', onMouseUp)
     },
     [chatWidth]
   )
@@ -154,6 +156,26 @@ function App(): JSX.Element {
     void repo.refreshLog()
     void repo.refreshBranches()
   }, [currentRepoPath, checkedOutBranch])
+
+  // Below the compact width the docked chat would turn into an overlay over
+  // the work area. Narrowing the window steps it aside instead, and widening
+  // brings it back — unless the assistant is mid-turn or waiting on an
+  // approval, which must stay in view. A chat the user floats on purpose, or
+  // opens while compact, is left alone.
+  const chatAutoCollapsedRef = useRef(false)
+  useEffect(() => {
+    const ai = useAiStore.getState()
+    if (compactShell) {
+      const waitingOnUser = ai.messages.some((m) => m.toolCalls?.some((c) => c.status === 'pending'))
+      if (ai.panelOpen && !ai.floating && !ai.isBusy && !waitingOnUser) {
+        chatAutoCollapsedRef.current = true
+        ai.setPanelOpen(false)
+      }
+    } else if (chatAutoCollapsedRef.current) {
+      chatAutoCollapsedRef.current = false
+      if (!ai.panelOpen) ai.setPanelOpen(true)
+    }
+  }, [compactShell])
 
   useEffect(() => {
     if (!prSuccessMessage) return
@@ -302,7 +324,7 @@ function App(): JSX.Element {
               aria-valuemax={MAX_CHAT_WIDTH}
               aria-valuenow={chatWidth}
               tabIndex={0}
-              onMouseDown={handleChatResizeStart}
+              onPointerDown={handleChatResizeStart}
               onKeyDown={(e) => {
                 if (e.key === 'ArrowLeft') {
                   e.preventDefault()
@@ -312,7 +334,7 @@ function App(): JSX.Element {
                   setChatWidth((w) => Math.max(MIN_CHAT_WIDTH, w - 16))
                 }
               }}
-              className="w-1 shrink-0 cursor-col-resize border-l border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
+              className="touch-none w-1 shrink-0 cursor-col-resize border-l border-default-border bg-transparent transition-colors hover:bg-command-blue/40 active:bg-command-blue/60 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-command-blue"
             />
             <aside
               className="flex h-full shrink-0 flex-col overflow-hidden border-l border-default-border bg-obsidian-panel"
