@@ -14,35 +14,35 @@
 <rect x="46" y="46" width="36" height="36" rx="10" fill="#479ffa" fill-opacity="0.13" stroke="#479ffa" stroke-opacity="0.35"/>
 <g color="#479ffa"><rect x="57" y="55" width="14" height="18" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M64 60v6M61 63h6M61 69h6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></g>
 <text x="46" y="108" font-size="15" font-weight="700" fill="#fff">Alterações e commits</text>
-<text font-size="12.5" fill="#868f97"><tspan x="46" y="128">Stage por trecho, diffs limpos e</tspan><tspan x="46" y="144">a IA escreve a mensagem.</tspan></text>
+<text font-size="12.5" fill="#868f97"><tspan x="46" y="128">+/− por arquivo, stage por trecho</tspan><tspan x="46" y="144">e a IA escreve a mensagem.</tspan></text>
 </g>
 <g opacity="0"><animate attributeName="opacity" from="0" to="1" begin="0.18s" dur="0.6s" fill="freeze"/><animateTransform attributeName="transform" type="translate" from="0 8" to="0 0" begin="0.18s" dur="0.9s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.2 0.8 0.2 1"/>
 <rect x="307.3333333333333" y="28" width="265.3333333333333" height="124" rx="14" fill="#1b1b1e" fill-opacity="0.85" stroke="#fff" stroke-opacity="0.09"/>
 <rect x="325.3333333333333" y="46" width="36" height="36" rx="10" fill="#f2b84b" fill-opacity="0.13" stroke="#f2b84b" stroke-opacity="0.35"/>
-<g color="#f2b84b"><circle cx="343.3333333333333" cy="64" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M343.3333333333333 59.5V64l3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g>
-<text x="325.3333333333333" y="108" font-size="15" font-weight="700" fill="#fff">Histórico</text>
-<text font-size="12.5" fill="#868f97"><tspan x="325.3333333333333" y="128">Busque qualquer commit, inspecione,</tspan><tspan x="325.3333333333333" y="144">crie branch dele ou reverta.</tspan></text>
+<g color="#f2b84b"><path d="M338.3333333333333 56V72M338.3333333333333 67c0-5 10-3 10-8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="338.3333333333333" cy="57" r="2.2" fill="currentColor"/><circle cx="338.3333333333333" cy="71" r="2.2" fill="currentColor"/><circle cx="348.3333333333333" cy="58.5" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/></g>
+<text x="325.3333333333333" y="108" font-size="15" font-weight="700" fill="#fff">Histórico em grafo</text>
+<text font-size="12.5" fill="#868f97"><tspan x="325.3333333333333" y="128">Grafo de branches, autoria</tspan><tspan x="325.3333333333333" y="144">por linha e tags de release.</tspan></text>
 </g>
 <g opacity="0"><animate attributeName="opacity" from="0" to="1" begin="0.26s" dur="0.6s" fill="freeze"/><animateTransform attributeName="transform" type="translate" from="0 8" to="0 0" begin="0.26s" dur="0.9s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.2 0.8 0.2 1"/>
 <rect x="586.6666666666666" y="28" width="265.3333333333333" height="124" rx="14" fill="#1b1b1e" fill-opacity="0.85" stroke="#fff" stroke-opacity="0.09"/>
 <rect x="604.6666666666666" y="46" width="36" height="36" rx="10" fill="#4ebe96" fill-opacity="0.13" stroke="#4ebe96" stroke-opacity="0.35"/>
 <g color="#4ebe96"><circle cx="617.6666666666666" cy="58" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="617.6666666666666" cy="70" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="627.6666666666666" cy="61" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M617.6666666666666 60.6v6.8M627.6666666666666 63.6c0 4-10 2-10 4" fill="none" stroke="currentColor" stroke-width="1.6"/></g>
-<text x="604.6666666666666" y="108" font-size="15" font-weight="700" fill="#fff">Branches e merges</text>
-<text font-size="12.5" fill="#868f97"><tspan x="604.6666666666666" y="128">Troque, faça merge e resolva</tspan><tspan x="604.6666666666666" y="144">conflitos numa tela guiada.</tspan></text>
+<text x="604.6666666666666" y="108" font-size="15" font-weight="700" fill="#fff">Branches e sync</text>
+<text font-size="12.5" fill="#868f97"><tspan x="604.6666666666666" y="128">Merge, rebase visual, stash,</tspan><tspan x="604.6666666666666" y="144">fetch, pull e push guiados.</tspan></text>
 </g>
 <g opacity="0"><animate attributeName="opacity" from="0" to="1" begin="0.33999999999999997s" dur="0.6s" fill="freeze"/><animateTransform attributeName="transform" type="translate" from="0 8" to="0 0" begin="0.33999999999999997s" dur="0.9s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.2 0.8 0.2 1"/>
 <rect x="28" y="166" width="265.3333333333333" height="124" rx="14" fill="#1b1b1e" fill-opacity="0.85" stroke="#fff" stroke-opacity="0.09"/>
 <rect x="46" y="184" width="36" height="36" rx="10" fill="#ffa16c" fill-opacity="0.13" stroke="#ffa16c" stroke-opacity="0.35"/>
 <g color="#ffa16c"><circle cx="58" cy="196" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="58" cy="208" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="70" cy="208" r="2.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M58 198.6v6.8M70 205.4V200a3 3 0 0 0-3-3h-4" fill="none" stroke="currentColor" stroke-width="1.6"/></g>
 <text x="46" y="246" font-size="15" font-weight="700" fill="#fff">Pull Requests</text>
-<text font-size="12.5" fill="#868f97"><tspan x="46" y="266">Revise arquivos, comente, aprove</tspan><tspan x="46" y="282">e faça merge sem sair do app.</tspan></text>
+<text font-size="12.5" fill="#868f97"><tspan x="46" y="266">Painel de merge avisa conflitos;</tspan><tspan x="46" y="282">revise, comente e mescle.</tspan></text>
 </g>
 <g opacity="0"><animate attributeName="opacity" from="0" to="1" begin="0.42000000000000004s" dur="0.6s" fill="freeze"/><animateTransform attributeName="transform" type="translate" from="0 8" to="0 0" begin="0.42000000000000004s" dur="0.9s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.2 0.8 0.2 1"/>
 <rect x="307.3333333333333" y="166" width="265.3333333333333" height="124" rx="14" fill="#1b1b1e" fill-opacity="0.85" stroke="#fff" stroke-opacity="0.09"/>
 <rect x="325.3333333333333" y="184" width="36" height="36" rx="10" fill="#479ffa" fill-opacity="0.13" stroke="#479ffa" stroke-opacity="0.35"/>
-<g color="#479ffa"><path d="M339.3333333333333 207V195M335.3333333333333 199l4-4 4 4M347.3333333333333 197v12M343.3333333333333 205l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></g>
-<text x="325.3333333333333" y="246" font-size="15" font-weight="700" fill="#fff">Stash e sync</text>
-<text font-size="12.5" fill="#868f97"><tspan x="325.3333333333333" y="266">Stash, fetch, pull e push —</tspan><tspan x="325.3333333333333" y="282">ahead/behind sempre à vista.</tspan></text>
+<g color="#479ffa"><path d="M335.3333333333333 210h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="336.3333333333333" y="202" width="3.4" height="6" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="341.6333333333333" y="197" width="3.4" height="11" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="346.93333333333334" y="194" width="3.4" height="14" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/></g>
+<text x="325.3333333333333" y="246" font-size="15" font-weight="700" fill="#fff">Dashboard</text>
+<text font-size="12.5" fill="#868f97"><tspan x="325.3333333333333" y="266">Volume de código, pontos quentes</tspan><tspan x="325.3333333333333" y="282">e a saúde de cada branch.</tspan></text>
 </g>
 <g opacity="0"><animate attributeName="opacity" from="0" to="1" begin="0.5s" dur="0.6s" fill="freeze"/><animateTransform attributeName="transform" type="translate" from="0 8" to="0 0" begin="0.5s" dur="0.9s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.2 0.8 0.2 1"/>
 <rect x="586.6666666666666" y="166" width="265.3333333333333" height="124" rx="14" fill="#1b1b1e" fill-opacity="0.85" stroke="#fff" stroke-opacity="0.09"/>

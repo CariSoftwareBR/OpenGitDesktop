@@ -28,16 +28,16 @@
 
 <h3 align="center">Um cliente Git completo — IA opcional</h3>
 
-<img src="docs/readme/showcase-pt-BR.png" alt="OpenGitDesktop nos temas escuro e claro: revisão de pull request e alterações em stage com o diff" width="100%">
+<img src="docs/readme/showcase-pt-BR.png" alt="OpenGitDesktop nos temas escuro e claro: histórico com grafo de branches e alterações com +/− por arquivo e o diff" width="100%">
 
-<img src="docs/readme/features-pt-BR.svg" alt="Alterações e commits, histórico, branches e merges, pull requests, stash e sync, local-first" width="100%">
+<img src="docs/readme/features-pt-BR.svg" alt="Alterações e commits, histórico em grafo, branches e sync, pull requests, dashboard, local-first" width="100%">
 
 <br>
 <br>
 
 <h3 align="center">Cada tela, feita para o seu jeito de trabalhar</h3>
 
-<img src="docs/readme/gallery-pt-BR.png" alt="Telas de histórico, aprovação da IA, stash e pull requests" width="100%">
+<img src="docs/readme/gallery-pt-BR.png" alt="Dashboard, aprovação da IA, tela inicial com o estado de cada repositório e um pull request pronto para mesclar" width="100%">
 
 <br>
 <br>
