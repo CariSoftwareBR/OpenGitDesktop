@@ -113,7 +113,19 @@ const ptBR = {
   amendPublishedMessage:
     'Esse commit já está no remoto. Alterá-lo reescreve o histórico; um push depois pode exigir force push. Arquivos em stage entram no commit; se o resumo estiver vazio, a mensagem atual é mantida.',
   amendMessage: 'Arquivos em stage entram no último commit. Se o resumo estiver vazio, a mensagem atual é mantida.',
-  amendConfirm: 'Alterar commit'
+  amendConfirm: 'Alterar commit',
+  statusLabel: { A: 'Novo', M: 'Modificado', D: 'Removido', R: 'Renomeado', U: 'Não rastreado', C: 'Copiado', T: 'Tipo alterado' } as Record<string, string>,
+  filesChanged: (n: number) => (n === 1 ? '1 arquivo alterado' : `${n} arquivos alterados`),
+  stagedShort: (n: number) => (n === 0 ? 'nada no stage' : `${n} no stage`),
+  linesAria: (added: number, removed: number) => `${added} linhas adicionadas, ${removed} removidas`,
+  binary: 'binário',
+  summaryCounterAria: (n: number, max: number) => `${n} de ${max} caracteres recomendados`,
+  summaryTooLong: 'Resumos de até 72 caracteres ficam inteiros no histórico.',
+  onBranch: 'em',
+  reviewTitle: 'Pronto para revisar',
+  reviewHint: 'Escolha um arquivo para ver o diff, ou comece pelo primeiro da lista.',
+  reviewFirst: 'Revisar o primeiro arquivo',
+  lastCommitLine: (summary: string, when: string) => `Último commit: ${summary} · ${when}`
 }
 
 type M = typeof ptBR
@@ -233,7 +245,19 @@ const en: M = {
   amendPublishedMessage:
     'This commit is already on the remote. Amending it rewrites history; a later push may require a force push. Staged files go into the commit; if the summary is empty, the current message is kept.',
   amendMessage: 'Staged files go into the last commit. If the summary is empty, the current message is kept.',
-  amendConfirm: 'Amend commit'
+  amendConfirm: 'Amend commit',
+  statusLabel: { A: 'Added', M: 'Modified', D: 'Deleted', R: 'Renamed', U: 'Untracked', C: 'Copied', T: 'Type changed' } as Record<string, string>,
+  filesChanged: (n) => (n === 1 ? '1 file changed' : `${n} files changed`),
+  stagedShort: (n) => (n === 0 ? 'nothing staged' : `${n} staged`),
+  linesAria: (added, removed) => `${added} lines added, ${removed} removed`,
+  binary: 'binary',
+  summaryCounterAria: (n, max) => `${n} of ${max} recommended characters`,
+  summaryTooLong: 'Summaries up to 72 characters stay whole in the history.',
+  onBranch: 'on',
+  reviewTitle: 'Ready to review',
+  reviewHint: 'Pick a file to see its diff, or start with the first one in the list.',
+  reviewFirst: 'Review the first file',
+  lastCommitLine: (summary, when) => `Last commit: ${summary} · ${when}`
 }
 
 const es: M = {
@@ -352,7 +376,19 @@ const es: M = {
   amendPublishedMessage:
     'Este commit ya está en el remoto. Modificarlo reescribe el historial; un push posterior puede exigir force push. Los archivos en stage entran en el commit; si el resumen está vacío, se mantiene el mensaje actual.',
   amendMessage: 'Los archivos en stage entran en el último commit. Si el resumen está vacío, se mantiene el mensaje actual.',
-  amendConfirm: 'Modificar commit'
+  amendConfirm: 'Modificar commit',
+  statusLabel: { A: 'Nuevo', M: 'Modificado', D: 'Eliminado', R: 'Renombrado', U: 'Sin seguimiento', C: 'Copiado', T: 'Tipo cambiado' } as Record<string, string>,
+  filesChanged: (n) => (n === 1 ? '1 archivo modificado' : `${n} archivos modificados`),
+  stagedShort: (n) => (n === 0 ? 'nada en stage' : `${n} en stage`),
+  linesAria: (added, removed) => `${added} líneas añadidas, ${removed} eliminadas`,
+  binary: 'binario',
+  summaryCounterAria: (n, max) => `${n} de ${max} caracteres recomendados`,
+  summaryTooLong: 'Los resúmenes de hasta 72 caracteres quedan completos en el historial.',
+  onBranch: 'en',
+  reviewTitle: 'Listo para revisar',
+  reviewHint: 'Elige un archivo para ver su diff, o empieza por el primero de la lista.',
+  reviewFirst: 'Revisar el primer archivo',
+  lastCommitLine: (summary, when) => `Último commit: ${summary} · ${when}`
 }
 
 export default { 'pt-BR': ptBR, en, es }

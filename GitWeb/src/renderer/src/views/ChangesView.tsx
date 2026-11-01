@@ -7,16 +7,14 @@ import {
   Check,
   CircleHelp,
   FileDiff,
-  FileEdit,
-  FileMinus,
-  FilePlus,
-  FileQuestion,
+  GitBranch,
   GitCommitHorizontal,
   GitMerge,
   Loader2,
   MoreHorizontal,
   Pencil,
   RotateCcw,
+  Search,
   Sparkles,
   Undo2,
   WandSparkles
@@ -39,7 +37,8 @@ import { directPushBlock } from '../lib/branchProtection'
 import type { BranchRules } from '../../../shared/github'
 import FileContextMenu, { type FileContextMenuTarget } from '../components/FileContextMenu'
 import { basename } from '../lib/path'
-import { isConflicted, type StatusEntry } from '../../../shared/git'
+import { isConflicted, type FileLineStat, type StatusEntry } from '../../../shared/git'
+import { relativeTime } from '../lib/relativeTime'
 import { useLocale, useT } from '../lib/i18n'
 
 type FlatEntry =
@@ -66,6 +65,8 @@ const DEFAULT_SIDEBAR_WIDTH = 340
 const MIN_COMMIT_PANEL_HEIGHT = 160
 const MAX_COMMIT_PANEL_HEIGHT = 520
 const DEFAULT_COMMIT_PANEL_HEIGHT = 280
+/** Git's own convention: a summary that fits 72 columns stays whole in `log --oneline` and on GitHub. */
+const SUMMARY_SOFT_LIMIT = 72
 
 /** Compact section help — hidden until hover or click (pinned). */
 function SectionHint({ text, children, align = 'left' }: { text?: string; children?: ReactNode; align?: 'left' | 'right' }): JSX.Element {
@@ -240,18 +241,18 @@ function UnstagedSectionHeader({
   return (
     <div role="row" aria-label={t.unstagedRow(count)} className="mt-2 px-3 py-2">
       <div role="gridcell" className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="flex min-w-0 items-center gap-1.5 text-label uppercase tracking-wide text-tertiary-text">
+        <span className="files-section-title is-unstaged">
           {t.unstaged} <span className="count-badge">{count}</span>
           <SectionHint text={t.unstagedHint} />
         </span>
-        <span className="ml-auto flex shrink-0 items-center gap-2">
+        <span className="ml-auto flex shrink-0 items-center gap-1">
           <button
             type="button"
             onClick={onDiscardAll}
             disabled={count === 0 || busy}
             title={t.discardGroupTitle}
             aria-label={t.discardAllAria}
-            className="flex items-center gap-1.5 text-caption text-danger-red transition-opacity hover:opacity-80 active:opacity-60 disabled:opacity-30"
+            className="section-action is-danger"
           >
             {bulkAction === 'discard' && <Loader2 size={12} className="animate-spin" aria-hidden />}
             {bulkAction === 'discard' ? t.discarding : t.discardAll}
@@ -260,7 +261,7 @@ function UnstagedSectionHeader({
             type="button"
             onClick={onStageAll}
             disabled={count === 0 || busy}
-            className="flex items-center gap-1.5 text-caption text-command-blue transition-opacity hover:opacity-80 active:opacity-60 disabled:opacity-30"
+            className="section-action is-primary"
           >
             {bulkAction === 'stage' && <Loader2 size={12} className="animate-spin" aria-hidden />}
             {bulkAction === 'stage' ? t.staging : t.stageAll}
@@ -271,18 +272,151 @@ function UnstagedSectionHeader({
   )
 }
 
-function StatusIcon({ entry }: { entry: StatusEntry }): JSX.Element {
-  const code = entry.index !== ' ' && entry.index !== '?' ? entry.index : entry.worktree
-  switch (code) {
-    case 'A':
-      return <FilePlus size={14} className="shrink-0 text-success-green" aria-hidden />
-    case 'D':
-      return <FileMinus size={14} className="shrink-0 text-danger-red" aria-hidden />
-    case '?':
-      return <FileQuestion size={14} className="shrink-0 text-tertiary-text" aria-hidden />
-    default:
-      return <FileEdit size={14} className="shrink-0 text-attention-orange" aria-hidden />
-  }
+/** The letter git itself uses for the side of the change this row shows; untracked reads "U". */
+function statusCode(entry: StatusEntry, staged: boolean): string {
+  if (entry.index === '?' && entry.worktree === '?') return 'U'
+  const code = staged ? entry.index : entry.worktree !== ' ' ? entry.worktree : entry.index
+  return code === ' ' || code === '?' ? 'M' : code
+}
+
+function StatusBadge({ code }: { code: string }): JSX.Element {
+  const t = useT().changes
+  const label = t.statusLabel[code] ?? code
+  return (
+    <span className={`file-status is-${code}`} title={label} aria-label={label}>
+      {code}
+    </span>
+  )
+}
+
+function LineStat({ stat }: { stat: FileLineStat }): JSX.Element {
+  const t = useT().changes
+  if (stat.binary) return <span className="shrink-0 text-caption text-tertiary-text">{t.binary}</span>
+  return (
+    <span className="shrink-0 text-caption tabular-nums" aria-label={t.linesAria(stat.additions, stat.deletions)}>
+      {stat.additions > 0 && <span className="text-diff-add-ink">+{stat.additions}</span>}
+      {stat.additions > 0 && stat.deletions > 0 && ' '}
+      {stat.deletions > 0 && <span className="text-danger-red">−{stat.deletions}</span>}
+    </span>
+  )
+}
+
+function splitPath(path: string): { name: string; dir: string } {
+  const slash = path.lastIndexOf('/')
+  return slash < 0 ? { name: path, dir: '' } : { name: path.slice(slash + 1), dir: path.slice(0, slash) }
+}
+
+/** One changed file — the same row in the staged and unstaged lists, virtualized or not. */
+function FileRow({
+  entry,
+  kind,
+  selected,
+  focused,
+  stat,
+  onToggle,
+  onSelect,
+  onDiscard,
+  onContextMenu
+}: {
+  entry: StatusEntry
+  kind: 'staged' | 'unstaged'
+  selected: boolean
+  focused: boolean
+  stat?: FileLineStat
+  onToggle: () => void
+  onSelect: () => void
+  onDiscard?: () => void
+  onContextMenu: (e: React.MouseEvent) => void
+}): JSX.Element {
+  const t = useT().changes
+  const staged = kind === 'staged'
+  const labelId = labelIdFor(kind, entry.path)
+  const { name, dir } = splitPath(entry.path)
+  return (
+    <li
+      id={rowId(kind, entry.path)}
+      role="row"
+      aria-label={staged ? t.fileRowStaged(entry.path) : t.fileRowUnstaged(entry.path)}
+      aria-selected={selected}
+      onContextMenu={onContextMenu}
+      className={`list-row file-row group py-1.5 pr-1.5 ${selected ? 'is-selected' : ''} ${focused ? 'ring-1 ring-command-blue/50' : ''}`}
+    >
+      <div role="gridcell" className="flex min-w-0 flex-1 items-center gap-2.5">
+        <input
+          type="checkbox"
+          checked={staged}
+          aria-labelledby={labelId}
+          onChange={onToggle}
+          onClick={(e) => e.stopPropagation()}
+          className="file-check"
+        />
+        <button type="button" onClick={onSelect} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+          <StatusBadge code={statusCode(entry, staged)} />
+          <span id={labelId} className="sr-only">
+            {entry.path}
+          </span>
+          <span className="flex min-w-0 flex-1 items-baseline gap-1.5" title={entry.path} aria-hidden>
+            <span className="max-w-full shrink-0 truncate text-body text-primary-text">{name}</span>
+            {dir && <span className="min-w-0 truncate text-caption text-tertiary-text">{dir}</span>}
+          </span>
+        </button>
+        {stat && <LineStat stat={stat} />}
+        {onDiscard && (
+          <button
+            type="button"
+            title={t.discard}
+            aria-label={t.discardFileAria(entry.path)}
+            onClick={onDiscard}
+            className="shrink-0 rounded-sm p-1.5 text-tertiary-text opacity-0 transition-[opacity,color,background-color] group-hover:opacity-100 hover:bg-hover-overlay hover:text-danger-red focus-visible:opacity-100 active:scale-95"
+          >
+            <RotateCcw size={13} aria-hidden />
+          </button>
+        )}
+      </div>
+    </li>
+  )
+}
+
+/**
+ * The working tree in one line: how many files, how many lines, and a bar
+ * split by kind of change in the same colors as the file badges.
+ */
+function ChangeMeter({
+  entries,
+  stagedCount,
+  lines
+}: {
+  entries: { code: string }[]
+  stagedCount: number
+  lines: { additions: number; deletions: number } | null
+}): JSX.Element {
+  const t = useT().changes
+  const groups = [
+    { key: 'A', count: entries.filter((e) => e.code === 'A').length },
+    { key: 'U', count: entries.filter((e) => e.code === 'U').length },
+    { key: 'M', count: entries.filter((e) => !['A', 'U', 'D', '!'].includes(e.code)).length },
+    { key: 'D', count: entries.filter((e) => e.code === 'D').length },
+    { key: '!', count: entries.filter((e) => e.code === '!').length }
+  ].filter((g) => g.count > 0)
+  const total = Math.max(1, entries.length)
+  return (
+    <div className="change-meter shrink-0 px-3 pt-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="truncate text-body font-semibold text-primary-text">{t.filesChanged(entries.length)}</span>
+        {lines && (lines.additions > 0 || lines.deletions > 0) && (
+          <span className="shrink-0 text-caption font-medium tabular-nums" aria-label={t.linesAria(lines.additions, lines.deletions)}>
+            <span className="text-diff-add-ink">+{lines.additions}</span> <span className="text-danger-red">−{lines.deletions}</span>
+          </span>
+        )}
+      </div>
+      <div className="mt-2 flex h-1.5 gap-[2px] overflow-hidden rounded-full" aria-hidden>
+        {groups.map((g) => (
+          <span key={g.key} className={`change-meter-seg is-${g.key === '!' ? 'X' : g.key}`} style={{ flexGrow: g.count / total }} title={`${g.key === '!' ? t.conflicts : (t.statusLabel[g.key] ?? g.key)}: ${g.count}`} />
+        ))}
+      </div>
+      <p className="mt-1.5 text-caption text-tertiary-text">{t.stagedShort(stagedCount)}</p>
+    </div>
+  )
 }
 
 function ChangesView(): JSX.Element {
@@ -430,6 +564,47 @@ function ChangesView(): JSX.Element {
   )
 
   const { staged, unstaged, conflicted } = splitStatus(status)
+
+  // +/- per file. Refetched whenever status changes: a cheap `diff --numstat`
+  // pair that never blocks the list, which renders without it.
+  const [lineStats, setLineStats] = useState<{ staged: Map<string, FileLineStat>; unstaged: Map<string, FileLineStat> } | null>(null)
+  useEffect(() => {
+    if (!currentRepoPath || !status) return
+    let alive = true
+    window.api.git
+      .workingTreeStats(currentRepoPath)
+      .then((stats) => {
+        if (!alive) return
+        setLineStats({
+          staged: new Map(stats.staged.map((row) => [row.path, row])),
+          unstaged: new Map(stats.unstaged.map((row) => [row.path, row]))
+        })
+      })
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [currentRepoPath, status])
+
+  const meterEntries = useMemo(() => {
+    const byPath = new Map<string, { code: string }>()
+    for (const entry of conflicted) byPath.set(entry.path, { code: '!' })
+    for (const entry of unstaged) if (!byPath.has(entry.path)) byPath.set(entry.path, { code: statusCode(entry, false) })
+    for (const entry of staged) if (!byPath.has(entry.path)) byPath.set(entry.path, { code: statusCode(entry, true) })
+    return [...byPath.values()]
+  }, [staged, unstaged, conflicted])
+  const meterLines = useMemo(() => {
+    if (!lineStats) return null
+    let additions = 0
+    let deletions = 0
+    for (const row of [...lineStats.staged.values(), ...lineStats.unstaged.values()]) {
+      additions += row.additions
+      deletions += row.deletions
+    }
+    return { additions, deletions }
+  }, [lineStats])
+  const selectedEntry = selectedFile ? status?.entries.find((item) => item.path === selectedFile.path) : undefined
+  const selectedStat = selectedFile ? (selectedFile.staged ? lineStats?.staged : lineStats?.unstaged)?.get(selectedFile.path) : undefined
   const currentBranch = branches.find((b) => b.isCurrent)?.name ?? status?.branch ?? 'main'
 
   const filteredStaged = useMemo(
@@ -923,16 +1098,21 @@ function ChangesView(): JSX.Element {
           </section>
         )}
 
-        <div className="p-3 pb-0">
+        {totalCount > 0 && <ChangeMeter entries={meterEntries} stagedCount={staged.length} lines={meterLines} />}
+
+        <div className="p-3 pb-1">
           <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder={t.filterFiles}
-              aria-label={t.filterFiles}
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="field flex-1"
-            />
+            <label className="field flex h-[34px] min-w-0 flex-1 items-center gap-2 py-0">
+              <Search size={14} className="shrink-0 text-tertiary-text" aria-hidden />
+              <input
+                type="text"
+                placeholder={t.filterFiles}
+                aria-label={t.filterFiles}
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                className="min-w-0 flex-1 bg-transparent text-body text-primary-text outline-none placeholder:text-tertiary-text"
+              />
+            </label>
             <SectionHint align="right">
               <p className="mb-2 font-medium text-primary-text">{t.shortcuts}</p>
               <dl className="space-y-1.5">
@@ -969,6 +1149,11 @@ function ChangesView(): JSX.Element {
             </span>
             <p className="text-title font-semibold text-primary-text">{t.cleanTree}</p>
             <p className="max-w-[240px] text-caption text-secondary-text">{t.cleanTreeHint}</p>
+            {log[0] && (
+              <p className="mt-2 max-w-[260px] truncate text-caption text-tertiary-text" title={log[0].summary}>
+                {t.lastCommitLine(log[0].summary, relativeTime(aiLanguage, log[0].date))}
+              </p>
+            )}
           </div>
         ) : (
           <div
@@ -999,7 +1184,7 @@ function ChangesView(): JSX.Element {
                       {row.type === 'staged-header' ? (
                         <div role="row" aria-label={t.stagedRow(row.count)} className="px-3 py-2">
                           <div role="gridcell" className="flex items-center justify-between">
-                            <span className="flex items-center gap-1.5 text-label uppercase tracking-wide text-tertiary-text">
+                            <span className="files-section-title is-staged">
                               {t.staged} <span className="count-badge">{row.count}</span>
                               <SectionHint text={t.stagedHint} />
                             </span>
@@ -1007,7 +1192,7 @@ function ChangesView(): JSX.Element {
                               type="button"
                               onClick={handleUnstageAll}
                               disabled={row.count === 0 || bulkAction !== null}
-                              className="flex items-center gap-1.5 text-caption text-command-blue transition-opacity hover:opacity-80 active:opacity-60 disabled:opacity-30"
+                              className="section-action is-primary"
                             >
                               {bulkAction === 'unstage' && <Loader2 size={12} className="animate-spin" aria-hidden />}
                               {bulkAction === 'unstage' ? t.unstaging : t.unstageAll}
@@ -1028,50 +1213,20 @@ function ChangesView(): JSX.Element {
                       ) : (
                         (() => {
                           const { entry, kind, flatIdx } = row
-                          const labelId = labelIdFor(kind, entry.path)
                           const staged = kind === 'staged'
                           return (
                             <ul role="presentation" className={`px-1.5 ${bulkAction === (staged ? 'unstage' : 'stage') || (!staged && bulkAction === 'discard') ? 'pointer-events-none opacity-40' : ''}`}>
-                              <li
-                                id={rowId(kind, entry.path)}
-                                role="row"
-                                aria-label={staged ? t.fileRowStaged(entry.path) : t.fileRowUnstaged(entry.path)}
-                                aria-selected={selectedFile?.path === entry.path && selectedFile.staged === staged}
+                              <FileRow
+                                entry={entry}
+                                kind={kind}
+                                selected={selectedFile?.path === entry.path && selectedFile.staged === staged}
+                                focused={isRowFocused(kind, entry.path)}
+                                stat={(staged ? lineStats?.staged : lineStats?.unstaged)?.get(entry.path)}
+                                onToggle={() => toggleStage(entry)}
+                                onSelect={() => selectFlat(flatIdx)}
+                                onDiscard={staged ? undefined : () => requestDiscard(entry.path)}
                                 onContextMenu={(e) => void openFileContextMenu(e, entry)}
-                                className={`list-row py-1.5 pr-1.5 ${selectedFile?.path === entry.path && selectedFile.staged === staged ? 'is-selected' : ''} ${isRowFocused(kind, entry.path) ? 'ring-1 ring-command-blue/50' : ''}`}
-                              >
-                                <div role="gridcell" className="flex min-w-0 flex-1 items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    checked={staged}
-                                    aria-labelledby={labelId}
-                                    onChange={() => toggleStage(entry)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="size-4 shrink-0 accent-command-blue"
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => selectFlat(flatIdx)}
-                                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                                  >
-                                    <StatusIcon entry={entry} />
-                                    <span id={labelId} className="truncate text-body text-primary-text" title={entry.path}>
-                                      {entry.path}
-                                    </span>
-                                  </button>
-                                  {!staged && (
-                                    <button
-                                      type="button"
-                                      title={t.discard}
-                                      aria-label={t.discardFileAria(entry.path)}
-                                      onClick={() => requestDiscard(entry.path)}
-                                      className="shrink-0 rounded-sm p-1.5 text-tertiary-text transition-colors hover:bg-hover-overlay hover:text-danger-red active:scale-95"
-                                    >
-                                      <RotateCcw size={13} aria-hidden />
-                                    </button>
-                                  )}
-                                </div>
-                              </li>
+                              />
                             </ul>
                           )
                         })()
@@ -1084,7 +1239,7 @@ function ChangesView(): JSX.Element {
               <>
             <div role="row" aria-label={t.stagedRow(filteredStaged.length)} className="px-3 py-2">
               <div role="gridcell" className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-label uppercase tracking-wide text-tertiary-text">
+                <span className="files-section-title is-staged">
                   {t.staged} <span className="count-badge">{filteredStaged.length}</span>
                   <SectionHint text={t.stagedHint} />
                 </span>
@@ -1092,7 +1247,7 @@ function ChangesView(): JSX.Element {
                   type="button"
                   onClick={handleUnstageAll}
                   disabled={filteredStaged.length === 0 || bulkAction !== null}
-                  className="flex items-center gap-1.5 text-caption text-command-blue transition-opacity hover:opacity-80 active:opacity-60 disabled:opacity-30"
+                  className="section-action is-primary"
                 >
                   {bulkAction === 'unstage' && <Loader2 size={12} className="animate-spin" aria-hidden />}
                   {bulkAction === 'unstage' ? t.unstaging : t.unstageAll}
@@ -1101,39 +1256,19 @@ function ChangesView(): JSX.Element {
             </div>
             <ul role="presentation" className={`flex flex-col gap-0.5 px-1.5 transition-opacity duration-150 ${bulkAction === 'unstage' ? 'pointer-events-none opacity-40' : ''}`}>
               {filteredStaged.map((entry) => {
-                const labelId = labelIdFor('staged', entry.path)
                 const flatIdx = flatEntries.findIndex((f) => f.kind === 'staged' && f.entry.path === entry.path)
                 return (
-                  <li
+                  <FileRow
                     key={entry.path}
-                    id={rowId('staged', entry.path)}
-                    role="row"
-                    aria-label={t.fileRowStaged(entry.path)}
-                    aria-selected={selectedFile?.path === entry.path && selectedFile.staged}
+                    entry={entry}
+                    kind="staged"
+                    selected={Boolean(selectedFile?.path === entry.path && selectedFile.staged)}
+                    focused={isRowFocused('staged', entry.path)}
+                    stat={lineStats?.staged.get(entry.path)}
+                    onToggle={() => toggleStage(entry)}
+                    onSelect={() => selectFlat(flatIdx)}
                     onContextMenu={(e) => void openFileContextMenu(e, entry)}
-                    className={`list-row py-1.5 pr-1.5 ${selectedFile?.path === entry.path && selectedFile.staged ? 'is-selected' : ''} ${isRowFocused('staged', entry.path) ? 'ring-1 ring-command-blue/50' : ''}`}
-                  >
-                    <div role="gridcell" className="flex min-w-0 flex-1 items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked
-                        aria-labelledby={labelId}
-                        onChange={() => toggleStage(entry)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="size-4 shrink-0 accent-command-blue"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => selectFlat(flatIdx)}
-                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                      >
-                        <StatusIcon entry={entry} />
-                        <span id={labelId} className="truncate text-body text-primary-text" title={entry.path}>
-                          {entry.path}
-                        </span>
-                      </button>
-                    </div>
-                  </li>
+                  />
                 )
               })}
             </ul>
@@ -1146,48 +1281,20 @@ function ChangesView(): JSX.Element {
             />
             <ul role="presentation" className={`flex flex-col gap-0.5 px-1.5 transition-opacity duration-150 ${bulkAction === 'stage' || bulkAction === 'discard' ? 'pointer-events-none opacity-40' : ''}`}>
               {filteredUnstaged.map((entry) => {
-                const labelId = labelIdFor('unstaged', entry.path)
                 const flatIdx = flatEntries.findIndex((f) => f.kind === 'unstaged' && f.entry.path === entry.path)
                 return (
-                  <li
+                  <FileRow
                     key={entry.path}
-                    id={rowId('unstaged', entry.path)}
-                    role="row"
-                    aria-label={t.fileRowUnstaged(entry.path)}
-                    aria-selected={selectedFile?.path === entry.path && !selectedFile.staged}
+                    entry={entry}
+                    kind="unstaged"
+                    selected={Boolean(selectedFile?.path === entry.path && !selectedFile.staged)}
+                    focused={isRowFocused('unstaged', entry.path)}
+                    stat={lineStats?.unstaged.get(entry.path)}
+                    onToggle={() => toggleStage(entry)}
+                    onSelect={() => selectFlat(flatIdx)}
+                    onDiscard={() => requestDiscard(entry.path)}
                     onContextMenu={(e) => void openFileContextMenu(e, entry)}
-                    className={`list-row py-1.5 pr-1.5 ${selectedFile?.path === entry.path && !selectedFile.staged ? 'is-selected' : ''} ${isRowFocused('unstaged', entry.path) ? 'ring-1 ring-command-blue/50' : ''}`}
-                  >
-                    <div role="gridcell" className="flex min-w-0 flex-1 items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={false}
-                        aria-labelledby={labelId}
-                        onChange={() => toggleStage(entry)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="size-4 shrink-0 accent-command-blue"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => selectFlat(flatIdx)}
-                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                      >
-                        <StatusIcon entry={entry} />
-                        <span id={labelId} className="truncate text-body text-primary-text" title={entry.path}>
-                          {entry.path}
-                        </span>
-                      </button>
-                      <button
-                        type="button"
-                        title={t.discard}
-                        aria-label={t.discardFileAria(entry.path)}
-                        onClick={() => requestDiscard(entry.path)}
-                        className="shrink-0 rounded-sm p-1.5 text-tertiary-text transition-colors hover:bg-hover-overlay hover:text-danger-red active:scale-95"
-                      >
-                        <RotateCcw size={13} aria-hidden />
-                      </button>
-                    </div>
-                  </li>
+                  />
                 )
               })}
               {filteredUnstaged.length === 0 && (
@@ -1227,7 +1334,13 @@ function ChangesView(): JSX.Element {
           className="flex shrink-0 flex-col gap-2 overflow-y-auto border-t border-default-border bg-obsidian-panel p-3"
           style={{ height: commitPanelHeight }}
         >
-          <h2 className="shrink-0 text-label uppercase tracking-wide text-tertiary-text">{t.commitHeading}</h2>
+          <div className="flex shrink-0 items-center justify-between gap-2">
+            <h2 className="text-caption font-semibold text-secondary-text">{t.commitHeading}</h2>
+            <span className="branch-chip" title={currentBranch}>
+              <GitBranch size={12} aria-hidden />
+              <span className="truncate">{currentBranch}</span>
+            </span>
+          </div>
           {aiError && (
             <div className="flex items-start gap-2 rounded-md border border-danger-red/30 bg-danger-red-soft px-2.5 py-2 text-caption text-danger-red" role="alert">
               <span className="flex-1">{aiError}</span>
@@ -1249,6 +1362,7 @@ function ChangesView(): JSX.Element {
             <label htmlFor={summaryId} className="sr-only">
               {t.commitSummary}
             </label>
+            <div className="relative shrink-0">
             <textarea
               id={summaryId}
               placeholder={
@@ -1268,8 +1382,18 @@ function ChangesView(): JSX.Element {
               }}
               disabled={generating}
               rows={1}
-              className="max-h-24 w-full shrink-0 resize-none border-0 border-b border-default-border bg-transparent px-3 py-2.5 text-body font-medium text-primary-text outline-none [field-sizing:content] placeholder:text-tertiary-text disabled:opacity-60"
+              className="max-h-24 w-full shrink-0 resize-none border-0 border-b border-default-border bg-transparent py-2.5 pr-14 pl-3 text-body font-medium text-primary-text outline-none [field-sizing:content] placeholder:text-tertiary-text disabled:opacity-60"
             />
+            {summary.length > 0 && (
+              <span
+                className={`pointer-events-none absolute top-3 right-3 text-caption tabular-nums ${summary.length > SUMMARY_SOFT_LIMIT ? 'text-attention-orange' : 'text-tertiary-text'}`}
+                aria-label={t.summaryCounterAria(summary.length, SUMMARY_SOFT_LIMIT)}
+                title={summary.length > SUMMARY_SOFT_LIMIT ? t.summaryTooLong : undefined}
+              >
+                {summary.length}/{SUMMARY_SOFT_LIMIT}
+              </span>
+            )}
+            </div>
 
             <textarea
               placeholder={t.descriptionPlaceholder}
@@ -1381,13 +1505,13 @@ function ChangesView(): JSX.Element {
           </button>
         )}
         {selectedFile && diffText && !(selectedFile.conflicted && conflictContent !== null) && (
-          <div className="flex shrink-0 items-center gap-2 border-b border-default-border px-3 py-2">
-            <span className="min-w-0 flex-1 truncate text-caption text-tertiary-text" title={selectedFile.path}>
-              {selectedFile.path.slice(0, selectedFile.path.lastIndexOf('/') + 1)}
-              <span className="font-medium text-primary-text">
-                {selectedFile.path.slice(selectedFile.path.lastIndexOf('/') + 1)}
-              </span>
+          <div className="diff-file-head flex shrink-0 items-center gap-2.5 border-b border-default-border px-4 py-2.5">
+            {selectedEntry && <StatusBadge code={statusCode(selectedEntry, Boolean(selectedFile.staged))} />}
+            <span className="flex min-w-0 flex-1 items-baseline gap-2" title={selectedFile.path}>
+              <span className="max-w-full shrink-0 truncate text-body font-semibold text-primary-text">{splitPath(selectedFile.path).name}</span>
+              <span className="min-w-0 truncate text-caption text-tertiary-text">{splitPath(selectedFile.path).dir}</span>
             </span>
+            {selectedStat && <LineStat stat={selectedStat} />}
             <button
               type="button"
               onClick={() => void explainDiff(selectedFile.path, diffText)}
@@ -1409,8 +1533,14 @@ function ChangesView(): JSX.Element {
               <span className="empty-medallion rise-in mb-1">
                 <FileDiff size={20} aria-hidden />
               </span>
-              <p className="text-body font-medium text-primary-text">{t.selectFileToReview}</p>
-              <p className="max-w-sm text-caption text-tertiary-text">{t.selectFileHint}</p>
+              <p className="text-title font-semibold text-primary-text">{t.reviewTitle}</p>
+              <p className="max-w-sm text-caption text-secondary-text">{t.reviewHint}</p>
+              {flatEntries.length > 0 && (
+                <button type="button" onClick={() => selectFlat(0)} className="btn-secondary mt-2">
+                  <FileDiff size={14} aria-hidden />
+                  {t.reviewFirst}
+                </button>
+              )}
             </div>
           ) : (
             <DiffViewer

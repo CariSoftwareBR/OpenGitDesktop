@@ -1,4 +1,4 @@
-import type { BlameCommit, BlameLine, CommitRef, RebaseAction, RebaseStep } from './git'
+import type { BlameCommit, BlameLine, BranchOverview, ChurnPoint, CommitRef, FileHotspot, FileLineStat, RebaseAction, RebaseStep, RepoChurn } from './git'
 
 /**
  * Parses `%D` from a log run with `--decorate=full`:
@@ -163,4 +163,94 @@ export function validateRebasePlan(
   if (kept.length === 0) return { ok: false, problem: { kind: 'nothingKept' } }
   if (kept[0].action === 'squash' || kept[0].action === 'fixup') return { ok: false, problem: { kind: 'squashFirst' } }
   return { ok: true, steps: resolved }
+}
+
+/* ── Working-tree stats, branch overview and churn ─────────────────────── */
+
+/**
+ * `git diff --numstat -z`: "adds\tdels\tpath\0", or for a rename
+ * "adds\tdels\t\0old\0new\0" — the new path is the one status reports.
+ */
+export function parseNumstatZ(out: string): FileLineStat[] {
+  const parts = out.split('\0')
+  const rows: FileLineStat[] = []
+  for (let i = 0; i < parts.length; i++) {
+    const match = /^(\d+|-)\t(\d+|-)\t([\s\S]*)$/.exec(parts[i])
+    if (!match) continue
+    let path = match[3]
+    if (path === '') {
+      path = parts[i + 2] ?? ''
+      i += 2
+    }
+    const binary = match[1] === '-'
+    rows.push({ path, additions: binary ? 0 : Number(match[1]), deletions: binary ? 0 : Number(match[2]), binary })
+  }
+  return rows
+}
+
+/** `for-each-ref` rows of: name, HEAD marker, ISO date, upstream, track, subject — split by \x1f. */
+export function parseBranchOverview(out: string): BranchOverview[] {
+  return out
+    .split('\n')
+    .filter((line) => line.trim())
+    .map((line) => {
+      const [name = '', head = '', date = '', upstream = '', track = '', ...subject] = line.split('\x1f')
+      const ahead = /ahead (\d+)/.exec(track)
+      const behind = /behind (\d+)/.exec(track)
+      return {
+        name,
+        isCurrent: head.trim() === '*',
+        date,
+        subject: subject.join('\x1f'),
+        upstream: upstream || null,
+        ahead: ahead ? Number(ahead[1]) : 0,
+        behind: behind ? Number(behind[1]) : 0,
+        gone: /gone/.test(track)
+      }
+    })
+}
+
+/** "src/{old => new}/a.ts" and "old.ts => new.ts" both resolve to the new path. */
+export function renamedPath(path: string): string {
+  const braced = path.replace(/\{([^{}]*) => ([^{}]*)\}/g, (_m, _from: string, to: string) => to)
+  const plain = braced.includes(' => ') ? braced.split(' => ').pop() ?? braced : braced
+  return plain.replace(/\/{2,}/g, '/').replace(/^\//, '')
+}
+
+/**
+ * `git log --numstat --format=\x1e%aI`: one record per commit, its date then
+ * numstat lines. Returns per-commit totals and the most-touched files.
+ */
+export function parseChurnLog(out: string, limit: number, hotspotCount = 12): RepoChurn {
+  const records = out.split('\x1e').filter((record) => record.trim())
+  const commits: ChurnPoint[] = []
+  const files = new Map<string, FileHotspot>()
+  for (const record of records) {
+    const lines = record.split('\n')
+    const date = lines[0].trim()
+    let additions = 0
+    let deletions = 0
+    for (const line of lines.slice(1)) {
+      const match = /^(\d+|-)\t(\d+|-)\t(.+)$/.exec(line)
+      if (!match) continue
+      const adds = match[1] === '-' ? 0 : Number(match[1])
+      const dels = match[2] === '-' ? 0 : Number(match[2])
+      additions += adds
+      deletions += dels
+      const path = renamedPath(match[3])
+      const entry = files.get(path)
+      if (entry) {
+        entry.commits++
+        entry.additions += adds
+        entry.deletions += dels
+      } else {
+        files.set(path, { path, commits: 1, additions: adds, deletions: dels })
+      }
+    }
+    commits.push({ date, additions, deletions })
+  }
+  const hotspots = [...files.values()]
+    .sort((a, b) => b.commits - a.commits || b.additions + b.deletions - (a.additions + a.deletions))
+    .slice(0, hotspotCount)
+  return { commits, hotspots, truncated: records.length >= limit }
 }

@@ -49,7 +49,11 @@ const ptBR = {
     heading: 'Aplicativo',
     about: 'Sobre o OpenGitDesktop',
     aboutHint: 'Nome, versão e data da build.'
-  }
+  },
+  connectedTo: (host: string) => `Conectado a ${host}`,
+  themeAria: 'Tema da interface',
+  languageAria: 'Idioma da interface',
+  followsSystem: 'Segue o sistema operacional'
 }
 
 type M = typeof ptBR
@@ -105,7 +109,11 @@ const en: M = {
     heading: 'Application',
     about: 'About OpenGitDesktop',
     aboutHint: 'Name, version and build date.'
-  }
+  },
+  connectedTo: (host) => `Connected to ${host}`,
+  themeAria: 'Interface theme',
+  languageAria: 'Interface language',
+  followsSystem: 'Follows the operating system'
 }
 
 const es: M = {
@@ -159,7 +167,11 @@ const es: M = {
     heading: 'Aplicación',
     about: 'Acerca de OpenGitDesktop',
     aboutHint: 'Nombre, versión y fecha de la build.'
-  }
+  },
+  connectedTo: (host) => `Conectado a ${host}`,
+  themeAria: 'Tema de la interfaz',
+  languageAria: 'Idioma de la interfaz',
+  followsSystem: 'Sigue el sistema operativo'
 }
 
 export default { 'pt-BR': ptBR, en, es }

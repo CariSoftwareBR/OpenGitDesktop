@@ -24,6 +24,9 @@ import type {
   GraphCommit,
   LocalRebaseInfo,
   LocalRebaseResult,
+  BranchOverview,
+  RepoChurn,
+  WorkingTreeStats,
   RebaseStep,
   TagInfo,
   GitIdentity,
@@ -36,7 +39,7 @@ import type {
   SwitchBranchResult
 } from '../shared/git'
 import { parseCheckoutBlockers } from '../shared/git'
-import { parseBlamePorcelain, parseDecorations, sumNumstat, validateRebasePlan } from '../shared/gitParsing'
+import { parseBlamePorcelain, parseBranchOverview, parseChurnLog, parseDecorations, parseNumstatZ, sumNumstat, validateRebasePlan } from '../shared/gitParsing'
 import { parseGitHubRemote, credentialKey } from '../shared/githubRemote'
 import { getSecret } from './credentials'
 import { tMain } from './i18n'
@@ -2126,4 +2129,45 @@ export async function runLocalRebase(cwd: string, steps: RebaseStep[], expectedH
     const count = await git(['rev-list', '--count', `${base}..${newHead}`])
     return { newHead, commitCount: Number(count.stdout.trim()) || 0 }
   })
+}
+
+/* ── Read-only overviews for Changes and Dashboard ─────────────────────── */
+
+/** +/− per file, for the index and for the working tree. */
+export async function getWorkingTreeStats(cwd: string): Promise<WorkingTreeStats> {
+  const [unstaged, staged] = await Promise.all([
+    readGit(['diff', '--numstat', '-z'], cwd),
+    readGit(['diff', '--cached', '--numstat', '-z'], cwd)
+  ])
+  return {
+    staged: staged.exitCode === 0 ? parseNumstatZ(staged.stdout) : [],
+    unstaged: unstaged.exitCode === 0 ? parseNumstatZ(unstaged.stdout) : []
+  }
+}
+
+/** Every local branch, most recently moved first. */
+export async function getBranchOverview(cwd: string): Promise<BranchOverview[]> {
+  const fields = [
+    '%(refname:short)',
+    '%(HEAD)',
+    '%(committerdate:iso-strict)',
+    '%(upstream:short)',
+    '%(upstream:track,nobracket)',
+    '%(contents:subject)'
+  ]
+  const result = await readGit(['for-each-ref', '--sort=-committerdate', `--format=${fields.join('%1f')}`, 'refs/heads'], cwd)
+  if (result.exitCode !== 0) return []
+  return parseBranchOverview(result.stdout)
+}
+
+/** Line churn since `sinceDays` ago (or the whole history when null), merges left out. */
+export async function getRepoChurn(cwd: string, sinceDays: number | null, limit = 3000): Promise<RepoChurn> {
+  const args = ['log', '--no-merges', '-n', String(limit), '--numstat', `--format=${RS}%aI`]
+  if (sinceDays !== null) args.push(`--since=${Math.max(1, Math.round(sinceDays))}.days.ago`)
+  const result = await readGit(args, cwd)
+  if (result.exitCode !== 0) {
+    if (/does not have any commits yet|unknown revision/i.test(result.stderr)) return { commits: [], hotspots: [], truncated: false }
+    throwOnFailure(result, ['log', '--numstat'])
+  }
+  return parseChurnLog(result.stdout, limit)
 }
