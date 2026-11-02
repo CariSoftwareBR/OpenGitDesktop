@@ -117,6 +117,7 @@ export function runGit(
 
       let stdout = ''
       let stderr = ''
+      let spawnFailed = false
       const timer = setTimeout(() => {
         child.kill()
         reject(new Error(`git ${args.join(' ')} timed out after ${timeoutMs}ms`))
@@ -132,17 +133,39 @@ export function runGit(
 
       child.on('error', (err) => {
         clearTimeout(timer)
+        spawnFailed = true
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+          void describeSpawnEnoent(cwd, err).then(reject)
+          return
+        }
         reject(err)
       })
 
       child.on('close', (exitCode) => {
         clearTimeout(timer)
+        // A failed spawn still emits 'close' (-4058 on Windows); the rejection
+        // above is the answer, even while it awaits the folder check.
+        if (spawnFailed) return
         resolve({ stdout, stderr, exitCode })
       })
     })
 
   if (options?.serialize === false) return execute()
   return enqueue(queueKey(cwd), execute)
+}
+
+/**
+ * Node reports `spawn git ENOENT` both when git.exe isn't on the PATH and when
+ * the working folder doesn't exist — the raw text says neither. Tell the two
+ * apart and say it plainly.
+ */
+async function describeSpawnEnoent(cwd: string, cause: Error): Promise<Error> {
+  const folderExists = await stat(cwd).then(
+    (s) => s.isDirectory(),
+    () => false
+  )
+  const message = folderExists ? tMain().git.gitNotFound : tMain().git.folderMissing(cwd)
+  return new Error(message, { cause })
 }
 
 function throwOnFailure(result: GitResult, args: string[]): void {

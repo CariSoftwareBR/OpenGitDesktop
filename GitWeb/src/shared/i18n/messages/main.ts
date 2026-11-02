@@ -16,6 +16,9 @@ const ptBR = {
       newBranchName: 'Novo nome de branch'
     },
     optionLikeValue: (label: string) => `${label} inválido: não pode começar com "-".`,
+    gitNotFound: 'Não encontrei o Git. Verifique se ele está instalado e reabra o programa.',
+    folderMissing: (path: string) =>
+      `A pasta "${path}" não existe mais. Ela pode ter sido movida, renomeada ou apagada.`,
     labels: {
       commitRef: 'Referência de commit',
       stashRef: 'Referência de stash',
@@ -151,6 +154,8 @@ const en: MainMessages = {
       newBranchName: 'New branch name'
     },
     optionLikeValue: (label) => `Invalid ${label.toLowerCase()}: it cannot start with "-".`,
+    gitNotFound: "Couldn't find Git. Make sure it is installed and reopen the app.",
+    folderMissing: (path) => `The folder "${path}" no longer exists. It may have been moved, renamed or deleted.`,
     labels: {
       commitRef: 'Commit reference',
       stashRef: 'Stash reference',
@@ -284,6 +289,8 @@ const es: MainMessages = {
       newBranchName: 'Nuevo nombre de rama'
     },
     optionLikeValue: (label) => `${label} no válido: no puede empezar con "-".`,
+    gitNotFound: 'No encontré Git. Comprueba que esté instalado y vuelve a abrir el programa.',
+    folderMissing: (path) => `La carpeta "${path}" ya no existe. Puede que se haya movido, renombrado o eliminado.`,
     labels: {
       commitRef: 'Referencia de commit',
       stashRef: 'Referencia de stash',

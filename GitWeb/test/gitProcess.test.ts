@@ -32,6 +32,23 @@ describe('parseStatusEntries', () => {
   })
 })
 
+describe('spawn ENOENT', () => {
+  it('says the folder is gone instead of "spawn git ENOENT"', async () => {
+    const gone = join(tmpdir(), `ogd-missing-${Date.now()}`)
+    await expect(readGit(['status'], gone)).rejects.toThrow(/não existe mais/)
+  })
+
+  it('says git was not found when it is off the PATH', async () => {
+    const saved = process.env.PATH
+    process.env.PATH = ''
+    try {
+      await expect(readGit(['--version'], tmpdir())).rejects.toThrow(/Não encontrei o Git/)
+    } finally {
+      process.env.PATH = saved
+    }
+  })
+})
+
 describe('with real repositories', () => {
   let root: string
   let remote: string
