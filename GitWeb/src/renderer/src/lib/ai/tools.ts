@@ -629,7 +629,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       const security = getT().security
       const appSettings = useAppSettingsStore.getState().settings ?? DEFAULT_APP_SETTINGS
       let sensitiveWarning: string | undefined
-      if (appSettings.sensitiveCheck) {
+      if (appSettings.sensitiveCheck && !status.mergeInProgress) {
         const findings = await window.api.git.scanSensitive(repoPath, autoStage ? 'all' : 'staged')
         if (findings.length > 0) {
           const list = describeFindings(findings, security)

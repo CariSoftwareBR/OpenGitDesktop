@@ -14,6 +14,9 @@ export type SensitiveScanScope = 'staged' | 'all'
 
 // Untracked files are read from disk: bigger ones are almost never config.
 const MAX_UNTRACKED_BYTES = 512 * 1024
+// A folder of thousands of new files (a build output not yet ignored) must
+// not stall the AI's approval card: past this many, only their names count.
+const MAX_UNTRACKED_READS = 500
 
 function splitZ(output: string): string[] {
   return output.split('\0').filter(Boolean)
@@ -55,7 +58,7 @@ export async function scanSensitive(cwd: string, scope: SensitiveScanScope): Pro
 
   const untrackedPaths = splitZ(untracked.stdout)
   const extraFiles: { path: string; content: string }[] = []
-  for (const path of untrackedPaths) {
+  for (const path of untrackedPaths.slice(0, MAX_UNTRACKED_READS)) {
     const content = await readTextFile(join(cwd, path))
     if (content !== null) extraFiles.push({ path, content })
   }
@@ -71,6 +74,9 @@ export async function scanSensitive(cwd: string, scope: SensitiveScanScope): Pro
 export async function assertNoBlockedSensitive(cwd: string): Promise<void> {
   const settings = await getSettings()
   if (!settings.sensitiveCheck || settings.sensitiveCheckMode !== 'block') return
+  // Concluding a merge records what both histories already hold: a secret the
+  // other branch committed is not this commit's to block (the UI skips it too).
+  if ((await readGit(['rev-parse', '-q', '--verify', 'MERGE_HEAD'], cwd)).exitCode === 0) return
   const findings = await scanSensitive(cwd, 'staged')
   if (findings.length > 0) throw new Error(tMain().git.sensitiveBlocked(findingPaths(findings).join(', ')))
 }

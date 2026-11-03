@@ -188,8 +188,7 @@ export function registerIpcHandlers(): void {
   // Changes view and the AI agent alike — honors the setting. A merge being
   // concluded (empty summary) keeps git's prepared message untouched.
   handle('git:commit', async (_e, summary: string, description: string, cwd: string) => {
-    // A merge being concluded only records what is already in both histories.
-    if (summary.trim()) await assertNoBlockedSensitive(cwd)
+    await assertNoBlockedSensitive(cwd)
     const credit = summary.trim() && (await getSettings()).coAuthorProject
     return commit(summary, credit ? withProjectCoAuthor(description) : description, cwd)
   })

@@ -27,6 +27,8 @@ describe('sensitiveFileKind', () => {
     expect(sensitiveFileKind('.env')).toBe('envFile')
     expect(sensitiveFileKind('app/.env.production')).toBe('envFile')
     expect(sensitiveFileKind('.env.local')).toBe('envFile')
+    expect(sensitiveFileKind('.envrc')).toBe('envFile')
+    expect(sensitiveFileKind('.environment')).toBeNull()
     expect(sensitiveFileKind('.env.example')).toBeNull()
     expect(sensitiveFileKind('config/.env.sample')).toBeNull()
   })
@@ -110,6 +112,12 @@ describe('scanSensitive in a real repository', () => {
       await expect(assertNoBlockedSensitive(repo)).rejects.toThrow('.env')
 
       git('reset', '-q')
+      await expect(assertNoBlockedSensitive(repo)).resolves.toBeUndefined()
+
+      // Concluding a merge is never blocked: what it records is already in both histories.
+      git('-c', 'user.name=T', '-c', 'user.email=t@example.com', 'commit', '-q', '--allow-empty', '-m', 'base')
+      git('add', '.env')
+      writeFileSync(join(repo, '.git', 'MERGE_HEAD'), `${git('rev-parse', 'HEAD')}\n`)
       await expect(assertNoBlockedSensitive(repo)).resolves.toBeUndefined()
     } finally {
       rmSync(repo, { recursive: true, force: true })

@@ -40,7 +40,11 @@ export const MAX_SENSITIVE_FINDINGS = 50
 const ENV_TEMPLATE = /^\.env\.(example|sample|template|dist|defaults)$/i
 
 const NAME_RULES: { kind: SensitiveKind; test: (name: string, path: string) => boolean }[] = [
-  { kind: 'envFile', test: (name) => (/^\.env$/i.test(name) || /^\.env\..+/i.test(name)) && !ENV_TEMPLATE.test(name) },
+  {
+    kind: 'envFile',
+    // .envrc: direnv's file, usually a list of `export TOKEN=…`.
+    test: (name) => (/^\.env(rc)?$/i.test(name) || /^\.env\..+/i.test(name)) && !ENV_TEMPLATE.test(name)
+  },
   { kind: 'sshKey', test: (name) => /^id_(rsa|dsa|ecdsa|ed25519)(_sk)?$/i.test(name) },
   { kind: 'privateKeyFile', test: (name) => /\.(pem|key|ppk)$/i.test(name) },
   { kind: 'keystore', test: (name) => /\.(p12|pfx|jks|keystore)$/i.test(name) },

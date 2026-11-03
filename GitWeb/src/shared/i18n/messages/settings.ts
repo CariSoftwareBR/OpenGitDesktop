@@ -51,7 +51,7 @@ const ptBR = {
     heading: 'Verificação antes do commit',
     check: 'Verificar arquivos sensíveis',
     checkHint:
-      'Antes de cada commit, procura arquivos .env, chaves privadas e tokens no que vai entrar nele. Vale para a tela de Alterações e para o Assistente IA, e roda só no seu computador.',
+      'Antes de cada commit, procura arquivos .env, chaves privadas e tokens no que vai entrar nele. Vale para a tela de Alterações e para o Assistente IA, e roda só no seu computador. Ligada, também tira esses conteúdos de tudo o que é enviado à IA.',
     modeHeading: 'Ao encontrar algo',
     modeAria: 'O que fazer ao encontrar arquivos sensíveis',
     warn: 'Avisar',
@@ -130,7 +130,7 @@ const en: M = {
     heading: 'Pre-commit check',
     check: 'Check for sensitive files',
     checkHint:
-      'Before each commit, looks for .env files, private keys and tokens in what is about to go in. Applies to the Changes view and the AI assistant, and runs only on your computer.',
+      'Before each commit, looks for .env files, private keys and tokens in what is about to go in. Applies to the Changes view and the AI assistant, and runs only on your computer. While on, it also keeps that content out of everything sent to the AI.',
     modeHeading: 'When something is found',
     modeAria: 'What to do when sensitive files are found',
     warn: 'Warn',
@@ -207,7 +207,7 @@ const es: M = {
     heading: 'Verificación antes del commit',
     check: 'Verificar archivos sensibles',
     checkHint:
-      'Antes de cada commit, busca archivos .env, claves privadas y tokens en lo que va a entrar. Se aplica a la pantalla de Cambios y al Asistente IA, y se ejecuta solo en tu equipo.',
+      'Antes de cada commit, busca archivos .env, claves privadas y tokens en lo que va a entrar. Se aplica a la pantalla de Cambios y al Asistente IA, y se ejecuta solo en tu equipo. Activada, también quita ese contenido de todo lo que se envía a la IA.',
     modeHeading: 'Al encontrar algo',
     modeAria: 'Qué hacer al encontrar archivos sensibles',
     warn: 'Avisar',
