@@ -1,4 +1,5 @@
 import type { LanguagePreference } from './i18n/locales'
+import type { SensitiveCheckMode } from './sensitiveFiles'
 
 /** Manual color-scheme override. `system` follows OS prefers-color-scheme;
  *  high-contrast variants are derived from prefers-contrast at apply time. */
@@ -13,6 +14,11 @@ export interface AppSettings {
   // When true, commits made through the app carry a Co-authored-by trailer
   // crediting OpenGitDesktop — the way users can support the project.
   coAuthorProject: boolean
+  // Before each commit (Changes view and AI alike), look for .env files,
+  // private keys and provider tokens in what is about to be committed.
+  sensitiveCheck: boolean
+  // `block` (default) refuses the commit, enforced in main; `warn` asks first.
+  sensitiveCheckMode: SensitiveCheckMode
   colorScheme: ColorSchemePreference
   // Interface, main-process messages and AI replies all follow this one
   // language; `system` resolves from the OS preferred-language list.
@@ -26,6 +32,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   lastRepositoryPath: null,
   commitAndPush: false,
   coAuthorProject: false,
+  sensitiveCheck: true,
+  sensitiveCheckMode: 'block',
   colorScheme: 'system',
   language: 'system',
   cloneBaseFolders: [],

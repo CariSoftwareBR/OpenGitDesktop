@@ -8,7 +8,9 @@ const ptBR = {
     ai: 'Assistente IA',
     aiHint: 'Provedor, chave e modelo',
     appearance: 'Aparência',
-    appearanceHint: 'Idioma e tema'
+    appearanceHint: 'Idioma e tema',
+    security: 'Segurança',
+    securityHint: 'Arquivos sensíveis no commit'
   },
   github: {
     signOut: 'Sair',
@@ -45,6 +47,23 @@ const ptBR = {
     languageHint: 'Sistema segue o idioma do SO. Vale para a interface, as mensagens e as respostas da IA.',
     languageSystem: 'Sistema'
   },
+  security: {
+    heading: 'Verificação antes do commit',
+    check: 'Verificar arquivos sensíveis',
+    checkHint:
+      'Antes de cada commit, procura arquivos .env, chaves privadas e tokens no que vai entrar nele. Vale para a tela de Alterações e para o Assistente IA, e roda só no seu computador. Ligada, também tira esses conteúdos de tudo o que é enviado à IA.',
+    modeHeading: 'Ao encontrar algo',
+    modeAria: 'O que fazer ao encontrar arquivos sensíveis',
+    warn: 'Avisar',
+    warnHint: 'Mostra o que encontrou e você decide se commita mesmo assim.',
+    block: 'Bloquear',
+    blockHint: 'Não deixa commitar enquanto os arquivos estiverem no commit.',
+    offHint: 'Ligue a verificação para escolher.',
+    coverageHeading: 'O que é verificado',
+    byName: 'Pelo nome do arquivo',
+    byContent: 'Pelo conteúdo das linhas adicionadas',
+    exempt: 'Modelos como .env.example e chaves públicas (.pub) não contam. Um arquivo que está sendo apagado também não.'
+  },
   app: {
     heading: 'Aplicativo',
     about: 'Sobre o OpenGitDesktop',
@@ -68,7 +87,9 @@ const en: M = {
     ai: 'AI assistant',
     aiHint: 'Provider, key and model',
     appearance: 'Appearance',
-    appearanceHint: 'Language and theme'
+    appearanceHint: 'Language and theme',
+    security: 'Security',
+    securityHint: 'Sensitive files in commits'
   },
   github: {
     signOut: 'Sign out',
@@ -105,6 +126,23 @@ const en: M = {
     languageHint: 'System follows the OS language. Applies to the interface, messages and AI replies.',
     languageSystem: 'System'
   },
+  security: {
+    heading: 'Pre-commit check',
+    check: 'Check for sensitive files',
+    checkHint:
+      'Before each commit, looks for .env files, private keys and tokens in what is about to go in. Applies to the Changes view and the AI assistant, and runs only on your computer. While on, it also keeps that content out of everything sent to the AI.',
+    modeHeading: 'When something is found',
+    modeAria: 'What to do when sensitive files are found',
+    warn: 'Warn',
+    warnHint: 'Shows what was found and lets you decide whether to commit anyway.',
+    block: 'Block',
+    blockHint: 'Refuses to commit while those files are in the commit.',
+    offHint: 'Turn the check on to choose.',
+    coverageHeading: 'What is checked',
+    byName: 'By file name',
+    byContent: 'By the content of added lines',
+    exempt: 'Templates like .env.example and public keys (.pub) do not count. Neither does a file being deleted.'
+  },
   app: {
     heading: 'Application',
     about: 'About OpenGitDesktop',
@@ -126,7 +164,9 @@ const es: M = {
     ai: 'Asistente IA',
     aiHint: 'Proveedor, clave y modelo',
     appearance: 'Apariencia',
-    appearanceHint: 'Idioma y tema'
+    appearanceHint: 'Idioma y tema',
+    security: 'Seguridad',
+    securityHint: 'Archivos sensibles en el commit'
   },
   github: {
     signOut: 'Cerrar sesión',
@@ -162,6 +202,23 @@ const es: M = {
     language: 'Idioma',
     languageHint: 'Sistema sigue el idioma del SO. Se aplica a la interfaz, los mensajes y las respuestas de la IA.',
     languageSystem: 'Sistema'
+  },
+  security: {
+    heading: 'Verificación antes del commit',
+    check: 'Verificar archivos sensibles',
+    checkHint:
+      'Antes de cada commit, busca archivos .env, claves privadas y tokens en lo que va a entrar. Se aplica a la pantalla de Cambios y al Asistente IA, y se ejecuta solo en tu equipo. Activada, también quita ese contenido de todo lo que se envía a la IA.',
+    modeHeading: 'Al encontrar algo',
+    modeAria: 'Qué hacer al encontrar archivos sensibles',
+    warn: 'Avisar',
+    warnHint: 'Muestra lo que encontró y tú decides si haces commit igualmente.',
+    block: 'Bloquear',
+    blockHint: 'No permite el commit mientras esos archivos estén en él.',
+    offHint: 'Activa la verificación para elegir.',
+    coverageHeading: 'Qué se verifica',
+    byName: 'Por el nombre del archivo',
+    byContent: 'Por el contenido de las líneas añadidas',
+    exempt: 'Las plantillas como .env.example y las claves públicas (.pub) no cuentan. Tampoco un archivo que se está borrando.'
   },
   app: {
     heading: 'Aplicación',

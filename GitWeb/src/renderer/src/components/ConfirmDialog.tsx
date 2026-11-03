@@ -59,9 +59,6 @@ function ConfirmDialog({
         </p>
         {children}
         <div className="mt-5 flex justify-end gap-2">
-          <button ref={cancelRef} type="button" onClick={onCancel} className="btn-secondary">
-            {cancelLabel ?? common.cancel}
-          </button>
           <button
             ref={confirmRef}
             type="button"
@@ -69,6 +66,9 @@ function ConfirmDialog({
             className={`${danger ? 'btn-danger' : 'btn-primary'}${confirmClassName ? ` ${confirmClassName}` : ''}`}
           >
             {confirmLabel}
+          </button>
+          <button ref={cancelRef} type="button" onClick={onCancel} className="btn-secondary">
+            {cancelLabel ?? common.cancel}
           </button>
         </div>
       </div>
@@ -181,6 +181,9 @@ export function PromptDialog({
           </p>
         )}
         <div className="mt-5 flex justify-end gap-2">
+          <button type="button" onClick={submit} disabled={!value.trim() || Boolean(invalid)} className="btn-primary">
+            {confirmLabel}
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -190,9 +193,6 @@ export function PromptDialog({
             className="btn-secondary"
           >
             {cancelLabel ?? common.cancel}
-          </button>
-          <button type="button" onClick={submit} disabled={!value.trim() || Boolean(invalid)} className="btn-primary">
-            {confirmLabel}
           </button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import type { ResolvedAiConfig } from '../../../../shared/ai'
-import type { ChatMessage, ChatRequestOutcome, ChatResponse, ToolDefinition } from '../../../../shared/aiChat'
+import type { AiRequestOptions, ChatMessage, ChatRequestOutcome, ChatResponse, ToolDefinition } from '../../../../shared/aiChat'
 
 export type { ChatMessage, ChatRequestOutcome, ChatResponse, ToolCallRequest, ToolDefinition } from '../../../../shared/aiChat'
 
@@ -21,10 +21,11 @@ export async function sendChatRequest(
   apiKey: string,
   messages: ChatMessage[],
   tools: ToolDefinition[] = [],
-  requestId?: string
+  requestId?: string,
+  options?: AiRequestOptions
 ): Promise<ChatResponse> {
   try {
-    return await window.api.ai.sendChatRequest(config, apiKey, messages, tools, requestId)
+    return await window.api.ai.sendChatRequest(config, apiKey, messages, tools, requestId, options)
   } catch (err) {
     throw unwrapIpcError(err)
   }

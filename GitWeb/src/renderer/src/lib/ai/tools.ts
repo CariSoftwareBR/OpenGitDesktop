@@ -6,6 +6,11 @@ import { generateCommitMessage } from './commitMessage'
 import { generateConflictResolution } from './conflictResolution'
 import { formatPullRequestStatus } from './prStatus'
 import { directPushBlock } from '../branchProtection'
+import { describeFindings, SensitiveBlockedError, withheldForAi } from '../sensitive'
+import { useAppSettingsStore } from '../../store/appSettingsStore'
+import { DEFAULT_APP_SETTINGS } from '../../../../shared/settings'
+import { sanitizeRepositoryName } from '../../../../shared/github'
+import { basename } from '../path'
 import { isConflicted, type BranchIntegration, type BranchIntegrationReport, type StatusEntry } from '../../../../shared/git'
 import { parseConflictBlocks, renderResolvedWithChoices, type ConflictBlock, type ConflictResolutionChoice } from '../conflicts'
 import type { ToolCallRequest } from '../../../../shared/aiChat'
@@ -32,7 +37,15 @@ export interface ToolPrepareResult {
 }
 
 // Public, remote-visible, or not automatically undoable.
-const DANGER_TOOLS = new Set(['merge_pull_request', 'merge_branch', 'push', 'review_pull_request', 'delete_merged_branches', 'push_tag'])
+const DANGER_TOOLS = new Set([
+  'merge_pull_request',
+  'merge_branch',
+  'push',
+  'review_pull_request',
+  'delete_merged_branches',
+  'push_tag',
+  'publish_repository'
+])
 const WRITE_TOOLS = new Set([
   'commit',
   'undo_last_commit',
@@ -619,6 +632,22 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       const filesToShow = autoStage ? unstaged : staged
       if (filesToShow.length === 0) throw new Error(t.nothingToCommit)
 
+      // Also before the approval card. Auto-stage scans what it is about to
+      // add, untracked files included. Block: the model hears why and can
+      // offer ignore_files; warn: the card says it and approving it is the
+      // user's answer. Main re-checks block mode on the commit itself.
+      const security = getT().security
+      const appSettings = useAppSettingsStore.getState().settings ?? DEFAULT_APP_SETTINGS
+      let sensitiveWarning: string | undefined
+      if (appSettings.sensitiveCheck && !status.mergeInProgress) {
+        const findings = await window.api.git.scanSensitive(repoPath, autoStage ? 'all' : 'staged')
+        if (findings.length > 0) {
+          const list = describeFindings(findings, security)
+          if (appSettings.sensitiveCheckMode === 'block') throw new SensitiveBlockedError(security.aiBlocked(list), findings)
+          sensitiveWarning = security.aiWarning(list)
+        }
+      }
+
       const { settings, apiKey } = await getActiveAiConfig()
 
       const diff = autoStage ? await window.api.git.diffUnstagedAll(repoPath) : await window.api.git.diffStagedAll(repoPath)
@@ -637,7 +666,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
             { label: t.messageSummary, value: suggestion.summary },
             { label: t.description, value: suggestion.description || t.emptyFeminine }
           ],
-          warning: autoStage ? t.autoStageWarning : undefined
+          warning: [sensitiveWarning, autoStage ? t.autoStageWarning : undefined].filter(Boolean).join(' ') || undefined
         },
         resolvedArgs: { summary: suggestion.summary, description: suggestion.description, auto_stage: autoStage ? 'true' : 'false' }
       }
@@ -1129,6 +1158,48 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       }
     }
 
+    case 'publish_repository': {
+      const p = getT().publish
+      const m = getT().main.publish
+      const repoPath = await requireCurrentRepo()
+      if (await window.api.git.remoteUrl(repoPath)) throw new Error(m.hasRemote)
+      const user = await window.api.github.getSession('github.com')
+      if (!user) throw new Error(p.aiNotSignedIn)
+      const status = await window.api.git.status(repoPath)
+      if (!status.branch) throw new Error(m.noBranch)
+      const name = sanitizeRepositoryName(a.name || basename(repoPath))
+      if (!name) throw new Error(m.invalidName)
+      const owner = (a.owner || user.login).trim()
+      const isPrivate = a.visibility !== 'public'
+
+      // The first push sends the whole history, so it is what gets checked.
+      // Block stops before the card (main re-checks); warn goes on the card.
+      const appSettings = useAppSettingsStore.getState().settings ?? DEFAULT_APP_SETTINGS
+      let warning: string | undefined
+      if (appSettings.sensitiveCheck) {
+        const findings = await window.api.git.scanSensitiveHistory(repoPath)
+        if (findings.length > 0) {
+          const list = describeFindings(findings, getT().security)
+          if (appSettings.sensitiveCheckMode === 'block') throw new Error(p.aiHistoryBlocked(list))
+          warning = p.aiHistoryWarn(list)
+        }
+      }
+      return {
+        preview: {
+          headline: p.aiHeadline(`${owner}/${name}`),
+          fields: [
+            { label: p.owner, value: owner },
+            { label: p.name, value: name },
+            { label: p.visibility, value: isPrivate ? p.private : p.public },
+            { label: p.aiBranch, value: status.branch },
+            ...(a.description?.trim() ? [{ label: p.description, value: a.description.trim() }] : [])
+          ],
+          warning
+        },
+        resolvedArgs: { owner, name, visibility: isPrivate ? 'private' : 'public', description: a.description?.trim() ?? '' }
+      }
+    }
+
     case 'push_tag': {
       const g = getT().graphTools
       const name = (a.tag_name ?? '').trim()
@@ -1551,8 +1622,9 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string | T
       const scope = a.scope ?? 'all'
 
       async function diffFor(staged: boolean): Promise<string> {
+        // A new file's diff is its raw content: mask a .env or key by path here.
         return a.path
-          ? window.api.git.diff(a.path, repoPath, staged)
+          ? withheldForAi(a.path, await window.api.git.diff(a.path, repoPath, staged))
           : staged
             ? window.api.git.diffStagedAll(repoPath)
             : window.api.git.diffUnstagedAll(repoPath)
@@ -1815,6 +1887,17 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string | T
       const ok = await repo.createTag(a.tag_name, a.ref, a.message)
       if (!ok) throw new Error(useRepoStore.getState().error ?? g.tagInvalid(a.tag_name))
       return g.tagCreated(a.tag_name, a.ref.slice(0, 7))
+    }
+
+    case 'publish_repository': {
+      const result = await repo.publishRepository({
+        owner: a.owner,
+        name: a.name,
+        description: a.description ?? '',
+        private: a.visibility !== 'public'
+      })
+      if (!result) throw new Error(useRepoStore.getState().error ?? getT().publish.title)
+      return getT().publish.aiPublished(result.fullName, result.htmlUrl, result.branch)
     }
 
     case 'push_tag': {

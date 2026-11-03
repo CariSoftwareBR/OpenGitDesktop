@@ -285,9 +285,6 @@ function RebasePlannerDialog(): JSX.Element | null {
               <span className="text-secondary-text">{unchanged ? t.unchanged : t.resultSummary(info.commits.length, keptCount)}</span>
             ) : null}
           </p>
-          <button type="button" onClick={close} disabled={applying} className="btn-secondary">
-            {t.close}
-          </button>
           {info && !info.blocked && (
             <button
               type="button"
@@ -299,6 +296,9 @@ function RebasePlannerDialog(): JSX.Element | null {
               {applying ? t.applying : t.apply}
             </button>
           )}
+          <button type="button" onClick={close} disabled={applying} className="btn-secondary">
+            {t.close}
+          </button>
         </footer>
       </div>
     </div>,

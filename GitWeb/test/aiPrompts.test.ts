@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { extractRejectedLargeFiles, formatFileLocationFacts, selectScmSkills } from '../src/shared/aiPrompts'
+import { extractRejectedLargeFiles, formatFileLocationFacts, formatPublishFacts, selectScmSkills } from '../src/shared/aiPrompts'
 
 const user = (content: string) => ({ role: 'user' as const, content })
 
@@ -117,5 +117,41 @@ describe('formatFileLocationFacts', () => {
 
   it('is empty with no files', () => {
     expect(formatFileLocationFacts('pt-BR', [])).toBe('')
+  })
+})
+
+describe('selectScmSkills — publish-repository', () => {
+  it('turns on when the user asks to put the repository on GitHub', () => {
+    for (const text of [
+      'publica esse projeto no GitHub',
+      'cria o repositório no github pra mim',
+      'sobe isso pro GitHub como privado',
+      'publish this repo to GitHub',
+      'create a repository on GitHub for this',
+      'crea el repositorio en GitHub'
+    ]) {
+      expect(selectScmSkills([user(text)]), text).toContain('publish-repository')
+    }
+  })
+
+  it('stays off for branches, pull requests and pushes', () => {
+    for (const text of ['publica a branch', 'cria um PR no GitHub', 'faz o push', 'abre um pull request']) {
+      expect(selectScmSkills([user(text)]), text).not.toContain('publish-repository')
+    }
+  })
+})
+
+describe('formatPublishFacts', () => {
+  const base = { hasOrigin: false, branch: 'main', commits: 3, uncommitted: 0, githubLogin: 'paulo', folderName: 'loja' }
+  const next = (f: Partial<typeof base>) => formatPublishFacts('pt-BR', { ...base, ...f }).split('\n').pop()
+
+  it('points at the one next step', () => {
+    expect(next({})).toBe('- Próximo passo: publish_repository.')
+    expect(next({ hasOrigin: true })).toContain('push. Não chame publish_repository')
+    expect(next({ commits: 0, uncommitted: 2 })).toContain('commit das mudanças atuais')
+    expect(next({ commits: 0 })).toContain('não há nada para publicar')
+    expect(next({ githubLogin: null })).toContain('entrar com o GitHub')
+    expect(next({ uncommitted: 4 })).toContain('pergunte se ele quer commitar')
+    expect(next({ branch: null })).toContain('trocar para uma branch')
   })
 })

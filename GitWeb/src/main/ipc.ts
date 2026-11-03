@@ -85,7 +85,7 @@ import { saveSecret, getSecret, deleteSecret } from './credentials'
 import { startDeviceFlow, pollDeviceFlow, cancelDeviceFlow, getOAuthAppInfo } from './githubDeviceFlow'
 import * as githubApi from './githubApi'
 import { isAppOrigin } from './security'
-import type { CreatePullRequestInput, MergeMethod, PullRequestState } from '../shared/github'
+import type { CreatePullRequestInput, MergeMethod, PublishRepositoryInput, PullRequestState } from '../shared/github'
 import { openDirectoryDialog } from './dialogs'
 import {
   addRecentRepositories,
@@ -99,11 +99,15 @@ import {
   setRepoGroupCollapsed
 } from './recentRepositories'
 import { scanForRepositories } from './repoScan'
+import { assertNoBlockedSensitive, scanHistory, scanSensitive, type SensitiveScanScope } from './sensitiveScan'
+import { publishRepository } from './publishRepository'
+import { assertAgentMayRead, redactForAi } from './aiRedaction'
+import { sensitiveFileKind } from '../shared/sensitiveFiles'
 import { getAiSettings, getSettings, setAiSettings, setAppSettings, setLastRepositoryPath } from './settings'
 import { applyLanguagePreference, systemLocale } from './language'
 import { sendChatRequest, sendToolAwareChatRequest, listModels, abortChatRequest } from './aiProxy'
 import type { AiSettings, ResolvedAiConfig } from '../shared/ai'
-import type { ChatMessage, ToolDefinition } from '../shared/aiChat'
+import type { AiRequestOptions, ChatMessage, ToolDefinition } from '../shared/aiChat'
 import type { RebaseStep } from '../shared/git'
 import { withProjectCoAuthor, type AppSettings } from '../shared/settings'
 import { checkForUpdates, getUpdateStatus, quitAndInstall } from './updater'
@@ -185,6 +189,7 @@ export function registerIpcHandlers(): void {
   // Changes view and the AI agent alike — honors the setting. A merge being
   // concluded (empty summary) keeps git's prepared message untouched.
   handle('git:commit', async (_e, summary: string, description: string, cwd: string) => {
+    await assertNoBlockedSensitive(cwd)
     const credit = summary.trim() && (await getSettings()).coAuthorProject
     return commit(summary, credit ? withProjectCoAuthor(description) : description, cwd)
   })
@@ -192,8 +197,13 @@ export function registerIpcHandlers(): void {
     applyPatch(cwd, patch, { cached, reverse })
   )
   handle('git:resetSoftHead', (_e, cwd: string) => resetSoftHead(cwd))
-  handle('git:commitAmend', (_e, cwd: string, summary?: string, description?: string) =>
-    commitAmend(cwd, summary, description)
+  handle('git:commitAmend', async (_e, cwd: string, summary?: string, description?: string) => {
+    await assertNoBlockedSensitive(cwd)
+    return commitAmend(cwd, summary, description)
+  })
+  handle('git:scanSensitiveHistory', (_e, cwd: string) => scanHistory(cwd))
+  handle('git:scanSensitive', (_e, cwd: string, scope: SensitiveScanScope) =>
+    scanSensitive(cwd, scope === 'all' ? 'all' : 'staged')
   )
   handle('git:branches', (_e, cwd: string) => getBranches(cwd))
   handle('git:createBranch', (_e, name: string, cwd: string, checkout: boolean, from?: string) =>
@@ -249,7 +259,10 @@ export function registerIpcHandlers(): void {
   )
 
   handle('git:listFiles', (_e, cwd: string, pattern?: string) => listRepoFiles(cwd, pattern))
-  handle('git:readFileForAgent', (_e, cwd: string, path: string) => readFileForAgent(cwd, path))
+  handle('git:readFileForAgent', async (_e, cwd: string, path: string) => {
+    await assertAgentMayRead(path, sensitiveFileKind(path) !== null)
+    return readFileForAgent(cwd, path)
+  })
 
   handle('git:fetch', (_e, cwd: string) => fetchRemote(cwd))
   handle('git:fetchDryRun', (_e, cwd: string) => fetchDryRun(cwd))
@@ -328,6 +341,8 @@ export function registerIpcHandlers(): void {
   handle('github:logout', (_e, host: string) => githubApi.logout(host))
 
   handle('github:listUserRepos', (_e, host: string) => githubApi.listUserRepos(host))
+  handle('github:listRepositoryOwners', (_e, host: string) => githubApi.listRepositoryOwners(host))
+  handle('github:publishRepository', (_e, cwd: string, input: PublishRepositoryInput) => publishRepository(cwd, input))
   handle('github:listUserReposWithToken', (_e, host: string, token: string) =>
     githubApi.listUserReposWithToken(host, token)
   )
@@ -425,8 +440,18 @@ export function registerIpcHandlers(): void {
   // that don't answer CORS preflight requests correctly, which is common.
   handle(
     'ai:sendChatRequest',
-    (_e, config: ResolvedAiConfig, apiKey: string, messages: ChatMessage[], tools?: ToolDefinition[], requestId?: string) =>
-      sendChatRequest(config, apiKey, messages, tools, requestId)
+    async (
+      _e,
+      config: ResolvedAiConfig,
+      apiKey: string,
+      messages: ChatMessage[],
+      tools?: ToolDefinition[],
+      requestId?: string,
+      options?: AiRequestOptions
+    ) =>
+      // keepContent: flows whose answer is written back into the file
+      // (conflict resolution, proposed fix) — a masked line would end up in it.
+      sendChatRequest(config, apiKey, options?.keepContent ? messages : await redactForAi(messages), tools, requestId)
   )
   handle('ai:listModels', (_e, config: ResolvedAiConfig, apiKey: string) => listModels(config, apiKey))
   handle('ai:abortChatRequest', (_e, requestId: string) => abortChatRequest(requestId))
@@ -436,7 +461,7 @@ export function registerIpcHandlers(): void {
   // fallback — see shared/aiChat.ts and aiStore.ts.
   handle(
     'ai:sendToolAwareChatRequest',
-    (_e, config: ResolvedAiConfig, apiKey: string, messages: ChatMessage[], tools?: ToolDefinition[], requestId?: string) =>
-      sendToolAwareChatRequest(config, apiKey, messages, tools, requestId)
+    async (_e, config: ResolvedAiConfig, apiKey: string, messages: ChatMessage[], tools?: ToolDefinition[], requestId?: string) =>
+      sendToolAwareChatRequest(config, apiKey, await redactForAi(messages), tools, requestId)
   )
 }

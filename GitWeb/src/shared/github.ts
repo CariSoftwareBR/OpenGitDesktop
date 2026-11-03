@@ -117,6 +117,36 @@ export interface CreatePullRequestInput {
   draft: boolean
 }
 
+/** Where a new repository can be created: the signed-in account or one of its organizations. */
+export interface RepositoryOwner {
+  login: string
+  kind: 'user' | 'org'
+  avatarUrl: string
+}
+
+export interface PublishRepositoryInput {
+  /** Account or organization login; the signed-in user's own login creates it under the account. */
+  owner: string
+  name: string
+  description: string
+  private: boolean
+}
+
+export interface PublishRepositoryResult {
+  fullName: string
+  htmlUrl: string
+  branch: string
+}
+
+/** Valid GitHub repository name: letters, digits, '.', '-', '_' (spaces become '-'). */
+export function sanitizeRepositoryName(value: string): string {
+  return value
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^A-Za-z0-9._-]/g, '')
+    .slice(0, 100)
+}
+
 export type PullRequestReviewEvent = 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'
 
 export interface PullRequestReviewCommentInput {

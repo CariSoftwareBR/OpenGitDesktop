@@ -36,6 +36,7 @@ const ptBR = {
     list_tags: 'Listar tags',
     create_tag: 'Criar tag',
     push_tag: 'Enviar tag',
+    publish_repository: 'Publicar no GitHub',
     prepare_release_notes: 'Notas de release',
     reorganize_local_commits: 'Reorganizar commits locais'
   } as Record<string, string>,
@@ -453,6 +454,7 @@ const en: M = {
     list_tags: 'List tags',
     create_tag: 'Create tag',
     push_tag: 'Push tag',
+    publish_repository: 'Publish to GitHub',
     prepare_release_notes: 'Release notes',
     reorganize_local_commits: 'Reorganize local commits'
   },
@@ -852,6 +854,7 @@ const es: M = {
     list_tags: 'Listar tags',
     create_tag: 'Crear tag',
     push_tag: 'Enviar tag',
+    publish_repository: 'Publicar en GitHub',
     prepare_release_notes: 'Notas de versión',
     reorganize_local_commits: 'Reorganizar commits locales'
   },

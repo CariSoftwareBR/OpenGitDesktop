@@ -52,3 +52,9 @@ export function joinPath(parent: string, child: string): string {
 export function pathsEqual(a: string, b: string): boolean {
   return stripTrailingSep(a).toLowerCase() === stripTrailingSep(b).toLowerCase()
 }
+
+/** A repository path as an anchored .gitignore pattern: `src/.env` → `/src/.env`. */
+export function toIgnorePattern(path: string): string {
+  const normalized = path.replace(/\\/g, '/').replace(/^\.\//, '')
+  return normalized.startsWith('/') ? normalized : `/${normalized}`
+}

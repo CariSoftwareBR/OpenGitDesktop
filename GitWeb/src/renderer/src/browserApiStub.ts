@@ -327,6 +327,8 @@ function installBrowserApiStub(): void {
       applyPatch: async () => undefined,
       resetSoftHead: async () => undefined,
       commitAmend: async () => undefined,
+      scanSensitive: async () => [],
+      scanSensitiveHistory: async () => [],
       branches: async () => demoBranches,
       createBranch: async () => undefined,
       switchBranch: async () => ({ switched: true as const }),
@@ -501,6 +503,12 @@ function installBrowserApiStub(): void {
       },
       logout: async () => undefined,
 
+      listRepositoryOwners: async () => [{ login: 'demo', kind: 'user' as const, avatarUrl: '' }],
+      publishRepository: async (_cwd: string, input: { owner: string; name: string }) => ({
+        fullName: `${input.owner}/${input.name}`,
+        htmlUrl: `https://github.com/${input.owner}/${input.name}`,
+        branch: 'main'
+      }),
       listUserRepos: async () => {
         throw new Error(GITHUB_UNAVAILABLE)
       },

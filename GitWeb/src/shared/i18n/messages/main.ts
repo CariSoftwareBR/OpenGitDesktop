@@ -4,6 +4,8 @@
 
 const ptBR = {
   git: {
+    sensitiveBlocked: (paths: string) =>
+      `Commit bloqueado: possíveis arquivos sensíveis (segredos, chaves ou tokens) em ${paths}. Tire-os do commit ou mude para "Avisar" em Configurações › Segurança.`,
     cloneUrlStartsWithDash: 'URL inválida: uma URL de repositório não pode começar com "-".',
     cloneUrlNotAllowed:
       'URL inválida: use https://, ssh://, git@host:dono/repo ou um caminho local. Transportes como "ext::" não são aceitos.',
@@ -68,6 +70,8 @@ const ptBR = {
       'O último commit já foi enviado para o remoto. Desfazê-lo exigiria force push, que é um passo manual — não faço isso pelo chat.',
     agentReadGitDir: (path: string) =>
       `"${path}" está dentro de .git/ e não pode ser lido pela IA — o diretório do git guarda credenciais e estado interno.`,
+    agentReadSensitive: (path: string) =>
+      `${path} parece guardar segredos (verificação de arquivos sensíveis em Configurações › Segurança): o conteúdo não é enviado à IA.`,
     agentReadIgnored: (path: string) =>
       `"${path}" está no .gitignore e não pode ser lido pela IA — arquivos ignorados costumam guardar segredos.`,
     agentReadBinary: (path: string) => `"${path}" parece ser um arquivo binário e não pode ser lido como texto.`,
@@ -114,8 +118,19 @@ const ptBR = {
       `A requisição para ${origin} excedeu o tempo limite de ${seconds}s.`
   },
   ai: {
+    sensitiveOmitted: '[conteúdo sensível omitido pelo OpenGitDesktop]',
     localBaseUrlRequired: 'Configure a URL base para o provedor local nas configurações de IA.',
     listModelsFailed: (status: number) => `Não foi possível listar modelos (HTTP ${status}).`
+  },
+  publish: {
+    hasRemote: 'Este repositório já tem um remote (origin). Use "Publicar branch" para enviá-lo.',
+    noCommits: 'Faça o primeiro commit antes de publicar: um repositório sem commits não tem o que enviar.',
+    noBranch: 'Não há branch em uso (HEAD destacado). Troque para uma branch antes de publicar.',
+    invalidName: 'Nome de repositório inválido. Use letras, números, ".", "-" ou "_".',
+    blocked: (paths: string) =>
+      `Publicação bloqueada: o histórico local tem possíveis arquivos sensíveis em ${paths}. Publicar envia todos os commits, inclusive os que trazem esses arquivos.`,
+    pushFailed: (url: string, reason: string) =>
+      `O repositório ${url} foi criado e ligado como origin, mas o envio falhou: ${reason} Tente de novo com "Publicar branch".`
   },
   github: {
     notAuthenticated: (host: string) => `Você não está autenticado em ${host}. Entre com o GitHub e tente de novo.`,
@@ -142,6 +157,8 @@ export type MainMessages = typeof ptBR
 
 const en: MainMessages = {
   git: {
+    sensitiveBlocked: (paths) =>
+      `Commit blocked: possible sensitive files (secrets, keys or tokens) in ${paths}. Take them out of the commit or switch to "Warn" in Settings › Security.`,
     cloneUrlStartsWithDash: 'Invalid URL: a repository URL cannot start with "-".',
     cloneUrlNotAllowed:
       'Invalid URL: use https://, ssh://, git@host:owner/repo or a local path. Transports such as "ext::" are not accepted.',
@@ -206,6 +223,8 @@ const en: MainMessages = {
       'The last commit was already pushed to the remote. Undoing it would require a force push, which is a manual step — I do not do that from the chat.',
     agentReadGitDir: (path) =>
       `"${path}" is inside .git/ and cannot be read by the AI — the git directory holds credentials and internal state.`,
+    agentReadSensitive: (path) =>
+      `${path} looks like it holds secrets (sensitive-file check in Settings › Security): its content is not sent to the AI.`,
     agentReadIgnored: (path) =>
       `"${path}" is in .gitignore and cannot be read by the AI — ignored files often hold secrets.`,
     agentReadBinary: (path) => `"${path}" looks like a binary file and cannot be read as text.`,
@@ -251,8 +270,19 @@ const en: MainMessages = {
     requestTimedOut: (origin, seconds) => `The request to ${origin} exceeded the ${seconds}s time limit.`
   },
   ai: {
+    sensitiveOmitted: '[sensitive content omitted by OpenGitDesktop]',
     localBaseUrlRequired: 'Set the base URL for the local provider in the AI settings.',
     listModelsFailed: (status) => `Could not list models (HTTP ${status}).`
+  },
+  publish: {
+    hasRemote: 'This repository already has a remote (origin). Use "Publish branch" to push it.',
+    noCommits: 'Make the first commit before publishing: a repository with no commits has nothing to push.',
+    noBranch: 'No branch is checked out (detached HEAD). Switch to a branch before publishing.',
+    invalidName: 'Invalid repository name. Use letters, digits, ".", "-" or "_".',
+    blocked: (paths) =>
+      `Publishing blocked: the local history has possible sensitive files in ${paths}. Publishing pushes every commit, including the ones that carry them.`,
+    pushFailed: (url, reason) =>
+      `The repository ${url} was created and set as origin, but the push failed: ${reason} Try again with "Publish branch".`
   },
   github: {
     notAuthenticated: (host) => `You are not signed in to ${host}. Sign in with GitHub and try again.`,
@@ -277,6 +307,8 @@ const en: MainMessages = {
 
 const es: MainMessages = {
   git: {
+    sensitiveBlocked: (paths) =>
+      `Commit bloqueado: posibles archivos sensibles (secretos, claves o tokens) en ${paths}. Sácalos del commit o cambia a "Avisar" en Configuración › Seguridad.`,
     cloneUrlStartsWithDash: 'URL no válida: una URL de repositorio no puede empezar con "-".',
     cloneUrlNotAllowed:
       'URL no válida: usa https://, ssh://, git@host:dueño/repo o una ruta local. No se aceptan transportes como "ext::".',
@@ -342,6 +374,8 @@ const es: MainMessages = {
       'El último commit ya se envió al remoto. Deshacerlo exigiría un force push, que es un paso manual — no lo hago desde el chat.',
     agentReadGitDir: (path) =>
       `"${path}" está dentro de .git/ y la IA no puede leerlo — el directorio de git guarda credenciales y estado interno.`,
+    agentReadSensitive: (path) =>
+      `${path} parece guardar secretos (verificación de archivos sensibles en Configuración › Seguridad): su contenido no se envía a la IA.`,
     agentReadIgnored: (path) =>
       `"${path}" está en .gitignore y la IA no puede leerlo — los archivos ignorados suelen guardar secretos.`,
     agentReadBinary: (path) => `"${path}" parece ser un archivo binario y no se puede leer como texto.`,
@@ -387,8 +421,19 @@ const es: MainMessages = {
     requestTimedOut: (origin, seconds) => `La solicitud a ${origin} superó el tiempo límite de ${seconds}s.`
   },
   ai: {
+    sensitiveOmitted: '[contenido sensible omitido por OpenGitDesktop]',
     localBaseUrlRequired: 'Configura la URL base del proveedor local en la configuración de IA.',
     listModelsFailed: (status) => `No se pudieron listar los modelos (HTTP ${status}).`
+  },
+  publish: {
+    hasRemote: 'Este repositorio ya tiene un remoto (origin). Usa "Publicar rama" para enviarlo.',
+    noCommits: 'Haz el primer commit antes de publicar: un repositorio sin commits no tiene nada que enviar.',
+    noBranch: 'No hay rama en uso (HEAD separado). Cambia a una rama antes de publicar.',
+    invalidName: 'Nombre de repositorio no válido. Usa letras, números, ".", "-" o "_".',
+    blocked: (paths) =>
+      `Publicación bloqueada: el historial local tiene posibles archivos sensibles en ${paths}. Publicar envía todos los commits, incluidos los que traen esos archivos.`,
+    pushFailed: (url, reason) =>
+      `El repositorio ${url} se creó y quedó como origin, pero el envío falló: ${reason} Inténtalo de nuevo con "Publicar rama".`
   },
   github: {
     notAuthenticated: (host) => `No has iniciado sesión en ${host}. Inicia sesión con GitHub e inténtalo de nuevo.`,

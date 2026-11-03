@@ -10,12 +10,14 @@ import history from './messages/history'
 import stashes from './messages/stashes'
 import dashboard from './messages/dashboard'
 import pullRequests from './messages/pullRequests'
+import publish from './messages/publish'
 import aiSettings from './messages/aiSettings'
 import clone from './messages/clone'
 import githubLogin from './messages/githubLogin'
 import graph from './messages/graph'
 import graphTools from './messages/graphTools'
 import ui from './messages/ui'
+import security from './messages/security'
 import stores from './messages/stores'
 import tools from './messages/tools'
 
@@ -36,7 +38,9 @@ const namespaces = {
   history,
   initial,
   main,
+  publish,
   pullRequests,
+  security,
   settings,
   stashes,
   stores,

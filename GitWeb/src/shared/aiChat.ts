@@ -22,6 +22,16 @@ export interface ChatResponse {
 // needs the HTTP status code to decide whether to retry with the textual
 // tool-calling fallback, and thrown-error properties don't reliably survive
 // the IPC boundary.
+/** Per-request switches for the main-process AI proxy. */
+export interface AiRequestOptions {
+  /**
+   * Send repository content unmasked. Only for flows whose answer is written
+   * back into the file (conflict resolution, proposed fix), where a masked
+   * line would be written into the code.
+   */
+  keepContent?: boolean
+}
+
 export interface ChatRequestOutcome {
   ok: boolean
   statusCode?: number
@@ -495,6 +505,25 @@ export const TOOL_CATALOG: ToolDefinition[] = [
         message: { type: 'string', description: 'Mensagem da tag. Padrão: o próprio nome.' }
       },
       required: ['tag_name']
+    }
+  },
+  {
+    name: 'publish_repository',
+    description:
+      'Cria o repositório no GitHub para o repositório local atual (que ainda não tem remote), liga-o como origin e envia a branch atual com upstream. Privado por padrão. Use quando o usuário pedir para publicar, subir ou criar o repositório no GitHub. Se já existir um origin, use push.',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Nome do repositório no GitHub. Padrão: o nome da pasta.' },
+        visibility: {
+          type: 'string',
+          description: 'private (padrão) ou public. Só use public se o usuário pedir explicitamente.',
+          enum: ['private', 'public']
+        },
+        description: { type: 'string', description: 'Descrição curta do repositório (opcional).' },
+        owner: { type: 'string', description: 'Conta ou organização dona. Padrão: a conta do usuário logado.' }
+      },
+      required: []
     }
   },
   {

@@ -1,4 +1,8 @@
 import { create } from 'zustand'
+import { SensitiveBlockedError, withheldForAi } from '../lib/sensitive'
+import { basename } from '../lib/path'
+import { sanitizeRepositoryName } from '../../../shared/github'
+import type { SensitiveFinding } from '../../../shared/sensitiveFiles'
 import {
   DEFAULT_CHAT_REASONING_EFFORT,
   resolveActiveConfig,
@@ -17,6 +21,7 @@ import {
   explainBannerErrorInstruction,
   extractRejectedLargeFiles,
   formatFileLocationFacts,
+  formatPublishFacts,
   explainBugDescriptionPrompt,
   explainBugFallback,
   explainDiffFallback,
@@ -59,16 +64,19 @@ import MERGE_BRANCH_SKILL_PT from '../lib/ai/skills/pt-BR/merge-branch.md?raw'
 import CODEOWNERS_SKILL_PT from '../lib/ai/skills/pt-BR/codeowners.md?raw'
 import REPOSITORY_RISK_SKILL_PT from '../lib/ai/skills/pt-BR/repository-risk.md?raw'
 import UNWANTED_FILE_SKILL_PT from '../lib/ai/skills/pt-BR/unwanted-file.md?raw'
+import PUBLISH_REPOSITORY_SKILL_PT from '../lib/ai/skills/pt-BR/publish-repository.md?raw'
 import GIT_WORKFLOW_SKILL_EN from '../lib/ai/skills/en/git-workflow.md?raw'
 import MERGE_BRANCH_SKILL_EN from '../lib/ai/skills/en/merge-branch.md?raw'
 import CODEOWNERS_SKILL_EN from '../lib/ai/skills/en/codeowners.md?raw'
 import REPOSITORY_RISK_SKILL_EN from '../lib/ai/skills/en/repository-risk.md?raw'
 import UNWANTED_FILE_SKILL_EN from '../lib/ai/skills/en/unwanted-file.md?raw'
+import PUBLISH_REPOSITORY_SKILL_EN from '../lib/ai/skills/en/publish-repository.md?raw'
 import GIT_WORKFLOW_SKILL_ES from '../lib/ai/skills/es/git-workflow.md?raw'
 import MERGE_BRANCH_SKILL_ES from '../lib/ai/skills/es/merge-branch.md?raw'
 import CODEOWNERS_SKILL_ES from '../lib/ai/skills/es/codeowners.md?raw'
 import REPOSITORY_RISK_SKILL_ES from '../lib/ai/skills/es/repository-risk.md?raw'
 import UNWANTED_FILE_SKILL_ES from '../lib/ai/skills/es/unwanted-file.md?raw'
+import PUBLISH_REPOSITORY_SKILL_ES from '../lib/ai/skills/es/publish-repository.md?raw'
 import { investigateCommitWithWorkers } from '../lib/ai/commitInvestigation'
 import type { InvestigationFinding, InvestigationStep } from '../lib/ai/commitInvestigation'
 import { proposeFileFix } from '../lib/ai/proposeFix'
@@ -89,21 +97,24 @@ const SCM_SKILLS: Record<AiLanguage, Record<ScmSkillId, string>> = {
     'merge-branch': MERGE_BRANCH_SKILL_PT,
     codeowners: CODEOWNERS_SKILL_PT,
     'repository-risk': REPOSITORY_RISK_SKILL_PT,
-    'unwanted-file': UNWANTED_FILE_SKILL_PT
+    'unwanted-file': UNWANTED_FILE_SKILL_PT,
+    'publish-repository': PUBLISH_REPOSITORY_SKILL_PT
   },
   en: {
     'git-workflow': GIT_WORKFLOW_SKILL_EN,
     'merge-branch': MERGE_BRANCH_SKILL_EN,
     codeowners: CODEOWNERS_SKILL_EN,
     'repository-risk': REPOSITORY_RISK_SKILL_EN,
-    'unwanted-file': UNWANTED_FILE_SKILL_EN
+    'unwanted-file': UNWANTED_FILE_SKILL_EN,
+    'publish-repository': PUBLISH_REPOSITORY_SKILL_EN
   },
   es: {
     'git-workflow': GIT_WORKFLOW_SKILL_ES,
     'merge-branch': MERGE_BRANCH_SKILL_ES,
     codeowners: CODEOWNERS_SKILL_ES,
     'repository-risk': REPOSITORY_RISK_SKILL_ES,
-    'unwanted-file': UNWANTED_FILE_SKILL_ES
+    'unwanted-file': UNWANTED_FILE_SKILL_ES,
+    'publish-repository': PUBLISH_REPOSITORY_SKILL_ES
   }
 }
 
@@ -121,6 +132,8 @@ export interface UiToolCall {
   result?: string
   /** Card the chat draws for the result; the model only ever sees `result`. */
   visual?: ToolVisual
+  /** Commit refused by the sensitive-file check: the chat draws its own card. */
+  sensitive?: SensitiveFinding[]
 }
 
 export interface ToolFeedbackEntry {
@@ -257,6 +270,31 @@ async function unwantedFileFacts(messages: ChatUiMessage[], language: AiLanguage
       }))
     )
     return formatFileLocationFacts(language, facts)
+  } catch {
+    return ''
+  }
+}
+
+// Read fresh each turn while the publish skill is active, so the next step
+// follows the repo (a commit made, a sign-in done). Best effort, like above.
+async function publishFacts(language: AiLanguage): Promise<string> {
+  const repoPath = useRepoStore.getState().currentRepoPath
+  if (!repoPath) return ''
+  try {
+    const [origin, status, log, user] = await Promise.all([
+      window.api.git.remoteUrl(repoPath),
+      window.api.git.status(repoPath),
+      window.api.git.log(repoPath, 100),
+      window.api.github.getSession('github.com').catch(() => null)
+    ])
+    return formatPublishFacts(language, {
+      hasOrigin: Boolean(origin),
+      branch: status.branch,
+      commits: log.length,
+      uncommitted: status.entries.length,
+      githubLogin: user?.login ?? null,
+      folderName: sanitizeRepositoryName(basename(repoPath))
+    })
   } catch {
     return ''
   }
@@ -438,7 +476,10 @@ export const useAiStore = create<AiState>((set, get) => ({
     const turn = ++activeTurn
     const maxChars = Math.max(1_000, settings.maxDiffChars)
     const wasTruncated = diff.length > maxChars
-    const diffForAnalysis = diff.slice(0, maxChars)
+    // A new file's "diff" is its raw content, with no header for the main
+    // process to recognize a .env or a key by — mask it here, by path.
+    const masked = withheldForAi(path, diff)
+    const diffForAnalysis = masked.slice(0, maxChars)
     const requestId = nextRequestId()
 
     set({ panelOpen: true, isBusy: true, phase: 'thinking', error: null })
@@ -892,7 +933,8 @@ async function buildUiToolCalls(calls: ToolCallRequest[]): Promise<UiToolCall[]>
           preview: { headline: getT().tools.label[call.name] ?? call.name, fields: [], severity: 'read' },
           resolvedArgs: call.arguments,
           status: 'failed',
-          result: err instanceof Error ? err.message : String(err)
+          result: err instanceof Error ? err.message : String(err),
+          sensitive: err instanceof SensitiveBlockedError ? err.findings : undefined
         }
       }
     })
@@ -969,6 +1011,7 @@ async function requestAssistantTurn(
   const scmSkillIds = selectScmSkills(messages)
   const scmSkills = scmSkillIds.map((id) => SCM_SKILLS[getLocale()][id])
   const fileFacts = scmSkillIds.includes('unwanted-file') ? await unwantedFileFacts(messages, getLocale()) : ''
+  const repoFacts = scmSkillIds.includes('publish-repository') ? await publishFacts(getLocale()) : ''
 
   function buildSystemContent(useNative: boolean): string {
     return [
@@ -978,6 +1021,7 @@ async function requestAssistantTurn(
       ...(includePrSkills ? PR_SKILLS[getLocale()] : []),
       ...scmSkills,
       fileFacts,
+      repoFacts,
       reasoning,
       buildRepoContext(getLocale())
     ]

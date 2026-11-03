@@ -4,13 +4,18 @@ import {
   Bot,
   Check,
   ChevronRight,
+  FileKey,
   HeartHandshake,
   Info,
   Languages,
   Monitor,
   Palette,
+  ScanSearch,
   Settings2,
+  ShieldBan,
+  ShieldCheck,
   SlidersHorizontal,
+  TriangleAlert,
   UploadCloud
 } from 'lucide-react'
 import Github from '../components/icons/Github'
@@ -18,7 +23,8 @@ import { useAppSettingsStore } from '../store/appSettingsStore'
 import { useGithubAuthStore } from '../store/githubAuthStore'
 import { useRepoStore } from '../store/repoStore'
 import { usePullRequestStore } from '../store/pullRequestStore'
-import { PROJECT_CO_AUTHOR_TRAILER, type ColorSchemePreference } from '../../../shared/settings'
+import { DEFAULT_APP_SETTINGS, PROJECT_CO_AUTHOR_TRAILER, type ColorSchemePreference } from '../../../shared/settings'
+import type { SensitiveCheckMode, SensitiveKind } from '../../../shared/sensitiveFiles'
 import Switch from '../components/Switch'
 import GithubLoginModal from '../components/GithubLoginModal'
 import AiSettingsForm from '../components/AiSettingsForm'
@@ -340,10 +346,126 @@ function AppearancePanel(): JSX.Element {
   )
 }
 
+// Shown as written: the file-name rules in shared/sensitiveFiles, condensed.
+const CHECKED_NAMES = ['.env', '.env.*', '*.pem', '*.key', '*.ppk', 'id_rsa', 'id_ed25519', '*.p12', '*.pfx', '*.jks', 'credentials.json', 'secrets.yml', '.git-credentials', '.netrc']
+const CHECKED_CONTENT: SensitiveKind[] = [
+  'privateKey',
+  'githubToken',
+  'gitlabToken',
+  'awsKey',
+  'openaiKey',
+  'anthropicKey',
+  'googleKey',
+  'slackToken',
+  'stripeKey',
+  'npmToken',
+  'genericSecret'
+]
+
+function SecurityPanel(): JSX.Element {
+  const settings = useAppSettingsStore((s) => s.settings)
+  const updateSettings = useAppSettingsStore((s) => s.updateSettings)
+  const all = useT()
+  const t = all.settings.security
+  const enabled = settings?.sensitiveCheck ?? DEFAULT_APP_SETTINGS.sensitiveCheck
+  const mode = settings?.sensitiveCheckMode ?? DEFAULT_APP_SETTINGS.sensitiveCheckMode
+
+  const modes: { value: SensitiveCheckMode; icon: typeof UploadCloud; label: string; hint: string; tone: string }[] = [
+    { value: 'warn', icon: TriangleAlert, label: t.warn, hint: t.warnHint, tone: 'text-warning-amber' },
+    { value: 'block', icon: ShieldBan, label: t.block, hint: t.blockHint, tone: 'text-danger-red' }
+  ]
+
+  return (
+    <>
+      <section className="flex flex-col gap-2.5">
+        <h2 className="settings-heading">{t.heading}</h2>
+        <div className="settings-group">
+          <SettingRow
+            icon={ShieldCheck}
+            tone="green"
+            label={t.check}
+            description={t.checkHint}
+            checked={enabled}
+            onChange={(checked) => updateSettings({ sensitiveCheck: checked })}
+          />
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-2.5">
+        <h2 className="settings-heading">{t.modeHeading}</h2>
+        <div role="radiogroup" aria-label={t.modeAria} aria-disabled={!enabled} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {modes.map((option) => {
+            const Icon = option.icon
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={mode === option.value}
+                disabled={!enabled}
+                onClick={() => updateSettings({ sensitiveCheckMode: option.value })}
+                className="choice-tile is-compact text-left"
+              >
+                <span className="flex items-start justify-between gap-2">
+                  <Icon size={20} className={option.tone} aria-hidden />
+                  <span className="choice-check" aria-hidden>
+                    <Check size={11} strokeWidth={3} />
+                  </span>
+                </span>
+                <span className="mt-3 block text-body font-semibold text-primary-text">{option.label}</span>
+                <span className="mt-0.5 block text-caption text-secondary-text">{option.hint}</span>
+              </button>
+            )
+          })}
+        </div>
+        {!enabled && <p className="text-caption text-tertiary-text">{t.offHint}</p>}
+      </section>
+
+      <section className="flex flex-col gap-2.5">
+        <h2 className="settings-heading">{t.coverageHeading}</h2>
+        <div className="settings-group">
+          <div className="settings-row flex items-start gap-3.5">
+            <span className="settings-icon is-neutral">
+              <FileKey size={16} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-body font-semibold text-primary-text">{t.byName}</div>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {CHECKED_NAMES.map((name) => (
+                  <li key={name} className="rounded-pill border border-default-border bg-midnight-base px-2 py-0.5 font-mono text-caption text-primary-text">
+                    {name}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div className="settings-row flex items-start gap-3.5">
+            <span className="settings-icon is-neutral">
+              <ScanSearch size={16} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-body font-semibold text-primary-text">{t.byContent}</div>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {CHECKED_CONTENT.map((kind) => (
+                  <li key={kind} className="rounded-pill border border-default-border bg-coal-raised px-2 py-0.5 text-caption text-secondary-text">
+                    {all.security.kinds[kind]}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+        <p className="text-caption text-tertiary-text">{t.exempt}</p>
+      </section>
+    </>
+  )
+}
+
 const TABS: { id: SettingsTab; icon: typeof UploadCloud }[] = [
   { id: 'general', icon: SlidersHorizontal },
   { id: 'ai', icon: Bot },
-  { id: 'appearance', icon: Palette }
+  { id: 'appearance', icon: Palette },
+  { id: 'security', icon: ShieldCheck }
 ]
 
 function SettingsView(): JSX.Element {
@@ -361,7 +483,8 @@ function SettingsView(): JSX.Element {
   const tabText: Record<SettingsTab, { label: string; hint: string; description: string }> = {
     general: { label: t.tabs.general, hint: t.tabs.generalHint, description: t.tabs.generalHint },
     ai: { label: t.tabs.ai, hint: t.tabs.aiHint, description: t.ai.hint },
-    appearance: { label: t.tabs.appearance, hint: t.tabs.appearanceHint, description: t.tabs.appearanceHint }
+    appearance: { label: t.tabs.appearance, hint: t.tabs.appearanceHint, description: t.tabs.appearanceHint },
+    security: { label: t.tabs.security, hint: t.tabs.securityHint, description: t.tabs.securityHint }
   }
 
   useEffect(() => {
@@ -479,6 +602,7 @@ function SettingsView(): JSX.Element {
               </section>
             )}
             {tab === 'appearance' && <AppearancePanel />}
+            {tab === 'security' && <SecurityPanel />}
           </div>
         </div>
       </div>

@@ -133,10 +133,19 @@ export async function generateConflictResolution(
   const conflictBlocks = blocks.filter((b): b is ConflictBlock => b.type === 'conflict')
   const prompt = buildPrompt(path, blocks, getLocale())
 
-  const response = await sendChatRequest(resolveActiveConfig(settings), apiKey, [
-    { role: 'system', content: 'You resolve Git merge conflicts precisely and conservatively.' },
-    { role: 'user', content: prompt }
-  ])
+  // keepContent: the answer's lines are written into the file, so a masked
+  // secret would replace the real one in the code.
+  const response = await sendChatRequest(
+    resolveActiveConfig(settings),
+    apiKey,
+    [
+      { role: 'system', content: 'You resolve Git merge conflicts precisely and conservatively.' },
+      { role: 'user', content: prompt }
+    ],
+    [],
+    undefined,
+    { keepContent: true }
+  )
 
   const result = parseResponse(response.content)
   if (result.decisions.length === 0) throw new Error(getT().stores.aiNoResolution)
