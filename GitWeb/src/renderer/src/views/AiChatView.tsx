@@ -183,14 +183,15 @@ function ToolCallCard({ messageId, uiCall }: { messageId: string; uiCall: import
         // Compact on the right when the card is wide; in a narrow panel they
         // share the row, and stack full-width once their labels no longer fit.
         <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-default-border pt-3">
+          {/* Cancel always last, on the far right. */}
+          <button onClick={() => approveToolCall(messageId, uiCall.call.id)} className={`${approveClass} flex-auto @[22rem]:flex-none`}>
+            <Check size={13} /> {approveLabel}
+          </button>
           <button
             onClick={() => cancelToolCall(messageId, uiCall.call.id)}
             className="btn-secondary h-8 flex-auto px-3 @[22rem]:flex-none"
           >
             <X size={13} /> {ui.toolCancel}
-          </button>
-          <button onClick={() => approveToolCall(messageId, uiCall.call.id)} className={`${approveClass} flex-auto @[22rem]:flex-none`}>
-            <Check size={13} /> {approveLabel}
           </button>
         </div>
       )}

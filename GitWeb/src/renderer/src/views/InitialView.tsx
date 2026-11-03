@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ComponentType } from 'react'
+import CreateRepositoryDialog from '../components/CreateRepositoryDialog'
 import {
   AlertCircle,
   AlertTriangle,
@@ -561,9 +562,9 @@ function InitialView(): JSX.Element {
     )
   }
 
-  async function handleCreate(): Promise<void> {
-    const path = await window.api.dialogs.openDirectory()
-    if (path) await createRepository(path)
+  const [createOpen, setCreateOpen] = useState(false)
+  function handleCreate(): void {
+    setCreateOpen(true)
   }
 
   const summaryParts: { tone: string; text: string }[] = [
@@ -610,6 +611,14 @@ function InitialView(): JSX.Element {
             </button>
             <RailAction icon={DownloadCloud} label={t.clone} description={t.cloneHint} onClick={() => setShowClone(true)} disabled={isBusy} active={showClone} />
             <RailAction icon={FolderPlus} label={t.create} description={t.createHint} onClick={handleCreate} disabled={isBusy} />
+            <CreateRepositoryDialog
+              open={createOpen}
+              onClose={() => setCreateOpen(false)}
+              onCreate={(path, options) => {
+                setCreateOpen(false)
+                void createRepository(path, options)
+              }}
+            />
             {hasGithubAccount === false && (
               <RailAction icon={Github} label={t.signInGithub} description={t.signInGithubHint} onClick={() => setLoginModalOpen(true)} disabled={isBusy} />
             )}

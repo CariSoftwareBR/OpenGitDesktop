@@ -20,7 +20,7 @@ const createRepository = vi.fn(async (_host: string, input: { owner: string; nam
 }))
 vi.mock('../src/main/githubApi', () => ({ createRepository }))
 
-const { publishRepository } = await import('../src/main/publishRepository')
+const { createInitialCommit, publishRepository } = await import('../src/main/publishRepository')
 const { scanHistory } = await import('../src/main/sensitiveScan')
 
 function makeRepo(): { dir: string; git: (...args: string[]) => string } {
@@ -97,6 +97,44 @@ describe('publishRepository', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true })
       rmSync(bare, { recursive: true, force: true })
+    }
+  })
+})
+
+describe('createInitialCommit', () => {
+  beforeEach(() => {
+    settings.sensitiveCheckMode = 'block'
+  })
+
+  it('adds a README to an empty folder, commits the files of a non-empty one, and leaves an existing history alone', async () => {
+    const empty = makeRepo()
+    const withFiles = makeRepo()
+    try {
+      await createInitialCommit(empty.dir)
+      expect(empty.git('log', '--format=%s')).toBe('Commit inicial')
+      expect(empty.git('ls-files')).toBe('README.md')
+
+      writeFileSync(join(withFiles.dir, 'index.ts'), `export {}\n`)
+      await createInitialCommit(withFiles.dir)
+      expect(withFiles.git('ls-files')).toBe('index.ts')
+
+      writeFileSync(join(withFiles.dir, 'other.ts'), `export {}\n`)
+      await createInitialCommit(withFiles.dir)
+      expect(withFiles.git('rev-list', '--count', 'HEAD')).toBe('1')
+    } finally {
+      rmSync(empty.dir, { recursive: true, force: true })
+      rmSync(withFiles.dir, { recursive: true, force: true })
+    }
+  })
+
+  it('refuses a folder with a .env in block mode, leaving no commit', async () => {
+    const { dir, git } = makeRepo()
+    try {
+      writeFileSync(join(dir, '.env'), `TOKEN=x\n`)
+      await expect(createInitialCommit(dir)).rejects.toThrow('.env')
+      expect(() => git('rev-parse', '-q', '--verify', 'HEAD')).toThrow()
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
     }
   })
 })

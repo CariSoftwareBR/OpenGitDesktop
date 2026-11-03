@@ -108,7 +108,10 @@ interface RepoState {
   addRecentRepositories: (paths: string[]) => Promise<void>
   removeRecentRepo: (path: string) => Promise<void>
   openRepository: (path: string) => Promise<void>
-  createRepository: (path: string) => Promise<void>
+  createRepository: (path: string, options?: { initialCommit?: boolean; publish?: boolean }) => Promise<void>
+  /** Set by "create and publish": the top bar opens the publish dialog once the repo is open. */
+  publishPrompt: boolean
+  clearPublishPrompt: () => void
   cloneRepository: (url: string, destination: string) => Promise<'ok' | 'cancelled' | 'failed'>
   cancelClone: (destination: string) => Promise<void>
   closeRepository: () => void
@@ -463,15 +466,27 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     }
   },
 
-  createRepository: async (path: string) => {
+  createRepository: async (path, options = {}) => {
     set({ isBusy: true, error: null })
     try {
       await window.api.git.init(path)
+      // Publishing needs a commit, so it implies the first one.
+      if (options.initialCommit || options.publish) await window.api.git.initialCommit(path)
       await get().openRepository(path)
+      if (options.publish) set({ publishPrompt: true })
     } catch (err) {
       set({ error: describeError(err), isBusy: false })
+      // The repository exists even if the first commit was refused (a
+      // sensitive file in block mode): open it so the user can fix that.
+      if (get().currentRepoPath !== path)
+        await get()
+          .openRepository(path)
+          .catch(() => undefined)
     }
   },
+
+  publishPrompt: false,
+  clearPublishPrompt: () => set({ publishPrompt: false }),
 
   cloneRepository: async (url: string, destination: string) => {
     set({ isBusy: true, error: null })
