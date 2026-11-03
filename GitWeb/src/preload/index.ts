@@ -34,8 +34,9 @@ import type {
   SwitchBranchResult
 } from '../shared/git'
 import type { AiSettings, ResolvedAiConfig } from '../shared/ai'
-import type { ChatMessage, ChatRequestOutcome, ChatResponse, ToolDefinition } from '../shared/aiChat'
+import type { AiRequestOptions, ChatMessage, ChatRequestOutcome, ChatResponse, ToolDefinition } from '../shared/aiChat'
 import type { AppSettings } from '../shared/settings'
+import type { SensitiveFinding } from '../shared/sensitiveFiles'
 import type { Locale } from '../shared/i18n/locales'
 import type { DeviceFlowPollResult, DeviceFlowStart, OAuthAppInfo } from '../shared/githubAuth'
 import type {
@@ -118,6 +119,8 @@ const api = {
     resetSoftHead: (cwd: string): Promise<void> => invoke('git:resetSoftHead', cwd),
     commitAmend: (cwd: string, summary?: string, description?: string): Promise<void> =>
       invoke('git:commitAmend', cwd, summary, description),
+    scanSensitive: (cwd: string, scope: 'staged' | 'all'): Promise<SensitiveFinding[]> =>
+      invoke('git:scanSensitive', cwd, scope),
     branches: (cwd: string): Promise<BranchInfo[]> => invoke('git:branches', cwd),
     createBranch: (name: string, cwd: string, checkout: boolean, from?: string): Promise<void> =>
       invoke('git:createBranch', name, cwd, checkout, from),
@@ -362,8 +365,9 @@ const api = {
       apiKey: string,
       messages: ChatMessage[],
       tools?: ToolDefinition[],
-      requestId?: string
-    ): Promise<ChatResponse> => invoke('ai:sendChatRequest', config, apiKey, messages, tools, requestId),
+      requestId?: string,
+      options?: AiRequestOptions
+    ): Promise<ChatResponse> => invoke('ai:sendChatRequest', config, apiKey, messages, tools, requestId, options),
     listModels: (config: ResolvedAiConfig, apiKey: string): Promise<string[]> =>
       invoke('ai:listModels', config, apiKey),
     abortChatRequest: (requestId: string): Promise<void> => invoke('ai:abortChatRequest', requestId),

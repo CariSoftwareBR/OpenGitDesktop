@@ -33,10 +33,15 @@ import DiffViewer from '../components/DiffViewer'
 import ConflictResolver from '../components/ConflictResolver'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ProtectedBranchDialog from '../components/ProtectedBranchDialog'
+import SensitiveFilesDialog from '../components/SensitiveFilesDialog'
+import { openSettings } from '../lib/openAiSettings'
+import type { SensitiveFinding } from '../../../shared/sensitiveFiles'
+import { DEFAULT_APP_SETTINGS } from '../../../shared/settings'
 import { directPushBlock } from '../lib/branchProtection'
 import type { BranchRules } from '../../../shared/github'
 import FileContextMenu, { type FileContextMenuTarget } from '../components/FileContextMenu'
 import { basename } from '../lib/path'
+import { ignoreSensitive, unstageSensitive } from '../lib/sensitive'
 import { isConflicted, type FileLineStat, type StatusEntry } from '../../../shared/git'
 import { relativeTime } from '../lib/relativeTime'
 import { useLocale, useT } from '../lib/i18n'
@@ -444,6 +449,9 @@ function ChangesView(): JSX.Element {
   const currentRepoPath = useRepoStore((s) => s.currentRepoPath)
   const clearError = useRepoStore((s) => s.clearError)
   const commitAndPush = useAppSettingsStore((s) => s.settings?.commitAndPush ?? false)
+  const sensitiveCheck = useAppSettingsStore((s) => s.settings?.sensitiveCheck ?? DEFAULT_APP_SETTINGS.sensitiveCheck)
+  const sensitiveCheckMode = useAppSettingsStore((s) => s.settings?.sensitiveCheckMode ?? DEFAULT_APP_SETTINGS.sensitiveCheckMode)
+  const [sensitiveFindings, setSensitiveFindings] = useState<SensitiveFinding[] | null>(null)
   const aiSettings = useAiStore((s) => s.settings)
   const aiApiKey = useAiStore((s) => s.apiKey)
   const aiLanguage = useLocale()
@@ -737,7 +745,8 @@ function ChangesView(): JSX.Element {
     return bottom > top ? new DOMRect(bounds.left, top, bounds.width, bottom - top) : null
   }
 
-  async function handleCommit(): Promise<void> {
+  // `skipSensitiveCheck`: the user already saw the warning and chose to commit anyway.
+  async function handleCommit(options?: { skipSensitiveCheck?: boolean }): Promise<void> {
     // Ctrl+Enter reaches here too, so the in-flight generation guard lives
     // here and not only on the button.
     if (committingRef.current || generating) return
@@ -752,6 +761,17 @@ function ChangesView(): JSX.Element {
       if (block) {
         setProtectedBlock(block)
         return
+      }
+
+      // A merge being concluded only records what both histories already hold.
+      // If the scan itself fails the commit goes on: in block mode the main
+      // process scans again and refuses, so nothing slips through either way.
+      if (sensitiveCheck && !canConcludeMerge && currentRepoPath && options?.skipSensitiveCheck !== true) {
+        const findings = await window.api.git.scanSensitive(currentRepoPath, 'staged').catch(() => [])
+        if (findings.length > 0) {
+          setSensitiveFindings(findings)
+          return
+        }
       }
 
       // Snapshot the staged rows before committing. When they leave the list
@@ -1435,7 +1455,7 @@ function ChangesView(): JSX.Element {
           <div className="flex shrink-0 items-center gap-px">
             <button
               type="button"
-              onClick={handleCommit}
+              onClick={() => void handleCommit()}
               disabled={commitButtonDisabled}
               aria-describedby={commitDisabledReason ? `${summaryId}-commit-hint` : undefined}
               aria-busy={committing || undefined}
@@ -1568,6 +1588,27 @@ function ChangesView(): JSX.Element {
           // checkout -b keeps the working tree and the index: the staged files
           // and the message typed so far are all still there on the new branch.
           void createBranch(name, true)
+        }}
+      />
+      <SensitiveFilesDialog
+        findings={sensitiveFindings}
+        mode={sensitiveCheckMode}
+        onCancel={() => setSensitiveFindings(null)}
+        onUnstage={(split) => {
+          setSensitiveFindings(null)
+          void unstageSensitive(split)
+        }}
+        onIgnore={(split) => {
+          setSensitiveFindings(null)
+          void ignoreSensitive(split)
+        }}
+        onCommitAnyway={() => {
+          setSensitiveFindings(null)
+          void handleCommit({ skipSensitiveCheck: true })
+        }}
+        onOpenSettings={() => {
+          setSensitiveFindings(null)
+          openSettings('security')
         }}
       />
       <ConfirmDialog

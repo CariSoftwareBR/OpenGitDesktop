@@ -16,6 +16,7 @@ import githubLogin from './messages/githubLogin'
 import graph from './messages/graph'
 import graphTools from './messages/graphTools'
 import ui from './messages/ui'
+import security from './messages/security'
 import stores from './messages/stores'
 import tools from './messages/tools'
 
@@ -37,6 +38,7 @@ const namespaces = {
   initial,
   main,
   pullRequests,
+  security,
   settings,
   stashes,
   stores,

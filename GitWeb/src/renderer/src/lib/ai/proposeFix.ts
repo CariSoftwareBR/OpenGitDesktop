@@ -29,7 +29,10 @@ export async function proposeFileFix(input: {
       }
     ],
     [],
-    input.requestId
+    input.requestId,
+    // The answer becomes the file's new content: masking would write the
+    // placeholder over a real value.
+    { keepContent: true }
   )
 
   const raw = response.content.trim().replace(/^```json\s*|```$/gim, '')

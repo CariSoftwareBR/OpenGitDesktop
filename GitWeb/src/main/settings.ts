@@ -49,6 +49,11 @@ function normalizeSettings(stored: Partial<AppSettings>): AppSettings {
     colorScheme,
     language,
     coAuthorProject: typeof stored.coAuthorProject === 'boolean' ? stored.coAuthorProject : DEFAULTS.coAuthorProject,
+    sensitiveCheck: typeof stored.sensitiveCheck === 'boolean' ? stored.sensitiveCheck : DEFAULTS.sensitiveCheck,
+    sensitiveCheckMode:
+      stored.sensitiveCheckMode === 'warn' || stored.sensitiveCheckMode === 'block'
+        ? stored.sensitiveCheckMode
+        : DEFAULTS.sensitiveCheckMode,
     cloneBaseFolders: sanitizeCloneBaseFolders(stored.cloneBaseFolders),
     lastCloneBaseFolder
   }

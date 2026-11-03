@@ -168,7 +168,7 @@ async function describeSpawnEnoent(cwd: string, cause: Error): Promise<Error> {
   return new Error(message, { cause })
 }
 
-function throwOnFailure(result: GitResult, args: string[]): void {
+export function throwOnFailure(result: GitResult, args: string[]): void {
   if (result.exitCode !== 0) {
     throw new Error(result.stderr.trim() || `git ${args.join(' ')} exited with code ${result.exitCode}`)
   }

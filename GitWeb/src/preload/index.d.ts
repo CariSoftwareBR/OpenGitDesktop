@@ -33,8 +33,9 @@ import type {
   SwitchBranchResult
 } from '../shared/git'
 import type { AiSettings, ResolvedAiConfig } from '../shared/ai'
-import type { ChatMessage, ChatRequestOutcome, ChatResponse, ToolDefinition } from '../shared/aiChat'
+import type { AiRequestOptions, ChatMessage, ChatRequestOutcome, ChatResponse, ToolDefinition } from '../shared/aiChat'
 import type { AppSettings } from '../shared/settings'
+import type { SensitiveFinding } from '../shared/sensitiveFiles'
 import type { Locale } from '../shared/i18n/locales'
 import type { DeviceFlowPollResult, DeviceFlowStart, OAuthAppInfo } from '../shared/githubAuth'
 import type {
@@ -79,6 +80,8 @@ export interface Api {
     applyPatch: (cwd: string, patch: string, cached: boolean, reverse: boolean) => Promise<void>
     resetSoftHead: (cwd: string) => Promise<void>
     commitAmend: (cwd: string, summary?: string, description?: string) => Promise<void>
+    /** Names and kinds only, never the secret: see shared/sensitiveFiles. */
+    scanSensitive: (cwd: string, scope: 'staged' | 'all') => Promise<SensitiveFinding[]>
     branches: (cwd: string) => Promise<BranchInfo[]>
     createBranch: (name: string, cwd: string, checkout: boolean, from?: string) => Promise<void>
     switchBranch: (name: string, cwd: string) => Promise<SwitchBranchResult>
@@ -261,7 +264,8 @@ export interface Api {
       apiKey: string,
       messages: ChatMessage[],
       tools?: ToolDefinition[],
-      requestId?: string
+      requestId?: string,
+      options?: AiRequestOptions
     ) => Promise<ChatResponse>
     listModels: (config: ResolvedAiConfig, apiKey: string) => Promise<string[]>
     abortChatRequest: (requestId: string) => Promise<void>

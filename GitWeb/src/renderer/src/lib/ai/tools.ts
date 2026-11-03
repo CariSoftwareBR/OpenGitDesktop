@@ -6,6 +6,9 @@ import { generateCommitMessage } from './commitMessage'
 import { generateConflictResolution } from './conflictResolution'
 import { formatPullRequestStatus } from './prStatus'
 import { directPushBlock } from '../branchProtection'
+import { describeFindings, SensitiveBlockedError, withheldForAi } from '../sensitive'
+import { useAppSettingsStore } from '../../store/appSettingsStore'
+import { DEFAULT_APP_SETTINGS } from '../../../../shared/settings'
 import { isConflicted, type BranchIntegration, type BranchIntegrationReport, type StatusEntry } from '../../../../shared/git'
 import { parseConflictBlocks, renderResolvedWithChoices, type ConflictBlock, type ConflictResolutionChoice } from '../conflicts'
 import type { ToolCallRequest } from '../../../../shared/aiChat'
@@ -619,6 +622,22 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       const filesToShow = autoStage ? unstaged : staged
       if (filesToShow.length === 0) throw new Error(t.nothingToCommit)
 
+      // Also before the approval card. Auto-stage scans what it is about to
+      // add, untracked files included. Block: the model hears why and can
+      // offer ignore_files; warn: the card says it and approving it is the
+      // user's answer. Main re-checks block mode on the commit itself.
+      const security = getT().security
+      const appSettings = useAppSettingsStore.getState().settings ?? DEFAULT_APP_SETTINGS
+      let sensitiveWarning: string | undefined
+      if (appSettings.sensitiveCheck) {
+        const findings = await window.api.git.scanSensitive(repoPath, autoStage ? 'all' : 'staged')
+        if (findings.length > 0) {
+          const list = describeFindings(findings, security)
+          if (appSettings.sensitiveCheckMode === 'block') throw new SensitiveBlockedError(security.aiBlocked(list), findings)
+          sensitiveWarning = security.aiWarning(list)
+        }
+      }
+
       const { settings, apiKey } = await getActiveAiConfig()
 
       const diff = autoStage ? await window.api.git.diffUnstagedAll(repoPath) : await window.api.git.diffStagedAll(repoPath)
@@ -637,7 +656,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
             { label: t.messageSummary, value: suggestion.summary },
             { label: t.description, value: suggestion.description || t.emptyFeminine }
           ],
-          warning: autoStage ? t.autoStageWarning : undefined
+          warning: [sensitiveWarning, autoStage ? t.autoStageWarning : undefined].filter(Boolean).join(' ') || undefined
         },
         resolvedArgs: { summary: suggestion.summary, description: suggestion.description, auto_stage: autoStage ? 'true' : 'false' }
       }
@@ -1551,8 +1570,9 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string | T
       const scope = a.scope ?? 'all'
 
       async function diffFor(staged: boolean): Promise<string> {
+        // A new file's diff is its raw content: mask a .env or key by path here.
         return a.path
-          ? window.api.git.diff(a.path, repoPath, staged)
+          ? withheldForAi(a.path, await window.api.git.diff(a.path, repoPath, staged))
           : staged
             ? window.api.git.diffStagedAll(repoPath)
             : window.api.git.diffUnstagedAll(repoPath)

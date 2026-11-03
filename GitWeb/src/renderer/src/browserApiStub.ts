@@ -327,6 +327,7 @@ function installBrowserApiStub(): void {
       applyPatch: async () => undefined,
       resetSoftHead: async () => undefined,
       commitAmend: async () => undefined,
+      scanSensitive: async () => [],
       branches: async () => demoBranches,
       createBranch: async () => undefined,
       switchBranch: async () => ({ switched: true as const }),

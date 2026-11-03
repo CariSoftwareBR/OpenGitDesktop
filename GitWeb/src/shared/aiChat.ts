@@ -22,6 +22,16 @@ export interface ChatResponse {
 // needs the HTTP status code to decide whether to retry with the textual
 // tool-calling fallback, and thrown-error properties don't reliably survive
 // the IPC boundary.
+/** Per-request switches for the main-process AI proxy. */
+export interface AiRequestOptions {
+  /**
+   * Send repository content unmasked. Only for flows whose answer is written
+   * back into the file (conflict resolution, proposed fix), where a masked
+   * line would be written into the code.
+   */
+  keepContent?: boolean
+}
+
 export interface ChatRequestOutcome {
   ok: boolean
   statusCode?: number

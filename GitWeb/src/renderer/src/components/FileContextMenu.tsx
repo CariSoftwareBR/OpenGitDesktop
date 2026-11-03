@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChevronRight, ExternalLink, FileClock, FolderOpen, Trash2 } from 'lucide-react'
 import { useT } from '../lib/i18n'
+import { toIgnorePattern } from '../lib/path'
 
 export interface FileContextMenuTarget {
   path: string
@@ -25,11 +26,6 @@ interface FileContextMenuProps {
   fileExists: boolean
   /** Opens the file's timeline and line-by-line authorship. Not offered for new files. */
   onShowTimeline?: (path: string) => void
-}
-
-function toIgnorePattern(path: string): string {
-  const normalized = path.replace(/\\/g, '/').replace(/^\.\//, '')
-  return normalized.startsWith('/') ? normalized : `/${normalized}`
 }
 
 function ancestorFolders(filePath: string): string[] {

@@ -1,4 +1,6 @@
 import { create } from 'zustand'
+import { SensitiveBlockedError, withheldForAi } from '../lib/sensitive'
+import type { SensitiveFinding } from '../../../shared/sensitiveFiles'
 import {
   DEFAULT_CHAT_REASONING_EFFORT,
   resolveActiveConfig,
@@ -121,6 +123,8 @@ export interface UiToolCall {
   result?: string
   /** Card the chat draws for the result; the model only ever sees `result`. */
   visual?: ToolVisual
+  /** Commit refused by the sensitive-file check: the chat draws its own card. */
+  sensitive?: SensitiveFinding[]
 }
 
 export interface ToolFeedbackEntry {
@@ -438,7 +442,10 @@ export const useAiStore = create<AiState>((set, get) => ({
     const turn = ++activeTurn
     const maxChars = Math.max(1_000, settings.maxDiffChars)
     const wasTruncated = diff.length > maxChars
-    const diffForAnalysis = diff.slice(0, maxChars)
+    // A new file's "diff" is its raw content, with no header for the main
+    // process to recognize a .env or a key by — mask it here, by path.
+    const masked = withheldForAi(path, diff)
+    const diffForAnalysis = masked.slice(0, maxChars)
     const requestId = nextRequestId()
 
     set({ panelOpen: true, isBusy: true, phase: 'thinking', error: null })
@@ -892,7 +899,8 @@ async function buildUiToolCalls(calls: ToolCallRequest[]): Promise<UiToolCall[]>
           preview: { headline: getT().tools.label[call.name] ?? call.name, fields: [], severity: 'read' },
           resolvedArgs: call.arguments,
           status: 'failed',
-          result: err instanceof Error ? err.message : String(err)
+          result: err instanceof Error ? err.message : String(err),
+          sensitive: err instanceof SensitiveBlockedError ? err.findings : undefined
         }
       }
     })

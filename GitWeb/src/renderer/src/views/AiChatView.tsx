@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import SensitiveBlockedCard from '../components/SensitiveBlockedCard'
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -129,6 +130,8 @@ function ToolCallCard({ messageId, uiCall }: { messageId: string; uiCall: import
     severity === 'danger' ? 'btn-danger h-8 px-3' : severity === 'write' ? 'btn-primary h-8 px-3' : 'btn-secondary h-8 px-3'
   const approveLabel = severity === 'danger' ? ui.toolApproveDanger : ui.toolApprove
   const isReadPullRequest = uiCall.call.name === 'read_pull_request'
+
+  if (uiCall.status === 'failed' && uiCall.sensitive) return <SensitiveBlockedCard findings={uiCall.sensitive} />
 
   return (
     <div className={`@container min-w-0 rounded-md border bg-coal-raised p-3 text-body transition-colors duration-200 ${borderColor}`}>
@@ -692,7 +695,9 @@ function AiChatView(): JSX.Element {
                       {item.message.content &&
                         !(item.message.investigation && isEmptyInvestigationMarkdown(item.message.content)) &&
                         (item.message.role === 'user' ? (
-                          <div className="min-w-0 max-w-full whitespace-pre-wrap rounded-lg border border-command-blue/30 bg-command-blue-soft px-3 py-2 text-body text-primary-text [overflow-wrap:anywhere]">
+                          // 16px on a one-line bubble read as a pill: a tighter radius, with
+                          // the corner beside the avatar nearly square, like a speech tail.
+                          <div className="min-w-0 max-w-full whitespace-pre-wrap rounded-md rounded-br-[3px] border border-command-blue/30 bg-command-blue-soft px-3 py-2 text-body text-primary-text [overflow-wrap:anywhere]">
                             {item.message.content}
                           </div>
                         ) : (
