@@ -1,6 +1,16 @@
 // "Publicar no GitHub": the dialog, the top-bar entry and the AI tool.
 
 const ptBR = {
+  createTitle: 'Criar repositório',
+  createLead: 'Um repositório git novo numa pasta do seu computador.',
+  folder: 'Pasta',
+  chooseFolder: 'Escolher pasta',
+  noFolder: 'Nenhuma pasta escolhida',
+  initialCommit: 'Fazer o primeiro commit',
+  initialCommitHint: 'Commita os arquivos da pasta, ou cria um README.md se ela estiver vazia.',
+  alsoPublish: 'Também criar no GitHub',
+  alsoPublishHint: 'Depois de criar, abre o "Publicar no GitHub" para criar o repositório lá e enviar.',
+  createAction: 'Criar',
   topBarLabel: 'Publicar no GitHub',
   topBarHint: 'Cria o repositório e envia',
   title: 'Publicar no GitHub',
@@ -41,6 +51,16 @@ const ptBR = {
 type M = typeof ptBR
 
 const en: M = {
+  createTitle: 'Create repository',
+  createLead: 'A new git repository in a folder on your computer.',
+  folder: 'Folder',
+  chooseFolder: 'Choose folder',
+  noFolder: 'No folder chosen',
+  initialCommit: 'Make the first commit',
+  initialCommitHint: "Commits the folder's files, or creates a README.md if it is empty.",
+  alsoPublish: 'Also create on GitHub',
+  alsoPublishHint: 'After creating, opens "Publish to GitHub" to create the repository there and push.',
+  createAction: 'Create',
   topBarLabel: 'Publish to GitHub',
   topBarHint: 'Creates the repository and pushes',
   title: 'Publish to GitHub',
@@ -79,6 +99,16 @@ const en: M = {
 }
 
 const es: M = {
+  createTitle: 'Crear repositorio',
+  createLead: 'Un repositorio git nuevo en una carpeta de tu equipo.',
+  folder: 'Carpeta',
+  chooseFolder: 'Elegir carpeta',
+  noFolder: 'Ninguna carpeta elegida',
+  initialCommit: 'Hacer el primer commit',
+  initialCommitHint: 'Hace commit de los archivos de la carpeta, o crea un README.md si está vacía.',
+  alsoPublish: 'También crear en GitHub',
+  alsoPublishHint: 'Después de crear, abre "Publicar en GitHub" para crear allí el repositorio y enviar.',
+  createAction: 'Crear',
   topBarLabel: 'Publicar en GitHub',
   topBarHint: 'Crea el repositorio y envía',
   title: 'Publicar en GitHub',

@@ -68,6 +68,8 @@ export interface Api {
     isRepository: (cwd: string) => Promise<boolean>
     scanForRepositories: (rootPath: string) => Promise<string[]>
     init: (cwd: string) => Promise<void>
+    /** First commit of a new repo: its files, or a README.md if the folder is empty. No-op once HEAD exists. */
+    initialCommit: (cwd: string) => Promise<void>
     clone: (url: string, destination: string) => Promise<CloneOutcome>
     cancelClone: (destination: string) => Promise<void>
     onCloneProgress: (callback: (progress: CloneProgress) => void) => () => void

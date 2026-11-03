@@ -92,6 +92,7 @@ const api = {
     scanForRepositories: (rootPath: string): Promise<string[]> =>
       invoke('git:scanForRepositories', rootPath),
     init: (cwd: string): Promise<void> => invoke('git:init', cwd),
+    initialCommit: (cwd: string): Promise<void> => invoke('git:initialCommit', cwd),
     clone: (url: string, destination: string): Promise<CloneOutcome> =>
       invoke('git:clone', url, destination),
     cancelClone: (destination: string): Promise<void> =>

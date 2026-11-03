@@ -505,6 +505,14 @@ function SyncCard({ compact }: { compact: boolean }): JSX.Element {
     if (noUpstream) void checkOrigin()
   }, [noUpstream, checkOrigin])
   const needsRepository = noUpstream && !hasOrigin
+  // "Create and publish" from the start screen lands here with the repo open.
+  const publishPrompt = useRepoStore((s) => s.publishPrompt)
+  const clearPublishPrompt = useRepoStore((s) => s.clearPublishPrompt)
+  useEffect(() => {
+    if (!publishPrompt || !currentRepoPath) return
+    clearPublishPrompt()
+    setPublishOpen(true)
+  }, [publishPrompt, currentRepoPath, clearPublishPrompt])
   // Re-checked on click and when the dialog closes: an origin added outside
   // the app, or by a publish whose push failed, turns this into "Publish branch".
   async function onActivate(): Promise<void> {

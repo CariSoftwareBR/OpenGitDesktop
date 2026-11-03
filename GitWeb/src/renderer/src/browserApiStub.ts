@@ -312,6 +312,7 @@ function installBrowserApiStub(): void {
       isRepository: async () => true,
       scanForRepositories: async () => [],
       init: async () => undefined,
+      initialCommit: async () => undefined,
       clone: async () => ({ status: 'ok' as const }),
       cancelClone: async () => undefined,
       onCloneProgress: () => () => undefined,

@@ -1,4 +1,7 @@
+import { readdir, writeFile } from 'fs/promises'
+import { basename, join } from 'path'
 import { getRemoteUrl, pushBranch, readGit, runGit, throwOnFailure } from './gitProcess'
+import { assertNoBlockedSensitive } from './sensitiveScan'
 import { createRepository } from './githubApi'
 import { getSettings } from './settings'
 import { scanHistory } from './sensitiveScan'
@@ -43,4 +46,19 @@ export async function publishRepository(cwd: string, input: PublishRepositoryInp
     throw new Error(t.pushFailed(repo.htmlUrl, reason.endsWith('.') ? reason : `${reason}.`))
   }
   return { fullName: repo.fullName, htmlUrl: repo.htmlUrl, branch }
+}
+
+/**
+ * The first commit of a repository just created, so it has something to
+ * publish: the folder's files, or a README.md when the folder is empty (what
+ * GitHub's "Add a README" does). Skipped when HEAD already exists. Goes
+ * through the same sensitive-file guard as every other commit.
+ */
+export async function createInitialCommit(cwd: string): Promise<void> {
+  if ((await readGit(['rev-parse', '-q', '--verify', 'HEAD'], cwd)).exitCode === 0) return
+  const entries = (await readdir(cwd)).filter((name) => name !== '.git')
+  if (entries.length === 0) await writeFile(join(cwd, 'README.md'), `# ${basename(cwd)}\n`, 'utf8')
+  throwOnFailure(await runGit(['add', '-A'], cwd), ['add', '-A'])
+  await assertNoBlockedSensitive(cwd)
+  throwOnFailure(await runGit(['commit', '-m', tMain().publish.initialCommitMessage], cwd), ['commit'])
 }

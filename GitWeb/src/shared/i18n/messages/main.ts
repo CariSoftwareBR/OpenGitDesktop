@@ -124,6 +124,7 @@ const ptBR = {
   },
   publish: {
     hasRemote: 'Este repositório já tem um remote (origin). Use "Publicar branch" para enviá-lo.',
+    initialCommitMessage: 'Commit inicial',
     noCommits: 'Faça o primeiro commit antes de publicar: um repositório sem commits não tem o que enviar.',
     noBranch: 'Não há branch em uso (HEAD destacado). Troque para uma branch antes de publicar.',
     invalidName: 'Nome de repositório inválido. Use letras, números, ".", "-" ou "_".',
@@ -276,6 +277,7 @@ const en: MainMessages = {
   },
   publish: {
     hasRemote: 'This repository already has a remote (origin). Use "Publish branch" to push it.',
+    initialCommitMessage: 'Initial commit',
     noCommits: 'Make the first commit before publishing: a repository with no commits has nothing to push.',
     noBranch: 'No branch is checked out (detached HEAD). Switch to a branch before publishing.',
     invalidName: 'Invalid repository name. Use letters, digits, ".", "-" or "_".',
@@ -427,6 +429,7 @@ const es: MainMessages = {
   },
   publish: {
     hasRemote: 'Este repositorio ya tiene un remoto (origin). Usa "Publicar rama" para enviarlo.',
+    initialCommitMessage: 'Commit inicial',
     noCommits: 'Haz el primer commit antes de publicar: un repositorio sin commits no tiene nada que enviar.',
     noBranch: 'No hay rama en uso (HEAD separado). Cambia a una rama antes de publicar.',
     invalidName: 'Nombre de repositorio no válido. Usa letras, números, ".", "-" o "_".',

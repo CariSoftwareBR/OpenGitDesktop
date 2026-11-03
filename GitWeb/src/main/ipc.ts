@@ -100,7 +100,7 @@ import {
 } from './recentRepositories'
 import { scanForRepositories } from './repoScan'
 import { assertNoBlockedSensitive, scanHistory, scanSensitive, type SensitiveScanScope } from './sensitiveScan'
-import { publishRepository } from './publishRepository'
+import { createInitialCommit, publishRepository } from './publishRepository'
 import { assertAgentMayRead, redactForAi } from './aiRedaction'
 import { sensitiveFileKind } from '../shared/sensitiveFiles'
 import { getAiSettings, getSettings, setAiSettings, setAppSettings, setLastRepositoryPath } from './settings'
@@ -166,6 +166,7 @@ export function registerIpcHandlers(): void {
   handle('git:isRepository', (_e, cwd: string) => isGitRepository(cwd))
   handle('git:scanForRepositories', (_e, rootPath: string) => scanForRepositories(rootPath))
   handle('git:init', (_e, cwd: string) => initRepository(cwd))
+  handle('git:initialCommit', (_e, cwd: string) => createInitialCommit(cwd))
   // Uses the event so progress goes only to the frame that asked for the clone.
   handle('git:clone', (event, url: string, destination: string) =>
     cloneRepository(url, destination, (progress) => {
