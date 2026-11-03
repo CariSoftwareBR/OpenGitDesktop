@@ -85,7 +85,7 @@ import { saveSecret, getSecret, deleteSecret } from './credentials'
 import { startDeviceFlow, pollDeviceFlow, cancelDeviceFlow, getOAuthAppInfo } from './githubDeviceFlow'
 import * as githubApi from './githubApi'
 import { isAppOrigin } from './security'
-import type { CreatePullRequestInput, MergeMethod, PullRequestState } from '../shared/github'
+import type { CreatePullRequestInput, MergeMethod, PublishRepositoryInput, PullRequestState } from '../shared/github'
 import { openDirectoryDialog } from './dialogs'
 import {
   addRecentRepositories,
@@ -99,7 +99,8 @@ import {
   setRepoGroupCollapsed
 } from './recentRepositories'
 import { scanForRepositories } from './repoScan'
-import { assertNoBlockedSensitive, scanSensitive, type SensitiveScanScope } from './sensitiveScan'
+import { assertNoBlockedSensitive, scanHistory, scanSensitive, type SensitiveScanScope } from './sensitiveScan'
+import { publishRepository } from './publishRepository'
 import { assertAgentMayRead, redactForAi } from './aiRedaction'
 import { sensitiveFileKind } from '../shared/sensitiveFiles'
 import { getAiSettings, getSettings, setAiSettings, setAppSettings, setLastRepositoryPath } from './settings'
@@ -200,6 +201,7 @@ export function registerIpcHandlers(): void {
     await assertNoBlockedSensitive(cwd)
     return commitAmend(cwd, summary, description)
   })
+  handle('git:scanSensitiveHistory', (_e, cwd: string) => scanHistory(cwd))
   handle('git:scanSensitive', (_e, cwd: string, scope: SensitiveScanScope) =>
     scanSensitive(cwd, scope === 'all' ? 'all' : 'staged')
   )
@@ -339,6 +341,8 @@ export function registerIpcHandlers(): void {
   handle('github:logout', (_e, host: string) => githubApi.logout(host))
 
   handle('github:listUserRepos', (_e, host: string) => githubApi.listUserRepos(host))
+  handle('github:listRepositoryOwners', (_e, host: string) => githubApi.listRepositoryOwners(host))
+  handle('github:publishRepository', (_e, cwd: string, input: PublishRepositoryInput) => publishRepository(cwd, input))
   handle('github:listUserReposWithToken', (_e, host: string, token: string) =>
     githubApi.listUserReposWithToken(host, token)
   )

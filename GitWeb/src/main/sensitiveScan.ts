@@ -80,3 +80,19 @@ export async function assertNoBlockedSensitive(cwd: string): Promise<void> {
   const findings = await scanSensitive(cwd, 'staged')
   if (findings.length > 0) throw new Error(tMain().git.sensitiveBlocked(findingPaths(findings).join(', ')))
 }
+
+// Publishing pushes the whole history, so the check looks at the commits
+// reachable from HEAD — capped, because git's output is held in memory and a
+// long history is rarely the fresh project this is meant for.
+const MAX_HISTORY_COMMITS = 500
+
+/** Sensitive files anywhere in the history about to be pushed for the first time. */
+export async function scanHistory(cwd: string): Promise<SensitiveFinding[]> {
+  const range = ['--max-count', String(MAX_HISTORY_COMMITS), 'HEAD']
+  const names = await readGit(['log', '--name-only', '--format=', '--diff-filter=d', '-z', ...range], cwd)
+  throwOnFailure(names, ['log', '--name-only'])
+  const patch = await readGit(['-c', 'core.quotePath=false', 'log', '-p', '--no-color', '--no-ext-diff', '-U0', '--diff-filter=d', '--format=', ...range], cwd)
+  throwOnFailure(patch, ['log', '-p'])
+  const paths = [...new Set(names.stdout.split(/[\0\n]/).filter(Boolean))]
+  return scanForSensitive(paths, patch.stdout)
+}

@@ -48,7 +48,10 @@ import type {
   PullRequestComment,
   PullRequestFile,
   PullRequestState,
-  PullRequestStatus
+  PullRequestStatus,
+  PublishRepositoryInput,
+  PublishRepositoryResult,
+  RepositoryOwner
 } from '../shared/github'
 import type { UpdateStatus } from '../shared/updates'
 
@@ -82,6 +85,8 @@ export interface Api {
     commitAmend: (cwd: string, summary?: string, description?: string) => Promise<void>
     /** Names and kinds only, never the secret: see shared/sensitiveFiles. */
     scanSensitive: (cwd: string, scope: 'staged' | 'all') => Promise<SensitiveFinding[]>
+    /** Every commit reachable from HEAD — what a first publish would push. */
+    scanSensitiveHistory: (cwd: string) => Promise<SensitiveFinding[]>
     branches: (cwd: string) => Promise<BranchInfo[]>
     createBranch: (name: string, cwd: string, checkout: boolean, from?: string) => Promise<void>
     switchBranch: (name: string, cwd: string) => Promise<SwitchBranchResult>
@@ -181,6 +186,9 @@ export interface Api {
     logout: (host: string) => Promise<void>
 
     listUserRepos: (host: string) => Promise<GitHubRepoSummary[]>
+    listRepositoryOwners: (host: string) => Promise<RepositoryOwner[]>
+    /** Creates the repo on github.com, adds it as origin and pushes the current branch. */
+    publishRepository: (cwd: string, input: PublishRepositoryInput) => Promise<PublishRepositoryResult>
     listUserReposWithToken: (host: string, token: string) => Promise<GitHubRepoSummary[]>
 
     listPullRequests: (host: string, owner: string, repo: string, state: PullRequestState) => Promise<PullRequest[]>

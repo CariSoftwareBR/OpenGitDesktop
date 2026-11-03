@@ -36,6 +36,7 @@ import { openSettings } from '../lib/openAiSettings'
 import { useT } from '../lib/i18n'
 import type { Messages } from '../../../shared/i18n'
 import ThemeToggle from './ThemeToggle'
+import PublishRepositoryDialog from './PublishRepositoryDialog'
 
 function timeAgo(t: Messages['topBar'], timestamp: number | null): string {
   if (!timestamp) return t.neverFetched
@@ -485,7 +486,35 @@ function SyncCard({ compact }: { compact: boolean }): JSX.Element {
   const forcePushPrompt = useRepoStore((s) => s.forcePushPrompt)
   const forcePush = useRepoStore((s) => s.forcePush)
   const dismissForcePush = useRepoStore((s) => s.dismissForcePush)
+  const currentRepoPath = useRepoStore((s) => s.currentRepoPath)
   const t = useT().topBar
+  const tp = useT().publish
+  const [publishOpen, setPublishOpen] = useState(false)
+  // Without an upstream, "publish" means two different things: with an origin
+  // it pushes the branch; without one there is nowhere to push, so it creates
+  // the repository on GitHub first. Looked up only while there's no upstream.
+  const [hasOrigin, setHasOrigin] = useState(true)
+  const noUpstream = Boolean(status && !status.upstream)
+  const checkOrigin = useCallback(async (): Promise<boolean> => {
+    if (!currentRepoPath) return true
+    const found = Boolean(await window.api.git.remoteUrl(currentRepoPath).catch(() => 'unknown'))
+    setHasOrigin(found)
+    return found
+  }, [currentRepoPath])
+  useEffect(() => {
+    if (noUpstream) void checkOrigin()
+  }, [noUpstream, checkOrigin])
+  const needsRepository = noUpstream && !hasOrigin
+  // Re-checked on click and when the dialog closes: an origin added outside
+  // the app, or by a publish whose push failed, turns this into "Publish branch".
+  async function onActivate(): Promise<void> {
+    if (needsRepository && !(await checkOrigin())) setPublishOpen(true)
+    else void sync()
+  }
+  function closePublish(): void {
+    setPublishOpen(false)
+    void checkOrigin()
+  }
 
   const forcePushDialog = (
     <ConfirmDialog
@@ -503,7 +532,11 @@ function SyncCard({ compact }: { compact: boolean }): JSX.Element {
   let label = t.fetchOrigin
   let subtitle = timeAgo(t, lastFetchedAt)
 
-  if (status && !status.upstream) {
+  if (needsRepository) {
+    icon = <Github size={16} className="text-command-blue" />
+    label = tp.topBarLabel
+    subtitle = tp.topBarHint
+  } else if (status && !status.upstream) {
     icon = <UploadCloud size={16} className="text-command-blue" aria-hidden />
     label = t.publishBranch
     subtitle = t.notPublished
@@ -527,10 +560,11 @@ function SyncCard({ compact }: { compact: boolean }): JSX.Element {
     return (
       <>
       {forcePushDialog}
+      <PublishRepositoryDialog open={publishOpen} onClose={closePublish} />
       <button
         type="button"
         className="flex h-[46px] w-[46px] items-center justify-center text-secondary-text transition-[background-color,transform] duration-100 hover:bg-hover-overlay hover:text-primary-text disabled:opacity-40"
-        onClick={() => sync()}
+        onClick={() => void onActivate()}
         disabled={isBusy}
         title={`${label} — ${subtitle}`}
         aria-label={`${label}. ${subtitle}`}
@@ -544,7 +578,8 @@ function SyncCard({ compact }: { compact: boolean }): JSX.Element {
   return (
     <>
     {forcePushDialog}
-    <button type="button" className={STATUS_TRIGGER} onClick={() => sync()} disabled={isBusy}>
+    <PublishRepositoryDialog open={publishOpen} onClose={closePublish} />
+    <button type="button" className={STATUS_TRIGGER} onClick={() => void onActivate()} disabled={isBusy}>
       {icon}
       <span className="flex flex-col items-start gap-0.5 leading-tight">
         <span className="text-body font-medium text-primary-text">{label}</span>

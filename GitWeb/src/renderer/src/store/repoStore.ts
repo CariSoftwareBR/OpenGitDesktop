@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { PublishRepositoryInput, PublishRepositoryResult } from '../../../shared/github'
 import { isConflicted, isHistoryRewrittenMessage, sameRepoStatus, stashBranchName } from '../../../shared/git'
 import type {
   BranchInfo,
@@ -123,6 +124,8 @@ interface RepoState {
   discardPaths: (paths: string[]) => Promise<void>
   ignorePatterns: (patterns: string[], paths: string[], stopTracking: boolean) => Promise<void>
   commitChanges: (summary: string, description: string) => Promise<void>
+  /** Creates the repo on GitHub, sets origin and pushes; null (with `error` set) on failure. */
+  publishRepository: (input: PublishRepositoryInput) => Promise<PublishRepositoryResult | null>
   /** With `expectedHash`, refuses unless HEAD is still that commit and unpublished. */
   undoLastCommit: (expectedHash?: string) => Promise<void>
   amendCommit: (summary?: string, description?: string) => Promise<void>
@@ -698,6 +701,24 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     } catch (err) {
       set({ error: describeError(err) })
     } finally {
+      set({ isBusy: false })
+    }
+  },
+
+  publishRepository: async (input) => {
+    const { currentRepoPath } = get()
+    if (!currentRepoPath) return null
+    set({ isBusy: true, error: null })
+    try {
+      const result = await window.api.github.publishRepository(currentRepoPath, input)
+      set({ lastFetchedAt: Date.now() })
+      return result
+    } catch (err) {
+      set({ error: describeError(err) })
+      return null
+    } finally {
+      // Also after a failed push: the repository and origin may already exist.
+      await Promise.all([get().refreshStatus(), get().refreshBranches(), get().refreshLog()])
       set({ isBusy: false })
     }
   },

@@ -508,6 +508,25 @@ export const TOOL_CATALOG: ToolDefinition[] = [
     }
   },
   {
+    name: 'publish_repository',
+    description:
+      'Cria o repositório no GitHub para o repositório local atual (que ainda não tem remote), liga-o como origin e envia a branch atual com upstream. Privado por padrão. Use quando o usuário pedir para publicar, subir ou criar o repositório no GitHub. Se já existir um origin, use push.',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Nome do repositório no GitHub. Padrão: o nome da pasta.' },
+        visibility: {
+          type: 'string',
+          description: 'private (padrão) ou public. Só use public se o usuário pedir explicitamente.',
+          enum: ['private', 'public']
+        },
+        description: { type: 'string', description: 'Descrição curta do repositório (opcional).' },
+        owner: { type: 'string', description: 'Conta ou organização dona. Padrão: a conta do usuário logado.' }
+      },
+      required: []
+    }
+  },
+  {
     name: 'push_tag',
     description: 'Envia UMA tag local para o remote (origin). Nunca envia todas as tags de uma vez.',
     parameters: {

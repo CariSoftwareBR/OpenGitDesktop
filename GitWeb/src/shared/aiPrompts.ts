@@ -909,6 +909,7 @@ const SCM_SKILL_TRIGGERS: { id: ScmSkillId; tools: Set<string>; pattern: RegExp;
       'list_tags',
       'create_tag',
       'push_tag',
+      'publish_repository',
       'prepare_release_notes',
       'reorganize_local_commits'
     ]),
