@@ -15,6 +15,7 @@ import type {
   PullRequestReviewSummary,
   PullRequestState,
   PullRequestStatus,
+  RepositoryOwner,
   ReviewDecision
 } from '../shared/github'
 
@@ -141,6 +142,8 @@ interface ApiUser {
 
 interface ApiRepo {
   full_name: string
+  html_url?: string
+  default_branch?: string
   name: string
   owner: { login: string }
   clone_url: string
@@ -671,4 +674,40 @@ export async function submitPullRequestReview(
       }))
     })
   })
+}
+
+// --- New repositories ---------------------------------------------------------
+
+/**
+ * The account plus its organizations. An organization that has not approved
+ * this OAuth app, or a token without read:org, simply leaves orgs out — the
+ * account itself is always offered.
+ */
+export async function listRepositoryOwners(host: string): Promise<RepositoryOwner[]> {
+  const token = await requireToken(host)
+  const me = await request<ApiUser>(host, '/user', token)
+  const owners: RepositoryOwner[] = [{ login: me.login, kind: 'user', avatarUrl: me.avatar_url }]
+  const orgs = await requestAll<{ login: string; avatar_url: string }>(host, '/user/orgs?per_page=100', token, 5).catch(() => [])
+  for (const org of orgs) owners.push({ login: org.login, kind: 'org', avatarUrl: org.avatar_url })
+  return owners
+}
+
+/** POST /user/repos, or /orgs/{org}/repos when `owner` is not the signed-in account. Never auto-initialized: the local history is what gets pushed. */
+export async function createRepository(
+  host: string,
+  input: { owner: string; name: string; description: string; private: boolean }
+): Promise<{ fullName: string; htmlUrl: string; cloneUrl: string }> {
+  const token = await requireToken(host)
+  const me = await request<ApiUser>(host, '/user', token)
+  const path = input.owner.toLowerCase() === me.login.toLowerCase() ? '/user/repos' : `/orgs/${encodeURIComponent(input.owner)}/repos`
+  const repo = await request<ApiRepo>(host, path, token, {
+    method: 'POST',
+    body: JSON.stringify({
+      name: input.name,
+      description: input.description || undefined,
+      private: input.private,
+      auto_init: false
+    })
+  })
+  return { fullName: repo.full_name, htmlUrl: repo.html_url ?? `https://${host}/${repo.full_name}`, cloneUrl: repo.clone_url }
 }

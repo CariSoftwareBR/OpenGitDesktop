@@ -122,6 +122,16 @@ const ptBR = {
     localBaseUrlRequired: 'Configure a URL base para o provedor local nas configurações de IA.',
     listModelsFailed: (status: number) => `Não foi possível listar modelos (HTTP ${status}).`
   },
+  publish: {
+    hasRemote: 'Este repositório já tem um remote (origin). Use "Publicar branch" para enviá-lo.',
+    noCommits: 'Faça o primeiro commit antes de publicar: um repositório sem commits não tem o que enviar.',
+    noBranch: 'Não há branch em uso (HEAD destacado). Troque para uma branch antes de publicar.',
+    invalidName: 'Nome de repositório inválido. Use letras, números, ".", "-" ou "_".',
+    blocked: (paths: string) =>
+      `Publicação bloqueada: o histórico local tem possíveis arquivos sensíveis em ${paths}. Publicar envia todos os commits, inclusive os que trazem esses arquivos.`,
+    pushFailed: (url: string, reason: string) =>
+      `O repositório ${url} foi criado e ligado como origin, mas o envio falhou: ${reason} Tente de novo com "Publicar branch".`
+  },
   github: {
     notAuthenticated: (host: string) => `Você não está autenticado em ${host}. Entre com o GitHub e tente de novo.`,
     requestRejected: (status: number) => `GitHub recusou a solicitação (${status}).`,
@@ -264,6 +274,16 @@ const en: MainMessages = {
     localBaseUrlRequired: 'Set the base URL for the local provider in the AI settings.',
     listModelsFailed: (status) => `Could not list models (HTTP ${status}).`
   },
+  publish: {
+    hasRemote: 'This repository already has a remote (origin). Use "Publish branch" to push it.',
+    noCommits: 'Make the first commit before publishing: a repository with no commits has nothing to push.',
+    noBranch: 'No branch is checked out (detached HEAD). Switch to a branch before publishing.',
+    invalidName: 'Invalid repository name. Use letters, digits, ".", "-" or "_".',
+    blocked: (paths) =>
+      `Publishing blocked: the local history has possible sensitive files in ${paths}. Publishing pushes every commit, including the ones that carry them.`,
+    pushFailed: (url, reason) =>
+      `The repository ${url} was created and set as origin, but the push failed: ${reason} Try again with "Publish branch".`
+  },
   github: {
     notAuthenticated: (host) => `You are not signed in to ${host}. Sign in with GitHub and try again.`,
     requestRejected: (status) => `GitHub rejected the request (${status}).`,
@@ -404,6 +424,16 @@ const es: MainMessages = {
     sensitiveOmitted: '[contenido sensible omitido por OpenGitDesktop]',
     localBaseUrlRequired: 'Configura la URL base del proveedor local en la configuración de IA.',
     listModelsFailed: (status) => `No se pudieron listar los modelos (HTTP ${status}).`
+  },
+  publish: {
+    hasRemote: 'Este repositorio ya tiene un remoto (origin). Usa "Publicar rama" para enviarlo.',
+    noCommits: 'Haz el primer commit antes de publicar: un repositorio sin commits no tiene nada que enviar.',
+    noBranch: 'No hay rama en uso (HEAD separado). Cambia a una rama antes de publicar.',
+    invalidName: 'Nombre de repositorio no válido. Usa letras, números, ".", "-" o "_".',
+    blocked: (paths) =>
+      `Publicación bloqueada: el historial local tiene posibles archivos sensibles en ${paths}. Publicar envía todos los commits, incluidos los que traen esos archivos.`,
+    pushFailed: (url, reason) =>
+      `El repositorio ${url} se creó y quedó como origin, pero el envío falló: ${reason} Inténtalo de nuevo con "Publicar rama".`
   },
   github: {
     notAuthenticated: (host) => `No has iniciado sesión en ${host}. Inicia sesión con GitHub e inténtalo de nuevo.`,

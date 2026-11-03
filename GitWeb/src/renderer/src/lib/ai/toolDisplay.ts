@@ -2,6 +2,7 @@ import {
   ArrowDownToLine,
   ArrowUpFromLine,
   Check,
+  CloudUpload,
   CircleFadingArrowUp,
   EyeOff,
   FileClock,
@@ -77,6 +78,7 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   list_tags: Tags,
   create_tag: Tag,
   push_tag: Upload,
+  publish_repository: CloudUpload,
   prepare_release_notes: FileText,
   reorganize_local_commits: ListOrdered
 }

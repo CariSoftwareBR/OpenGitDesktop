@@ -49,7 +49,10 @@ import type {
   PullRequestComment,
   PullRequestFile,
   PullRequestState,
-  PullRequestStatus
+  PullRequestStatus,
+  PublishRepositoryInput,
+  PublishRepositoryResult,
+  RepositoryOwner
 } from '../shared/github'
 import type { UpdateStatus } from '../shared/updates'
 
@@ -121,6 +124,7 @@ const api = {
       invoke('git:commitAmend', cwd, summary, description),
     scanSensitive: (cwd: string, scope: 'staged' | 'all'): Promise<SensitiveFinding[]> =>
       invoke('git:scanSensitive', cwd, scope),
+    scanSensitiveHistory: (cwd: string): Promise<SensitiveFinding[]> => invoke('git:scanSensitiveHistory', cwd),
     branches: (cwd: string): Promise<BranchInfo[]> => invoke('git:branches', cwd),
     createBranch: (name: string, cwd: string, checkout: boolean, from?: string): Promise<void> =>
       invoke('git:createBranch', name, cwd, checkout, from),
@@ -264,6 +268,9 @@ const api = {
 
     listUserRepos: (host: string): Promise<GitHubRepoSummary[]> =>
       invoke('github:listUserRepos', host),
+    listRepositoryOwners: (host: string): Promise<RepositoryOwner[]> => invoke('github:listRepositoryOwners', host),
+    publishRepository: (cwd: string, input: PublishRepositoryInput): Promise<PublishRepositoryResult> =>
+      invoke('github:publishRepository', cwd, input),
     listUserReposWithToken: (host: string, token: string): Promise<GitHubRepoSummary[]> =>
       invoke('github:listUserReposWithToken', host, token),
 
