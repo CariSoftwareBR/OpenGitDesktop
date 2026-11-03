@@ -399,6 +399,119 @@ export function formatFileLocationFacts(language: AiLanguage, facts: FileLocatio
   return lines.join('\n')
 }
 
+/** What the app knows about publishing the open repository, read fresh every turn. */
+export interface PublishFacts {
+  hasOrigin: boolean
+  branch: string | null
+  /** Commits on HEAD, counted up to 100 ("100" means at least that). */
+  commits: number
+  uncommitted: number
+  githubLogin: string | null
+  folderName: string
+}
+
+type PublishNextStep = 'push' | 'branch' | 'commitFirst' | 'nothing' | 'signIn' | 'askCommit' | 'publish'
+
+const PUBLISH_FACTS: Record<
+  AiLanguage,
+  {
+    heading: string
+    hasOrigin: string
+    noOrigin: string
+    branch: (name: string) => string
+    detached: string
+    commits: (count: number) => string
+    uncommitted: (count: number) => string
+    login: (login: string) => string
+    noLogin: string
+    folder: (name: string) => string
+    next: Record<PublishNextStep, string>
+  }
+> = {
+  'pt-BR': {
+    heading: 'Diagnóstico verificado pelo app (fatos — não contradiga):',
+    hasOrigin: '- O repositório já tem um origin configurado.',
+    noOrigin: '- O repositório não tem remote (origin).',
+    branch: (name) => `- Branch atual: ${name}.`,
+    detached: '- Nenhuma branch em uso (HEAD destacado).',
+    commits: (count) => `- Commits locais: ${count >= 100 ? '100 ou mais' : count}.`,
+    uncommitted: (count) => `- Mudanças não commitadas: ${count} arquivo(s). Elas não sobem na publicação.`,
+    login: (login) => `- Login do GitHub no app: @${login}.`,
+    noLogin: '- Não há login do GitHub no app.',
+    folder: (name) => `- Nome da pasta (nome padrão do repositório): ${name}.`,
+    next: {
+      push: '- Próximo passo: push. Não chame publish_repository.',
+      branch: '- Próximo passo: peça para o usuário trocar para uma branch antes de publicar.',
+      commitFirst: '- Próximo passo: commit das mudanças atuais (com aprovação); depois publish_repository.',
+      nothing: '- Próximo passo: não há nada para publicar. Diga ao usuário que é preciso criar arquivos e fazer um commit antes.',
+      signIn: '- Próximo passo: peça para o usuário entrar com o GitHub. Não chame publish_repository.',
+      askCommit: '- Próximo passo: pergunte se ele quer commitar as mudanças antes; depois publish_repository.',
+      publish: '- Próximo passo: publish_repository.'
+    }
+  },
+  en: {
+    heading: 'Diagnosis verified by the app (facts — do not contradict):',
+    hasOrigin: '- The repository already has an origin configured.',
+    noOrigin: '- The repository has no remote (origin).',
+    branch: (name) => `- Current branch: ${name}.`,
+    detached: '- No branch checked out (detached HEAD).',
+    commits: (count) => `- Local commits: ${count >= 100 ? '100 or more' : count}.`,
+    uncommitted: (count) => `- Uncommitted changes: ${count} file(s). They are not part of the publish.`,
+    login: (login) => `- GitHub sign-in in the app: @${login}.`,
+    noLogin: '- There is no GitHub sign-in in the app.',
+    folder: (name) => `- Folder name (default repository name): ${name}.`,
+    next: {
+      push: '- Next step: push. Do not call publish_repository.',
+      branch: '- Next step: ask the user to switch to a branch before publishing.',
+      commitFirst: '- Next step: commit the current changes (with approval); then publish_repository.',
+      nothing: '- Next step: there is nothing to publish. Tell the user files must be created and committed first.',
+      signIn: '- Next step: ask the user to sign in with GitHub. Do not call publish_repository.',
+      askCommit: '- Next step: ask whether to commit the changes first; then publish_repository.',
+      publish: '- Next step: publish_repository.'
+    }
+  },
+  es: {
+    heading: 'Diagnóstico verificado por la app (hechos — no los contradigas):',
+    hasOrigin: '- El repositorio ya tiene un origin configurado.',
+    noOrigin: '- El repositorio no tiene remoto (origin).',
+    branch: (name) => `- Rama actual: ${name}.`,
+    detached: '- No hay rama en uso (HEAD separado).',
+    commits: (count) => `- Commits locales: ${count >= 100 ? '100 o más' : count}.`,
+    uncommitted: (count) => `- Cambios sin commit: ${count} archivo(s). No suben con la publicación.`,
+    login: (login) => `- Sesión de GitHub en la app: @${login}.`,
+    noLogin: '- No hay sesión de GitHub en la app.',
+    folder: (name) => `- Nombre de la carpeta (nombre por defecto del repositorio): ${name}.`,
+    next: {
+      push: '- Siguiente paso: push. No llames a publish_repository.',
+      branch: '- Siguiente paso: pide al usuario que cambie a una rama antes de publicar.',
+      commitFirst: '- Siguiente paso: commit de los cambios actuales (con aprobación); después publish_repository.',
+      nothing: '- Siguiente paso: no hay nada que publicar. Di al usuario que hay que crear archivos y hacer un commit antes.',
+      signIn: '- Siguiente paso: pide al usuario que inicie sesión con GitHub. No llames a publish_repository.',
+      askCommit: '- Siguiente paso: pregunta si quiere hacer commit de los cambios antes; después publish_repository.',
+      publish: '- Siguiente paso: publish_repository.'
+    }
+  }
+}
+
+// Same shape as the file-location facts: what is true, then the one next step,
+// so a small model neither creates a second repository nor publishes an empty one.
+export function formatPublishFacts(language: AiLanguage, f: PublishFacts): string {
+  const t = PUBLISH_FACTS[language]
+  const lines = [t.heading, f.hasOrigin ? t.hasOrigin : t.noOrigin, f.branch ? t.branch(f.branch) : t.detached, t.commits(f.commits)]
+  if (f.uncommitted > 0) lines.push(t.uncommitted(f.uncommitted))
+  lines.push(f.githubLogin ? t.login(f.githubLogin) : t.noLogin, t.folder(f.folderName))
+
+  let next: PublishNextStep
+  if (f.hasOrigin) next = 'push'
+  else if (!f.branch) next = 'branch'
+  else if (f.commits === 0) next = f.uncommitted > 0 ? 'commitFirst' : 'nothing'
+  else if (!f.githubLogin) next = 'signIn'
+  else if (f.uncommitted > 0) next = 'askCommit'
+  else next = 'publish'
+  lines.push(t.next[next])
+  return lines.join('\n')
+}
+
 export function askAsTeacherInstruction(language: AiLanguage, subject: string): string {
   return pick(language, {
     'pt-BR': `Você é um professor que está explicando sobre git. O aluno tem dúvidas sobre "${subject}". Seja educado, calmo e sem exageros. Explique em português, com exemplos curtos se ajudar. Não execute nenhuma ação no repositório — só ensine.`,
@@ -882,7 +995,7 @@ export function shouldIncludePrSkills(messages: PrSkillMessage[]): boolean {
   return PR_INTENT_PATTERN.test(recentUserRequestText(messages))
 }
 
-export type ScmSkillId = 'git-workflow' | 'merge-branch' | 'codeowners' | 'repository-risk' | 'unwanted-file'
+export type ScmSkillId = 'git-workflow' | 'merge-branch' | 'codeowners' | 'repository-risk' | 'unwanted-file' | 'publish-repository'
 
 // Same gating as the PR skills: a skill joins the system prompt only once the
 // conversation is about it, so everyday chats don't pay for every playbook.
@@ -909,7 +1022,6 @@ const SCM_SKILL_TRIGGERS: { id: ScmSkillId; tools: Set<string>; pattern: RegExp;
       'list_tags',
       'create_tag',
       'push_tag',
-      'publish_repository',
       'prepare_release_notes',
       'reorganize_local_commits'
     ]),
@@ -943,6 +1055,15 @@ const SCM_SKILL_TRIGGERS: { id: ScmSkillId; tools: Set<string>; pattern: RegExp;
     pattern:
       /\bGH001\b|large files? detected|file size limit|\barquivos?\s+(?:muito\s+)?grandes?\b|\barchivos?\s+(?:muy\s+)?grandes?\b|\bgit\s+lfs\b|n[aã]o\s+(?:deveria|devia)\s+(?:ter\s+)?(?:sido\s+)?(?:commitad|comitad|subid|enviad|versionad)|\bno\s+(?:deber[ií]a|deb[ií]a)\s+(?:haber\s+)?(?:sido\s+)?(?:commitead|comitead|subid|enviad|versionad)|\b(?:commitei|comitei|subi)\s+(?:sem\s+querer|errado|por\s+engano)|\b(?:commite[eé]|comite[eé]|sub[ií])\s+(?:sin\s+querer|por\s+error|mal)/i,
     supersedes: ['git-workflow']
+  },
+  {
+    // Putting the open local repository on GitHub for the first time. Needs
+    // "github" or a repository word next to the verb, so "publica a branch"
+    // or "cria um PR no GitHub" stay out.
+    id: 'publish-repository',
+    tools: new Set(['publish_repository']),
+    pattern:
+      /\b(?:publica\w*|publish\w*|sub(?:ir|a|e|o)|sobe|upload\w*|manda\w*|coloca\w*|p[oô]e|put)\b[^\n.]{0,40}\bgithub\b|\b(?:publica\w*|publish\w*)\b[^\n.]{0,30}\b(?:reposit[oó]rio|repositorio|repo(?:sitory)?|projeto|proyecto|project)\b|\b(?:cri\w*|create\w*|crea\w*)\b[^\n.]{0,30}\b(?:reposit[oó]rio|repositorio|repo(?:sitory)?)\b[^\n.]{0,30}\bgithub\b/i
   }
 ]
 
