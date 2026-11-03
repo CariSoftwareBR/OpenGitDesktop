@@ -83,9 +83,6 @@ function RepoPickerModal({ open, repoPaths, onConfirm, onCancel }: RepoPickerMod
         </ul>
 
         <div className="mt-1 flex justify-end gap-2">
-          <button type="button" onClick={onCancel} className="btn-secondary">
-            {messages.common.cancel}
-          </button>
           <button
             type="button"
             onClick={() => onConfirm([...selected])}
@@ -93,6 +90,9 @@ function RepoPickerModal({ open, repoPaths, onConfirm, onCancel }: RepoPickerMod
             className="btn-primary"
           >
             {t.add(selected.size)}
+          </button>
+          <button type="button" onClick={onCancel} className="btn-secondary">
+            {messages.common.cancel}
           </button>
         </div>
       </div>

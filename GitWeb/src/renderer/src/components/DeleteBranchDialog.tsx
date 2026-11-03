@@ -173,11 +173,11 @@ export default function DeleteBranchDialog({ name, repoPath, onCancel, onDelete,
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-default-border pt-4">
           <p className="min-w-0 flex-1 text-caption text-tertiary-text">{t.deleteLocalNote}</p>
           <div className="flex shrink-0 gap-2">
-            <button ref={cancelRef} type="button" onClick={onCancel} className="btn-secondary">
-              {common.cancel}
-            </button>
             <button type="button" onClick={confirm} disabled={state.status === 'loading'} className="btn-danger">
               {confirmLabel}
+            </button>
+            <button ref={cancelRef} type="button" onClick={onCancel} className="btn-secondary">
+              {common.cancel}
             </button>
           </div>
         </div>

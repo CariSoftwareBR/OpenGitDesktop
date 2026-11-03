@@ -54,11 +54,11 @@ function PatchPreviewDialog({
           <DiffViewer diffText={diffText} />
         </div>
         <div className="mt-4 flex shrink-0 justify-end gap-2">
-          <button type="button" onClick={onCancel} className="btn-secondary" disabled={busy}>
-            {messages.common.cancel}
-          </button>
           <button type="button" onClick={onConfirm} className="btn-primary" disabled={busy || !diffText}>
             {busy ? messages.ui.applying : confirmLabel}
+          </button>
+          <button type="button" onClick={onCancel} className="btn-secondary" disabled={busy}>
+            {messages.common.cancel}
           </button>
         </div>
       </div>

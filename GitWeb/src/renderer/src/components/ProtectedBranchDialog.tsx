@@ -175,11 +175,11 @@ export default function ProtectedBranchDialog({
         </ol>
 
         <div className="mt-5 flex justify-end gap-2 border-t border-default-border pt-4">
-          <button type="button" onClick={onCancel} className="btn-secondary">
-            {common.cancel}
-          </button>
           <button type="button" onClick={submit} disabled={!trimmed || Boolean(invalid)} className="btn-primary">
             {t.createBranchKeepChanges}
+          </button>
+          <button type="button" onClick={onCancel} className="btn-secondary">
+            {common.cancel}
           </button>
         </div>
       </div>
