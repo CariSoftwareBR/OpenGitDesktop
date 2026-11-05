@@ -55,7 +55,9 @@ function normalizeSettings(stored: Partial<AppSettings>): AppSettings {
         ? stored.sensitiveCheckMode
         : DEFAULTS.sensitiveCheckMode,
     cloneBaseFolders: sanitizeCloneBaseFolders(stored.cloneBaseFolders),
-    lastCloneBaseFolder
+    lastCloneBaseFolder,
+    cloneOrganizeByOwner:
+      typeof stored.cloneOrganizeByOwner === 'boolean' ? stored.cloneOrganizeByOwner : DEFAULTS.cloneOrganizeByOwner
   }
 }
 

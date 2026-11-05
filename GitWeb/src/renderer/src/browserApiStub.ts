@@ -551,6 +551,10 @@ function installBrowserApiStub(): void {
         throw new Error(GITHUB_UNAVAILABLE)
       }
     },
+    repoOrganize: {
+      plan: async (root) => ({ root, rootIsRepository: false, moves: [], alreadyOrganized: 0, skipped: [] }),
+      apply: async () => ({ moved: [], failed: [], recent: recentData() })
+    },
     recentRepos: {
       list: async () => recentData(),
       add: async (path) => {

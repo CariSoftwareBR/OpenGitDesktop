@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import type { ReorganizePlan, ReorganizeResult, RepoMove } from '../shared/repoOrganize'
 import type {
   BranchDeletionResult,
   BranchInfo,
@@ -339,6 +340,11 @@ const api = {
       comments: { path: string; body: string; line: number }[] = []
     ): Promise<void> =>
       invoke('github:submitPullRequestReview', host, owner, repo, number, event, body, commitId, comments)
+  },
+  repoOrganize: {
+    plan: (rootPath: string): Promise<ReorganizePlan> => invoke('repoOrganize:plan', rootPath),
+    apply: (rootPath: string, confirmedMoves: RepoMove[]): Promise<ReorganizeResult> =>
+      invoke('repoOrganize:apply', rootPath, confirmedMoves)
   },
   recentRepos: {
     list: (): Promise<RecentReposData> => invoke('recentRepos:list'),

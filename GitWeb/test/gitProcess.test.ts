@@ -1,5 +1,5 @@
 import { execFileSync } from 'child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('electron', () => ({ shell: { trashItem: vi.fn() } }))
 vi.mock('../src/main/credentials', () => ({ getSecret: vi.fn(async () => null) }))
 
-const { isCommitPublished, locateFileInHistory, parseStatusEntries, pushBranch, readGit, runGit, undoUnpublishedCommit } = await import(
+const { cloneRepository, isCommitPublished, locateFileInHistory, parseStatusEntries, pushBranch, readGit, runGit, undoUnpublishedCommit } = await import(
   '../src/main/gitProcess'
 )
 
@@ -76,6 +76,23 @@ describe('with real repositories', () => {
 
   afterEach(() => {
     rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
+  })
+
+  it('clone creates the folders leading to the destination', async () => {
+    const destination = join(root, 'acme', 'team', 'site')
+    await expect(cloneRepository(remote, destination)).resolves.toEqual({ status: 'ok' })
+    expect(existsSync(join(destination, 'base.txt'))).toBe(true)
+  })
+
+  it('a failed clone leaves no empty folders behind, only what it created', async () => {
+    const missing = join(root, 'missing.git')
+    await expect(cloneRepository(missing, join(root, 'acme', 'team', 'site'))).rejects.toThrow()
+    expect(existsSync(join(root, 'acme'))).toBe(false)
+    expect(existsSync(root)).toBe(true)
+
+    mkdirSync(join(root, 'kept'))
+    await expect(cloneRepository(missing, join(root, 'kept', 'site'))).rejects.toThrow()
+    expect(existsSync(join(root, 'kept'))).toBe(true)
   })
 
   it('push keeps a local merge commit instead of flattening it', async () => {

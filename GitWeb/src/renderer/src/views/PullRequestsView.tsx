@@ -27,7 +27,7 @@ import PostMergeActions from '../components/PostMergeActions'
 import { pullRequestForBranch, usePullRequestStore } from '../store/pullRequestStore'
 import { useRepoStore } from '../store/repoStore'
 import { getActiveAiConfig, isAiConfigured, useAiStore } from '../store/aiStore'
-import { generatePrDraft } from '../lib/ai/prDraft'
+import { generateCommitMessage } from '../lib/ai/commitMessage'
 import { reviewPrDraft } from '../lib/ai/prReview'
 import { useClickOutside } from '../lib/useClickOutside'
 import { NARROW_LAYOUT_QUERY, useMediaQuery } from '../lib/useMediaQuery'
@@ -503,8 +503,16 @@ function NewPullRequestWizard({
   const createPullRequest = usePullRequestStore((s) => s.createPullRequest)
   const aiSettings = useAiStore((s) => s.settings)
   const aiApiKey = useAiStore((s) => s.apiKey)
+  const loadAiSettings = useAiStore((s) => s.loadSettings)
   const aiReady = isAiConfigured(aiSettings, aiApiKey)
   const currentBranch = branches.find((b) => b.isCurrent)?.name
+
+  // Without this the "generate with the agent" button silently stays hidden
+  // whenever the store has no settings yet, even with the AI fully configured.
+  useEffect(() => {
+    if (!aiSettings) void loadAiSettings()
+  }, [aiSettings, loadAiSettings])
+
   const hasUncommittedChanges = (status?.entries.length ?? 0) > 0
   const messages = useT()
   const t = messages.pullRequests
@@ -589,17 +597,16 @@ function NewPullRequestWizard({
     setGenerateError(null)
     try {
       const { settings, apiKey } = await getActiveAiConfig()
+      const entries = useRepoStore.getState().status?.entries ?? []
       const diff = hasUncommittedChanges
-        ? await getDraftDiff(currentRepoPath, effectiveBase, effectiveHead, useRepoStore.getState().status?.entries ?? [])
+        ? await getDraftDiff(currentRepoPath, effectiveBase, effectiveHead, entries)
         : await window.api.git.branchDiff(currentRepoPath, effectiveBase, effectiveHead)
       if (!diff.trim()) throw new Error(t.noDiff)
-      const draftResult = await generatePrDraft(settings, apiKey, {
-        headBranch: effectiveHead,
-        baseBranch: effectiveBase,
-        diff
-      })
-      setTitle(draftResult.title)
-      setBody(draftResult.body)
+      // The same generator as a commit, so a PR reads like the commits it carries.
+      const statusText = entries.map((e) => `${e.index}${e.worktree} ${e.path}`).join('\n')
+      const generated = await generateCommitMessage(settings, apiKey, effectiveHead, statusText, diff)
+      setTitle(generated.summary)
+      setBody(generated.description)
       setFlashKey((k) => k + 1)
       setJustGenerated(true)
       window.setTimeout(() => setJustGenerated(false), 1400)

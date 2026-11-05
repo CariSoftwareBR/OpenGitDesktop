@@ -1,3 +1,4 @@
+import type { ReorganizePlan, ReorganizeResult, RepoMove } from '../shared/repoOrganize'
 import type {
   BranchDeletionResult,
   BranchInfo,
@@ -247,6 +248,12 @@ export interface Api {
       commitId: string,
       comments?: { path: string; body: string; line: number }[]
     ) => Promise<void>
+  }
+  repoOrganize: {
+    /** Works out where each repository under the folder would go. Moves nothing. */
+    plan: (rootPath: string) => Promise<ReorganizePlan>
+    /** Only moves repositories whose source and destination still match the confirmed preview. */
+    apply: (rootPath: string, confirmedMoves: RepoMove[]) => Promise<ReorganizeResult>
   }
   recentRepos: {
     list: () => Promise<RecentReposData>

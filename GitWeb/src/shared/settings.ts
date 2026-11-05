@@ -26,6 +26,9 @@ export interface AppSettings {
   // Parent folders offered in the clone destination combobox (most recent first).
   cloneBaseFolders: string[]
   lastCloneBaseFolder: string | null
+  // When true, clones land in <base folder>/<account>/<repository> instead of
+  // directly in the base folder.
+  cloneOrganizeByOwner: boolean
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -37,7 +40,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   colorScheme: 'system',
   language: 'system',
   cloneBaseFolders: [],
-  lastCloneBaseFolder: null
+  lastCloneBaseFolder: null,
+  cloneOrganizeByOwner: false
 }
 
 export const MAX_CLONE_BASE_FOLDERS = 10
