@@ -1,6 +1,6 @@
 import { existsSync } from 'fs'
 import { randomUUID } from 'crypto'
-import { basename, resolve } from 'path'
+import { basename, isAbsolute, relative, resolve } from 'path'
 import { readJson, updateJson } from './appDataStore'
 import type { RecentReposData, RecentRepository, RepoGroup } from '../shared/git'
 
@@ -127,6 +127,22 @@ export function addRecentRepositories(paths: string[]): Promise<RecentReposData>
     }))
     return { ...file, repos: [...added, ...untouched] }
   })
+}
+
+/** Repositories that changed folder keep their place in the list and in their group. */
+export function moveRecentRepositories(moves: { from: string; to: string }[]): Promise<RecentReposData> {
+  return mutate((file) => ({
+    ...file,
+    repos: file.repos.map((repo) => {
+      for (const move of moves) {
+        const suffix = relative(canonicalPath(move.from), repo.path)
+        if (suffix === '..' || suffix.startsWith('../') || suffix.startsWith('..\\') || isAbsolute(suffix)) continue
+        const path = resolve(move.to, suffix)
+        return { ...repo, name: basename(path), path }
+      }
+      return repo
+    })
+  }))
 }
 
 export function removeRecentRepository(path: string): Promise<RecentReposData> {

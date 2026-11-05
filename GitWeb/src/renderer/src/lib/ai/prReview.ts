@@ -4,7 +4,7 @@ import { sendChatRequest } from './providers'
 import { getLocale } from '../i18n'
 import type { AiLanguage } from '../../../../shared/aiPrompts'
 
-// Unlike generatePrDraft, this returns free-form markdown (rendered directly
+// Unlike generateCommitMessage, this returns free-form markdown (rendered directly
 // via the app's Markdown component) rather than structured JSON — it's an
 // advisory opinion shown to the user, never parsed or used to gate anything.
 function buildPrompt(

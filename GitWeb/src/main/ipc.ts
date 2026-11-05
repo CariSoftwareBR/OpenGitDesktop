@@ -99,6 +99,8 @@ import {
   setRepoGroupCollapsed
 } from './recentRepositories'
 import { scanForRepositories } from './repoScan'
+import { planReorganization, reorganizeRepositories } from './repoOrganize'
+import type { RepoMove } from '../shared/repoOrganize'
 import { assertNoBlockedSensitive, scanHistory, scanSensitive, type SensitiveScanScope } from './sensitiveScan'
 import { createInitialCommit, publishRepository } from './publishRepository'
 import { assertAgentMayRead, redactForAi } from './aiRedaction'
@@ -409,6 +411,10 @@ export function registerIpcHandlers(): void {
     ) => githubApi.submitPullRequestReview(host, owner, repo, number, event, body, commitId, comments)
   )
 
+  handle('repoOrganize:plan', (_e, rootPath: string) => planReorganization(rootPath))
+  handle('repoOrganize:apply', (_e, rootPath: string, confirmedMoves: RepoMove[]) =>
+    reorganizeRepositories(rootPath, confirmedMoves)
+  )
   handle('recentRepos:list', () => listRecentRepositories())
   handle('recentRepos:add', (_e, path: string) => addRecentRepository(path))
   handle('recentRepos:addMany', (_e, paths: string[]) => addRecentRepositories(paths))

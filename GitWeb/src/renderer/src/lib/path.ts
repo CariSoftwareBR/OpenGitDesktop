@@ -53,6 +53,17 @@ export function pathsEqual(a: string, b: string): boolean {
   return stripTrailingSep(a).toLowerCase() === stripTrailingSep(b).toLowerCase()
 }
 
+/** One spelling per folder, as main sees it: letter case only folds for Windows paths. */
+export function pathKey(path: string): string {
+  const normalized = stripTrailingSep(path).replace(/\\/g, '/')
+  return /^[a-zA-Z]:|^\/\//.test(normalized) ? normalized.toLowerCase() : normalized
+}
+
+export function isInsidePath(parent: string, child: string): boolean {
+  const prefix = pathKey(parent).replace(/\/$/, '')
+  return pathKey(child).startsWith(`${prefix}/`)
+}
+
 /** A repository path as an anchored .gitignore pattern: `src/.env` → `/src/.env`. */
 export function toIgnorePattern(path: string): string {
   const normalized = path.replace(/\\/g, '/').replace(/^\.\//, '')

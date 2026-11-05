@@ -1,7 +1,7 @@
 import { spawn, type ChildProcess } from 'child_process'
 import { shell } from 'electron'
-import { lstat, readFile, rm, writeFile, mkdir, access, realpath, stat } from 'fs/promises'
-import { join, dirname, basename, resolve, sep, normalize } from 'path'
+import { lstat, readFile, rm, rmdir, writeFile, mkdir, access, realpath, stat } from 'fs/promises'
+import { join, dirname, basename, resolve, sep, normalize, toNamespacedPath } from 'path'
 import type {
   BranchDeleteCheck,
   BranchDeletionResult,
@@ -323,6 +323,8 @@ export async function cloneRepository(
   const folderName = basename(destination)
   const extraEnv = await buildAuthEnv(trimmedUrl)
   const handleStderr = onProgress ? createCloneProgressParser(destination, onProgress) : undefined
+  // Git runs from the parent, so it has to exist (e.g. a new account's folder).
+  const firstCreated = await mkdir(parent, { recursive: true })
 
   let result: GitResult
   try {
@@ -345,11 +347,33 @@ export async function cloneRepository(
   if (cancelledClones.has(key)) {
     cancelledClones.delete(key)
     if (!preexisting) await removePartialClone(destination)
+    await removeCreatedFolders(parent, firstCreated)
     return { status: 'cancelled' }
   }
 
-  throwOnFailure(result, ['clone', trimmedUrl])
+  try {
+    throwOnFailure(result, ['clone', trimmedUrl])
+  } catch (err) {
+    await removeCreatedFolders(parent, firstCreated)
+    throw err
+  }
   return { status: 'ok' }
+}
+
+// Undoes the mkdir of a clone that didn't happen. rmdir only takes empty
+// folders, so anything else that landed in there in the meantime stays.
+async function removeCreatedFolders(deepest: string, firstCreated: string | undefined): Promise<void> {
+  if (!firstCreated) return
+  let dir = resolve(deepest)
+  try {
+    // On Windows mkdir reports the created folder in its `\\?\C:\…` form.
+    while (toNamespacedPath(dir).length >= firstCreated.length) {
+      await rmdir(dir)
+      dir = dirname(dir)
+    }
+  } catch {
+    // Not empty or still held open: leaving an empty folder behind is harmless.
+  }
 }
 
 // On Windows child.kill() terminates only git.exe, orphaning the transport

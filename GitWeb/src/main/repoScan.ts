@@ -5,7 +5,7 @@ const MAX_SCAN_DEPTH = 2
 const MAX_RESULTS = 200
 const SKIP_DIR_NAMES = new Set(['node_modules', 'dist', 'build', 'out', 'venv', '__pycache__', 'vendor'])
 
-async function scanLevel(dir: string, depth: number, results: string[]): Promise<void> {
+async function scanLevel(dir: string, depth: number, maxDepth: number, results: string[]): Promise<void> {
   if (results.length >= MAX_RESULTS) return
   let entries
   try {
@@ -25,10 +25,10 @@ async function scanLevel(dir: string, depth: number, results: string[]): Promise
     subDirs.push(entry.name)
   }
 
-  if (depth >= MAX_SCAN_DEPTH) return
+  if (depth >= maxDepth) return
   for (const name of subDirs) {
     if (results.length >= MAX_RESULTS) return
-    await scanLevel(join(dir, name), depth + 1, results)
+    await scanLevel(join(dir, name), depth + 1, maxDepth, results)
   }
 }
 
@@ -38,7 +38,7 @@ async function scanLevel(dir: string, depth: number, results: string[]): Promise
  * Stops descending as soon as it finds a `.git` folder, so it returns
  * top-level repos rather than every nested submodule.
  */
-export async function scanForRepositories(rootPath: string): Promise<string[]> {
+export async function scanForRepositories(rootPath: string, maxDepth = MAX_SCAN_DEPTH): Promise<string[]> {
   const results: string[] = []
   let entries
   try {
@@ -52,7 +52,7 @@ export async function scanForRepositories(rootPath: string): Promise<string[]> {
   )
   for (const entry of subDirs) {
     if (results.length >= MAX_RESULTS) break
-    await scanLevel(join(rootPath, entry.name), 1, results)
+    await scanLevel(join(rootPath, entry.name), 1, maxDepth, results)
   }
   return results
 }

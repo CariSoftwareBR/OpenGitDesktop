@@ -5,14 +5,20 @@ import { useRepoStore } from '../store/repoStore'
 import { useGithubAuthStore } from '../store/githubAuthStore'
 import { useAppSettingsStore } from '../store/appSettingsStore'
 import type { GitHubRepoSummary, GitHubUser } from '../lib/github'
+import { parseRemoteUrl } from '../../../shared/remoteOwner'
 import { useFocusTrap } from '../lib/useFocusTrap'
 import { basename, dirname, joinPath, pathsEqual } from '../lib/path'
 import {
+  cloneParentFolder,
   collectCloneBaseFolders,
+  destinationForNewBase,
+  destinationForPlacement,
   destinationForRepo,
   destinationWithBase,
+  placementPath,
   rememberCloneBaseFolder,
-  repoNameFromCloneUrl
+  repoNameFromCloneUrl,
+  type ClonePlacement
 } from '../lib/cloneDestination'
 import GithubLoginModal from './GithubLoginModal'
 import CloneDestinationField from './CloneDestinationField'
@@ -84,32 +90,6 @@ const LANGUAGE_COLORS: Record<string, string> = {
   Dockerfile: '#384d54',
   Svelte: '#ff3e00',
   Astro: '#ff5a03'
-}
-
-interface ParsedRemote {
-  host: string
-  owner: string
-  name: string
-}
-
-function parseRemoteUrl(raw: string): ParsedRemote | null {
-  const url = raw.trim()
-  if (!url) return null
-  const ssh = /^(?:ssh:\/\/)?[\w.-]+@([^:/\s]+)[:/](.+?)(?:\.git)?\/?$/.exec(url)
-  if (ssh) {
-    const segments = ssh[2].split('/').filter(Boolean)
-    if (segments.length < 2) return null
-    return { host: ssh[1], owner: segments.slice(0, -1).join('/'), name: segments[segments.length - 1] }
-  }
-  try {
-    const parsed = new URL(url)
-    if (!/^(https?|git):$/.test(parsed.protocol)) return null
-    const segments = parsed.pathname.replace(/\.git\/?$/, '').split('/').filter(Boolean)
-    if (segments.length < 2) return null
-    return { host: parsed.host, owner: segments.slice(0, -1).join('/'), name: segments[segments.length - 1] }
-  } catch {
-    return null
-  }
 }
 
 /* ── Pieces ─────────────────────────────────────────────────────────────── */
@@ -418,7 +398,9 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
   const [cloneDestination, setCloneDestination] = useState('')
   const [baseFolder, setBaseFolder] = useState('')
   const [appliedRepoName, setAppliedRepoName] = useState('')
+  const [appliedOwner, setAppliedOwner] = useState('')
   const [loginModalOpen, setLoginModalOpen] = useState(false)
+  const organizeByOwner = settings?.cloneOrganizeByOwner ?? false
 
   // Destination of the clone in flight — also the flag that puts the dialog in
   // its progress state, since isBusy is shared with every other store action.
@@ -528,24 +510,37 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
     await updateSettings(next)
   }
 
-  function applyRepoName(repoName: string): void {
+  function currentPlacement(): ClonePlacement {
+    return { base: baseFolder, owner: appliedOwner, repo: appliedRepoName, byOwner: organizeByOwner }
+  }
+
+  function applyRepoName(repoName: string, owner: string): void {
     if (!repoName) return
-    setCloneDestination((dest) => destinationForRepo(dest, baseFolder, appliedRepoName, repoName))
+    setCloneDestination((dest) =>
+      organizeByOwner
+        ? destinationForPlacement(dest, currentPlacement(), { ...currentPlacement(), repo: repoName, owner })
+        : destinationForRepo(dest, baseFolder, appliedRepoName, repoName)
+    )
     setAppliedRepoName(repoName)
+    setAppliedOwner(owner)
   }
 
   function handleSelectRepo(repo: GitHubRepoSummary): void {
     setCloneUrl(repo.cloneUrl)
-    applyRepoName(repo.name)
+    applyRepoName(repo.name, repo.owner)
   }
 
   function handleCloneUrlChange(url: string): void {
     setCloneUrl(url)
-    applyRepoName(repoNameFromCloneUrl(url))
+    applyRepoName(repoNameFromCloneUrl(url), parseRemoteUrl(url)?.owner ?? '')
   }
 
   function handleSelectBase(folder: string): void {
-    setCloneDestination((dest) => destinationWithBase(dest, baseFolder, folder, appliedRepoName))
+    setCloneDestination((dest) =>
+      organizeByOwner
+        ? destinationForNewBase(dest, currentPlacement(), { ...currentPlacement(), base: folder })
+        : destinationWithBase(dest, baseFolder, folder, appliedRepoName)
+    )
     setBaseFolder(folder)
     void rememberBase(folder)
   }
@@ -555,14 +550,18 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
     if (!path) return
     const repoName = appliedRepoName || repoNameFromCloneUrl(cloneUrl)
     setBaseFolder(path)
-    setCloneDestination(destinationWithBase(cloneDestination, baseFolder, path, repoName))
+    setCloneDestination(
+      organizeByOwner
+        ? destinationForNewBase(cloneDestination, currentPlacement(), { ...currentPlacement(), base: path, repo: repoName })
+        : destinationWithBase(cloneDestination, baseFolder, path, repoName)
+    )
     await rememberBase(path)
   }
 
   function resolvedDestination(): string {
-    const repoName = appliedRepoName || repoNameFromCloneUrl(cloneUrl)
+    const repo = appliedRepoName || repoNameFromCloneUrl(cloneUrl)
     const destination = cloneDestination.trim()
-    if (repoName && destination && pathsEqual(destination, baseFolder)) return joinPath(destination, repoName)
+    if (repo && destination && pathsEqual(destination, baseFolder)) return placementPath({ ...currentPlacement(), repo })
     return destination
   }
 
@@ -572,7 +571,8 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
     if (!canClone) return
     const destination = resolvedDestination()
     const parent = dirname(destination)
-    if (parent) await rememberBase(parent)
+    // The account's folder is derived from the base — the base is what to offer next time.
+    if (parent) await rememberBase(pathsEqual(parent, cloneParentFolder(currentPlacement())) ? baseFolder : parent)
 
     setCloningPath(destination)
     try {

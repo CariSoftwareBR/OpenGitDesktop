@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { PublishRepositoryInput, PublishRepositoryResult } from '../../../shared/github'
+import type { ReorganizeResult, RepoMove } from '../../../shared/repoOrganize'
 import { isConflicted, isHistoryRewrittenMessage, sameRepoStatus, stashBranchName } from '../../../shared/git'
 import type {
   BranchInfo,
@@ -25,6 +26,7 @@ import {
 import { useAppSettingsStore } from './appSettingsStore'
 import { getT } from '../lib/i18n'
 import { directPushBlock } from '../lib/branchProtection'
+import { isInsidePath, joinPath, pathKey } from '../lib/path'
 import { extractHunkPatch, parseFileDiff } from '../../../shared/patch'
 
 type ViewName = 'changes' | 'history' | 'stash' | 'pullRequests' | 'dashboard' | 'settings' | 'about'
@@ -114,6 +116,7 @@ interface RepoState {
   clearPublishPrompt: () => void
   cloneRepository: (url: string, destination: string) => Promise<'ok' | 'cancelled' | 'failed'>
   cancelClone: (destination: string) => Promise<void>
+  reorganizeRepositories: (rootPath: string, confirmedMoves: RepoMove[]) => Promise<ReorganizeResult>
   closeRepository: () => void
   refreshStatus: () => Promise<void>
   refreshBranches: () => Promise<void>
@@ -511,6 +514,40 @@ export const useRepoStore = create<RepoState>((set, get) => ({
 
   cancelClone: async (destination: string) => {
     await window.api.git.cancelClone(destination)
+  },
+
+  reorganizeRepositories: async (rootPath, confirmedMoves) => {
+    const errorBefore = get().error
+    const result = await window.api.repoOrganize.apply(rootPath, confirmedMoves)
+    const follow = (path: string): string => {
+      const move = result.moved.find(({ from }) => pathKey(from) === pathKey(path) || isInsidePath(from, path))
+      if (!move) return path
+      const suffix = path.replace(/\\/g, '/').slice(pathKey(move.from).length)
+      return joinPath(move.to, move.to.includes('\\') ? suffix.replace(/\//g, '\\') : suffix)
+    }
+    const followKeys = <T,>(record: Record<string, T>): Record<string, T> =>
+      Object.fromEntries(Object.entries(record).map(([path, value]) => [follow(path), value]))
+
+    set((state) => ({
+      recentRepos: result.recent.repos,
+      repoGroups: result.recent.groups,
+      recentRepoChecks: followKeys(state.recentRepoChecks),
+      batchUpdateResults: followKeys(state.batchUpdateResults),
+      selectedRepoPaths: state.selectedRepoPaths.map(follow)
+    }))
+
+    // The open repository follows in place: reopening it would leave Settings,
+    // and anything still in flight for the old path must be dropped.
+    const current = get().currentRepoPath
+    if (current && follow(current) !== current) {
+      // A background refresh that ran between the rename and now failed on the
+      // old path; its "folder is gone" error says nothing about the repository.
+      repoOpenGeneration++
+      set({ currentRepoPath: follow(current), error: errorBefore })
+      await window.api.settings.setLastRepositoryPath(follow(current))
+      await Promise.all([get().refreshStatus(), get().refreshBranches(), get().refreshLog()])
+    }
+    return result
   },
 
   closeRepository: () => {

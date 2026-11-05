@@ -1,6 +1,7 @@
 import { parseGitHubRemote } from '../../../shared/githubRemote'
+import { ownerFolders } from '../../../shared/remoteOwner'
 import { MAX_CLONE_BASE_FOLDERS } from '../../../shared/settings'
-import { basename, dirname, joinPath, pathsEqual, stripTrailingSep } from './path'
+import { basename, dirname, isInsidePath, joinPath, pathsEqual, stripTrailingSep } from './path'
 
 export function repoNameFromCloneUrl(url: string): string {
   const trimmed = url.trim()
@@ -35,7 +36,13 @@ export function collectCloneBaseFolders(
 
   add(lastUsed)
   for (const folder of saved) add(folder)
-  for (const repoPath of recentRepoPaths) add(dirname(repoPath))
+  // A repository inside a known base is base/account/repo: its parent is the
+  // account's folder, and cloning another account's repository there would nest it.
+  const known = [...result]
+  for (const repoPath of recentRepoPaths) {
+    const parent = dirname(repoPath)
+    if (!known.some((base) => isInsidePath(base, parent))) add(parent)
+  }
   return result
 }
 
@@ -68,6 +75,49 @@ export function destinationForRepo(
   const base = destIsOnlyBase ? baseFolder || dirname(dest) : dirname(dest) || baseFolder
   if (!base) return currentDest
   return joinPath(base, nextRepoName)
+}
+
+/** Where a clone goes when the destination follows the choices in the dialog. */
+export interface ClonePlacement {
+  base: string
+  owner: string
+  repo: string
+  byOwner: boolean
+}
+
+export function cloneParentFolder({ base, owner, byOwner }: ClonePlacement): string {
+  const folders = byOwner ? ownerFolders(owner) : null
+  if (!folders) return base
+  // The base already is that account's folder — don't nest C:\Git\acme\acme\repo.
+  if (base && pathsEqual(basename(base), folders[folders.length - 1])) return base
+  return folders.reduce(joinPath, base)
+}
+
+export function placementPath(placement: ClonePlacement): string {
+  const parent = cloneParentFolder(placement)
+  return placement.repo ? joinPath(parent, placement.repo) : parent
+}
+
+function isUntouched(dest: string, placement: ClonePlacement): boolean {
+  return !dest || pathsEqual(dest, placement.base) || pathsEqual(dest, placementPath(placement))
+}
+
+/**
+ * Another repository was chosen. A destination the user edited goes by the same
+ * rules as without accounts: a custom name stays, an edited parent is kept.
+ * With no base folder yet there is nowhere to put an account folder, and a
+ * relative path would land wherever the app happens to be running.
+ */
+export function destinationForPlacement(currentDest: string, previous: ClonePlacement, next: ClonePlacement): string {
+  if (next.base && isUntouched(currentDest.trim(), previous)) return placementPath(next)
+  return destinationForRepo(currentDest, next.base, previous.repo, next.repo)
+}
+
+/** Another base folder was chosen: everything moves under it, and a custom name stays. */
+export function destinationForNewBase(currentDest: string, previous: ClonePlacement, next: ClonePlacement): string {
+  const dest = currentDest.trim()
+  if (isUntouched(dest, previous)) return placementPath(next)
+  return joinPath(cloneParentFolder(next), basename(dest))
 }
 
 export function destinationWithBase(

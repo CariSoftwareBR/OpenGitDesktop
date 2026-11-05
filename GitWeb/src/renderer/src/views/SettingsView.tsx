@@ -5,6 +5,8 @@ import {
   Check,
   ChevronRight,
   FileKey,
+  FolderSync,
+  FolderTree,
   HeartHandshake,
   Info,
   Languages,
@@ -27,6 +29,7 @@ import { DEFAULT_APP_SETTINGS, PROJECT_CO_AUTHOR_TRAILER, type ColorSchemePrefer
 import type { SensitiveCheckMode, SensitiveKind } from '../../../shared/sensitiveFiles'
 import Switch from '../components/Switch'
 import GithubLoginModal from '../components/GithubLoginModal'
+import ReorganizeReposDialog from '../components/ReorganizeReposDialog'
 import AiSettingsForm from '../components/AiSettingsForm'
 import { AI_SETTINGS_SECTION_ID, useSettingsTabStore, type SettingsTab } from '../lib/openAiSettings'
 import { NARROW_LAYOUT_QUERY, useMediaQuery } from '../lib/useMediaQuery'
@@ -201,6 +204,7 @@ function GeneralPanel(): JSX.Element {
   const updateSettings = useAppSettingsStore((s) => s.updateSettings)
   const setView = useRepoStore((s) => s.setView)
   const t = useT().settings
+  const [reorganizeOpen, setReorganizeOpen] = useState(false)
 
   return (
     <>
@@ -237,6 +241,33 @@ function GeneralPanel(): JSX.Element {
           </code>
         </SettingRow>
         </div>
+      </section>
+
+      <section className="flex flex-col gap-2.5">
+        <h2 className="settings-heading">{t.clone.heading}</h2>
+        <div className="settings-group">
+          <SettingRow
+            icon={FolderTree}
+            tone="green"
+            label={t.clone.organizeByOwner}
+            description={t.clone.organizeByOwnerHint}
+            checked={settings?.cloneOrganizeByOwner ?? false}
+            onChange={(checked) => updateSettings({ cloneOrganizeByOwner: checked })}
+          />
+          <div className="settings-row flex items-center gap-3.5">
+            <span className="settings-icon is-blue">
+              <FolderSync size={16} aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-body font-semibold text-primary-text">{t.reorganize.rowLabel}</div>
+              <p className="mt-0.5 text-caption text-secondary-text">{t.reorganize.rowHint}</p>
+            </div>
+            <button type="button" onClick={() => setReorganizeOpen(true)} className="btn-secondary shrink-0">
+              {t.reorganize.open}
+            </button>
+          </div>
+        </div>
+        <ReorganizeReposDialog open={reorganizeOpen} onClose={() => setReorganizeOpen(false)} />
       </section>
 
       <section className="flex flex-col gap-2.5">
