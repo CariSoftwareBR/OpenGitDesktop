@@ -1,7 +1,7 @@
 import { execFileSync, spawn } from 'child_process'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
-import { join, resolve } from 'path'
+import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('electron', () => ({ shell: { trashItem: vi.fn() } }))
@@ -48,7 +48,9 @@ describe('reorganizing repositories', () => {
   }
 
   beforeEach(() => {
-    root = resolve(mkdtempSync(join(tmpdir(), 'ogd-organize-')))
+    // The spelling git reports: tmpdir() can be an 8.3 name (Windows runners) or
+    // go through a symlink (/var → /private/var on macOS).
+    root = realpathSync.native(mkdtempSync(join(tmpdir(), 'ogd-organize-')))
     files.clear()
   })
 
