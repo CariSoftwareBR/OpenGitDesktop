@@ -283,6 +283,8 @@ The palette is restrained at rest and categorical in motion: neutrals carry the 
 
 **The Data-Viz Exception.** Charts on the Dashboard are the one place hue encodes *identity* (a language, a contributor) instead of action or state. They use their own `--viz-1…8` categorical set and a `--viz-seq-1…5` blue ramp (defined in `global.css`), validated for colour-vision deficiency against the real panel surfaces, separately stepped for dark and light. Chart text stays in text tokens; every coloured mark has a visible text label beside it.
 
+**The Activity Sky Exception.** The Messages screen is the one operational surface allowed atmosphere, by explicit product decision: the account's last 30 days are drawn as a night sky, and that sky is a real spatial canvas plotting real data. Inside `.sky` it may use soft radial washes of Command Blue and Warning Amber, a bottom fade into Midnight Base, decorative dust, a drop-shadow glow on star marks, and a glint on new stars. Amber here encodes identity (a GitHub star), not caution; `--sky-star` replaces Warning Amber in the light theme, whose text-grade value reads brown as a mark. The invitation card just below (`.inbox-invite`) may carry a soft tint and a colored offset shadow, because it is the screen's one decision. High-contrast themes drop the washes, dust, glints, glow, card tint and colored shadow; `prefers-reduced-motion` stops all of the movement. This exception does not extend to any other screen.
+
 **The Red Means Danger Rule.** Danger Red is reserved for destructive actions, failures, and intervention. It is forbidden as decorative emphasis.
 
 **The Contrast Before Atmosphere Rule.** Readability wins over subtlety. Muted text and placeholders must meet WCAG 2.2 AA against their actual surface, in every theme variant, not only the dark default.
@@ -339,7 +341,8 @@ OpenGitDesktop uses structural layering. Midnight Base, Obsidian Panel, and Coal
 - **View enter**: switching tabs brings the incoming view up 6px with a 3px de-blur over 280ms (expo ease-out). It uses `backwards` fill only, so no transform or filter lingers to trap `position: fixed` menus.
 - **List selection**: rows mark hover and selection with a short rounded accent pill on the leading edge that grows from the row's middle (`--row-accent` recolors it; conflicts use Warning Amber).
 - **Tab indicator**: the active tab's underline grows from its center.
-- **Assistant standby**: the empty-chat emblem breathes a soft Command Blue ring. It is the only idle loop in the app.
+- **Assistant standby**: the empty-chat emblem breathes a soft Command Blue ring. Outside the Activity Sky, it is the only idle loop in the app.
+- **Activity Sky**: on Messages, the graph line draws itself once on entry, and a few dust points, new stars and the "now" marker keep moving quietly. Anything that loops lives on its own layer outside the SVG, so it never repaints the sky.
 - All of it collapses under `prefers-reduced-motion`.
 
 ### Named Rules
@@ -411,8 +414,8 @@ Switches use a `42px` by `24px` track with an `18px` thumb and explicit text lab
 - **Do** require explicit confirmation for destructive Git actions (discard, abort merge, drop stash, pop stash, merge or close a pull request). Danger confirms focus Cancel, not the destructive button.
 
 ### Don't:
-- **Don't** turn OpenGitDesktop into glossy generic SaaS marketing with decorative gradients, hero-metric templates, or glass cards.
-- **Don't** use neon glows or speculative hype aesthetics.
+- **Don't** turn OpenGitDesktop into glossy generic SaaS marketing with decorative gradients, hero-metric templates, or glass cards. The Activity Sky Exception is the only allowance, and only on Messages.
+- **Don't** use neon glows or speculative hype aesthetics. The restrained star glow inside the Activity Sky is the only exception.
 - **Don't** reduce the product to an undifferentiated CRUD admin panel; keep the daily Git path (changes → diff → commit) primary.
 - **Don't** compete with that path using equal-weight header cards or icon-only Settings/About buttons; Settings is a labeled tab, About lives inside it.
 - **Don't** use decorative grid backgrounds unless the surface is an actual charting or spatial canvas.

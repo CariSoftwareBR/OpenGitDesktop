@@ -2916,6 +2916,10 @@
 [data-theme$='hc'] .sky-star path {
   filter: none;
 }
+[data-theme$='hc'] .inbox-invite {
+  background: var(--color-obsidian-panel);
+  box-shadow: none;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .sky-twinkle,
