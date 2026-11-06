@@ -1,4 +1,4 @@
-import { ipcMain, app, BrowserWindow, type WebFrameMain } from 'electron'
+import { ipcMain, app, BrowserWindow, Notification, type WebContents, type WebFrameMain } from 'electron'
 import {
   abortMerge,
   applyPatch,
@@ -145,7 +145,33 @@ function handle(channel: string, listener: Parameters<typeof ipcMain.handle>[1])
   })
 }
 
+// Held until dismissed: Electron drops the click handler of a notification that gets garbage collected.
+const liveNotifications = new Set<Notification>()
+
+/** Lives here because the session's permission handler refuses the renderer's own Notification API. */
+function showDesktopNotification(sender: WebContents, title: string, body: string): void {
+  if (!Notification.isSupported()) return
+  const notification = new Notification({ title, body })
+  liveNotifications.add(notification)
+  notification.on('close', () => liveNotifications.delete(notification))
+  notification.on('failed', (_event, error) => {
+    liveNotifications.delete(notification)
+    console.error('Desktop notification failed:', error)
+  })
+  notification.on('click', () => {
+    liveNotifications.delete(notification)
+    if (sender.isDestroyed()) return
+    const window = BrowserWindow.fromWebContents(sender)
+    if (window?.isMinimized()) window.restore()
+    window?.show()
+    window?.focus()
+    sender.send('app:notification-clicked')
+  })
+  notification.show()
+}
+
 export function registerIpcHandlers(): void {
+  handle('app:showNotification', (event, title: string, body: string) => showDesktopNotification(event.sender, title, body))
   handle('app:getVersion', () => app.getVersion())
   handle('app:getUpdateStatus', () => getUpdateStatus())
   handle('app:checkForUpdates', () => checkForUpdates())
@@ -353,6 +379,14 @@ export function registerIpcHandlers(): void {
   handle('github:getRepositoryCollaborators', (_e, host: string, owner: string, repo: string) =>
     githubApi.getRepositoryCollaborators(host, owner, repo)
   )
+  handle('github:getReceivedInvitations', (_e, host: string) => githubApi.getReceivedInvitations(host))
+  handle('github:acceptInvitation', (_e, host: string, invitationId: number) => githubApi.acceptInvitation(host, invitationId))
+  handle('github:declineInvitation', (_e, host: string, invitationId: number) => githubApi.declineInvitation(host, invitationId))
+  handle('github:getNotifications', (_e, host: string) => githubApi.getNotifications(host))
+  handle('github:markNotificationRead', (_e, host: string, threadId: string) => githubApi.markNotificationRead(host, threadId))
+  handle('github:markAllNotificationsRead', (_e, host: string, lastReadAt: string) => githubApi.markAllNotificationsRead(host, lastReadAt))
+  handle('github:getRecentStars', (_e, host: string) => githubApi.getRecentStars(host))
+  handle('github:searchUsers', (_e, host: string, query: string) => githubApi.searchUsers(host, query))
   handle('github:addCollaborator', (_e, host: string, owner: string, repo: string, username: string, role?: RepositoryRole) =>
     githubApi.addCollaborator(host, owner, repo, username, role)
   )

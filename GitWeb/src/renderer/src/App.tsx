@@ -4,6 +4,8 @@ import { useRepoStore } from './store/repoStore'
 import { usePullRequestStore } from './store/pullRequestStore'
 import { useAppSettingsStore } from './store/appSettingsStore'
 import { useAiStore } from './store/aiStore'
+import { useGithubAuthStore } from './store/githubAuthStore'
+import { useInboxStore } from './store/inboxStore'
 import { useResolvedTheme } from './lib/theme'
 import { COMPACT_SHELL_QUERY, useMediaQuery } from './lib/useMediaQuery'
 import InitialView from './views/InitialView'
@@ -15,6 +17,7 @@ import StashesView from './views/StashesView'
 import PullRequestsView from './views/PullRequestsView'
 import CollaboratorsView from './views/CollaboratorsView'
 import DashboardView from './views/DashboardView'
+import MessagesView from './views/MessagesView'
 import AiChatView from './views/AiChatView'
 import SettingsView from './views/SettingsView'
 import AboutView from './views/AboutView'
@@ -60,6 +63,7 @@ function BranchStashBanner(): JSX.Element | null {
 const MIN_CHAT_WIDTH = AI_CHAT_MIN_WIDTH
 const MAX_CHAT_WIDTH = 720
 const DEFAULT_CHAT_WIDTH = 400
+const INBOX_POLL_MS = 5 * 60 * 1000
 
 function App(): JSX.Element {
   const currentRepoPath = useRepoStore((s) => s.currentRepoPath)
@@ -241,12 +245,37 @@ function App(): JSX.Element {
     }
   }, [currentRepoPath])
 
+  // Lives here, not in the Messages view, so the program checks and warns from
+  // the moment it starts: with no repository open, and on any tab. Signing in or
+  // out changes whose invitations these are, so that checks again too.
+  const prLogin = usePullRequestStore((s) => s.user?.login)
+  const startScreenLogin = useGithubAuthStore((s) => s.user?.login)
+  const refreshInbox = useInboxStore((s) => s.refresh)
+  useEffect(() => {
+    void refreshInbox()
+  }, [prLogin, startScreenLogin, refreshInbox])
+  useEffect(() => {
+    const id = setInterval(() => void refreshInbox(), INBOX_POLL_MS)
+    const stopListening = window.api.app.onNotificationClicked(() => useRepoStore.getState().setView('messages'))
+    return () => {
+      clearInterval(id)
+      stopListening()
+    }
+  }, [refreshInbox])
+
   if (view === 'about') {
     return <AboutView />
   }
 
   if (!currentRepoPath) {
     if (view === 'settings') return <SettingsView />
+    if (view === 'messages') {
+      return (
+        <div className="h-screen bg-midnight-base">
+          <MessagesView />
+        </div>
+      )
+    }
     return (
       <>
         <InitialView />
@@ -313,6 +342,7 @@ function App(): JSX.Element {
           {view === 'pullRequests' && <PullRequestsView />}
           {view === 'collaborators' && <CollaboratorsView />}
           {view === 'dashboard' && <DashboardView />}
+          {view === 'messages' && <MessagesView />}
           {view === 'settings' && <SettingsView />}
         </main>
 

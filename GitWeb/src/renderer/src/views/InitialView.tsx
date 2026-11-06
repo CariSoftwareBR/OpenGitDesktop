@@ -17,6 +17,7 @@ import {
   DownloadCloud,
   FolderOpen,
   FolderPlus,
+  Inbox,
   Info,
   Loader2,
   Search,
@@ -28,6 +29,7 @@ import {
 import Github from '../components/icons/Github'
 import { useRepoStore } from '../store/repoStore'
 import { useGithubAuthStore } from '../store/githubAuthStore'
+import { pendingMessageCount, useInboxStore } from '../store/inboxStore'
 import GithubLoginModal from '../components/GithubLoginModal'
 import RepoPickerModal from '../components/RepoPickerModal'
 import CloneModal from '../components/CloneModal'
@@ -219,6 +221,8 @@ function MoveToGroupMenu({
 }
 
 function InitialView(): JSX.Element {
+  const pendingMessages = useInboxStore(pendingMessageCount)
+  const messagesLabel = useT().inbox.title
   const recentRepos = useRepoStore((s) => s.recentRepos)
   const recentRepoChecks = useRepoStore((s) => s.recentRepoChecks)
   const selectedRepoPaths = useRepoStore((s) => s.selectedRepoPaths)
@@ -575,6 +579,19 @@ function InitialView(): JSX.Element {
     summary.ok > 0 && { tone: 'bg-success-green', text: t.summaryOk(summary.ok) }
   ].filter(Boolean) as { tone: string; text: string }[]
 
+  const messagesLink = (
+    <button
+      type="button"
+      onClick={() => setView('messages')}
+      aria-label={pendingMessages > 0 ? `${messagesLabel} (${pendingMessages})` : messagesLabel}
+      className="flex items-center gap-1.5 text-caption text-tertiary-text transition-colors duration-100 hover:text-primary-text"
+    >
+      <Inbox size={13} aria-hidden />
+      {messagesLabel}
+      {pendingMessages > 0 && <span className="count-badge is-attention">{pendingMessages}</span>}
+    </button>
+  )
+
   return (
     <main className="flex h-screen w-full flex-col overflow-hidden bg-midnight-base lg:flex-row">
       {/* The bench: who you are, and the three ways in. Stays put while the
@@ -640,7 +657,8 @@ function InitialView(): JSX.Element {
               </span>
             </div>
           )}
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            {messagesLink}
             <button
               type="button"
               onClick={() => setView('settings')}
@@ -801,6 +819,7 @@ function InitialView(): JSX.Element {
 
           {/* Narrow windows hide the rail's footer; its links live here instead. */}
           <footer className="flex justify-center gap-4 pt-2 lg:hidden">
+            {messagesLink}
             <button
               type="button"
               onClick={() => setView('settings')}

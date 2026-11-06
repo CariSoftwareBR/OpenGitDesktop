@@ -7,7 +7,9 @@ import type {
   BranchRules,
   CreatePullRequestInput,
   GitHubRepoSummary,
+  GitHubNotification,
   GitHubUser,
+  GitHubUserSuggestion,
   MergeMethod,
   PullRequest,
   PullRequestCheck,
@@ -16,10 +18,12 @@ import type {
   PullRequestReviewSummary,
   PullRequestState,
   PullRequestStatus,
+  ReceivedInvitation,
   RepositoryCollaborators,
   RepositoryInvitation,
   RepositoryOwner,
   RepositoryRole,
+  RepositoryStar,
   ReviewDecision
 } from '../shared/github'
 
@@ -100,7 +104,7 @@ async function send<T>(
   }
 
   const next = nextPageUrl(response.headers.get('link'))
-  if (response.status === 204) return { data: undefined as T, next }
+  if (response.status === 204 || response.status === 205) return { data: undefined as T, next }
   return { data: (await response.json()) as T, next }
 }
 
@@ -813,6 +817,27 @@ export async function getRepositoryCollaborators(host: string, owner: string, re
   }
 }
 
+const USER_SEARCH_LIMIT = 8
+
+/**
+ * Accounts matching a login or profile name. GraphQL because the REST search
+ * leaves the name out, and the name is how someone recognizes the right person.
+ */
+export async function searchUsers(host: string, query: string): Promise<GitHubUserSuggestion[]> {
+  const token = await requireToken(host)
+  const { search } = await graphql<{
+    search: { nodes: ({ login?: string; name?: string | null; avatarUrl?: string } | null)[] }
+  }>(
+    host,
+    token,
+    'query($q: String!, $first: Int!) { search(query: $q, type: USER, first: $first) { nodes { ... on User { login name avatarUrl } } } }',
+    { q: `${query} type:user`, first: USER_SEARCH_LIMIT }
+  )
+  return search.nodes.flatMap((node) =>
+    node?.login ? [{ login: node.login, name: node.name || null, avatarUrl: node.avatarUrl ?? '' }] : []
+  )
+}
+
 /**
  * Adds a person, or changes the role of one already there — GitHub has a single
  * endpoint for both. Without a role GitHub applies its default, and on personal
@@ -850,4 +875,166 @@ export async function removeCollaborator(host: string, owner: string, repo: stri
 export async function cancelRepositoryInvitation(host: string, owner: string, repo: string, invitationId: number): Promise<void> {
   const token = await requireToken(host)
   await request(host, `${repositoryPath(owner, repo)}/invitations/${invitationId}`, token, { method: 'DELETE' })
+}
+
+// --- What the Messages tab shows ------------------------------------------------
+
+/**
+ * Runs a read that happens on every start, signed in or not: null means there is
+ * no working sign-in, which is not an error. Doesn't delete a dead token —
+ * getSession already owns that decision.
+ */
+async function whenSignedIn<T>(host: string, read: (token: string) => Promise<T>): Promise<T | null> {
+  const token = await getSecret(credentialKey(host))
+  if (!token) return null
+  try {
+    return await read(token)
+  } catch (err) {
+    if (err instanceof GitHubApiError && err.status === 401) return null
+    throw err
+  }
+}
+
+interface ApiNotification {
+  id: string
+  reason: string
+  updated_at: string
+  subject: { title: string; type: string; url: string | null }
+  repository: { full_name: string; html_url: string }
+}
+
+/** The page to open: GitHub only gives the API address of a subject, and not even that for some kinds. */
+function notificationWebUrl({ subject, repository }: ApiNotification): string {
+  const repo = repository.html_url
+  const match = subject.url?.match(/\/(pulls|issues|commits)\/([^/]+)$/)
+  if (match) {
+    const section = { pulls: 'pull', issues: 'issues', commits: 'commit' }[match[1]]
+    return `${repo}/${section}/${match[2]}`
+  }
+  if (subject.type === 'Release') return `${repo}/releases`
+  if (subject.type === 'Discussion') return `${repo}/discussions`
+  if (subject.type === 'CheckSuite') return `${repo}/actions`
+  return repo
+}
+
+/** Unread notifications, newest first. Invitations are left out: they have their own list, with their own actions. */
+export function getNotifications(host: string): Promise<GitHubNotification[] | null> {
+  return whenSignedIn(host, async (token) => {
+    const notifications = await request<ApiNotification[]>(host, '/notifications?per_page=50', token)
+    return notifications
+      .filter((notification) => notification.subject.type !== 'RepositoryInvitation')
+      .map((notification) => ({
+        id: notification.id,
+        kind: notification.subject.type,
+        reason: notification.reason,
+        title: notification.subject.title,
+        repoFullName: notification.repository.full_name,
+        htmlUrl: notificationWebUrl(notification),
+        updatedAt: notification.updated_at
+      }))
+  })
+}
+
+export async function markNotificationRead(host: string, threadId: string): Promise<void> {
+  const token = await requireToken(host)
+  await request(host, `/notifications/threads/${encodeURIComponent(threadId)}`, token, { method: 'PATCH' })
+}
+
+/** Up to `lastReadAt`, so something that arrives after the list was read stays unread. */
+export async function markAllNotificationsRead(host: string, lastReadAt: string): Promise<void> {
+  const token = await requireToken(host)
+  await request(host, '/notifications', token, { method: 'PUT', body: JSON.stringify({ last_read_at: lastReadAt }) })
+}
+
+const RECENT_STARS_DAYS = 30
+const RECENT_STARS_LIMIT = 20
+
+/**
+ * GitHub doesn't notify about stars, so they are read from the repositories
+ * themselves: the latest few of each is enough to catch up between checks.
+ * Costs a single GraphQL request however many repositories there are.
+ */
+export function getRecentStars(host: string): Promise<RepositoryStar[] | null> {
+  return whenSignedIn(host, async (token) => {
+    const { viewer } = await graphql<{
+      viewer: {
+        login: string
+        repositories: {
+          nodes: {
+            nameWithOwner: string
+            stargazers: { edges: { starredAt: string; node: { login: string; avatarUrl: string; url: string } }[] }
+          }[]
+        }
+      }
+    }>(
+      host,
+      token,
+      'query { viewer { login repositories(first: 100, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER], orderBy: { field: PUSHED_AT, direction: DESC }) { nodes { nameWithOwner stargazers(first: 5, orderBy: { field: STARRED_AT, direction: DESC }) { edges { starredAt node { login avatarUrl url } } } } } } }',
+      {}
+    )
+    const since = Date.now() - RECENT_STARS_DAYS * 24 * 60 * 60 * 1000
+    return viewer.repositories.nodes
+      .flatMap((repository) =>
+        repository.stargazers.edges.map((edge) => ({
+          repoFullName: repository.nameWithOwner,
+          login: edge.node.login,
+          avatarUrl: edge.node.avatarUrl,
+          profileUrl: edge.node.url,
+          starredAt: edge.starredAt
+        }))
+      )
+      .filter((star) => star.login !== viewer.login && Date.parse(star.starredAt) >= since)
+      .sort((a, b) => Date.parse(b.starredAt) - Date.parse(a.starredAt))
+      .slice(0, RECENT_STARS_LIMIT)
+  })
+}
+
+interface ApiReceivedInvitation {
+  id: number
+  html_url: string
+  permissions: string
+  created_at: string
+  expired?: boolean
+  repository: { full_name: string; private?: boolean }
+  inviter: { login: string; avatar_url?: string } | null
+}
+
+/** Pending invitations. Expired ones are left out because GitHub no longer lets anyone act on them. */
+export function getReceivedInvitations(host: string): Promise<ReceivedInvitation[] | null> {
+  return whenSignedIn(host, async (token) => {
+    const invitations = await requestAll<ApiReceivedInvitation>(host, '/user/repository_invitations?per_page=100', token)
+    return invitations
+      .filter((invitation) => !invitation.expired)
+      .map((invitation) => ({
+        id: invitation.id,
+        repoFullName: invitation.repository.full_name,
+        htmlUrl: invitation.html_url,
+        isPrivate: Boolean(invitation.repository.private),
+        inviterLogin: invitation.inviter?.login ?? null,
+        inviterAvatarUrl: invitation.inviter?.avatar_url ?? null,
+        role: invitation.permissions,
+        createdAt: invitation.created_at
+      }))
+  })
+}
+
+/** A 404 here means the invitation was cancelled, already answered, or expired since the list was read. */
+async function answerInvitation(host: string, invitationId: number, method: 'PATCH' | 'DELETE'): Promise<void> {
+  const token = await requireToken(host)
+  try {
+    await request(host, `/user/repository_invitations/${invitationId}`, token, { method })
+  } catch (err) {
+    if (err instanceof GitHubApiError && err.status === 404) {
+      throw new GitHubApiError(tMain().github.invitationGone, err.status)
+    }
+    throw err
+  }
+}
+
+export function acceptInvitation(host: string, invitationId: number): Promise<void> {
+  return answerInvitation(host, invitationId, 'PATCH')
+}
+
+export function declineInvitation(host: string, invitationId: number): Promise<void> {
+  return answerInvitation(host, invitationId, 'DELETE')
 }

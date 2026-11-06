@@ -2,6 +2,7 @@ import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'reac
 import { AlertCircle, AlertTriangle, Clock, Loader2, Lock, RefreshCw, UserMinus, UserPlus, Users, X } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import Combobox from '../components/Combobox'
+import UserSearchField from '../components/UserSearchField'
 import { Avatar, LoginForm } from './PullRequestsView'
 import { usePullRequestStore } from '../store/pullRequestStore'
 import { sessionKeyOf, useCollaboratorStore } from '../store/collaboratorStore'
@@ -81,6 +82,13 @@ function CollaboratorsPanel({ remote, user }: { remote: RemoteInfo; user: GitHub
     ...(extra && !isStandardRole(extra) ? [{ value: extra, label: extra }] : [])
   ]
 
+  function accessStatus(login: string): string | null {
+    const same = (other: string | null): boolean => other?.toLowerCase() === login.toLowerCase()
+    if (data?.collaborators.some((c) => same(c.login))) return t.hasAccess
+    if (data?.invitations.some((i) => !i.expired && same(i.login))) return t.pendingChip
+    return null
+  }
+
   async function handleAdd(event: FormEvent): Promise<void> {
     event.preventDefault()
     if (await add(username, isOrg ? newRole : undefined)) setUsername('')
@@ -150,20 +158,18 @@ function CollaboratorsPanel({ remote, user }: { remote: RemoteInfo; user: GitHub
                         <label htmlFor={`${baseId}-username`} className="block text-caption text-secondary-text">
                           {t.usernameLabel}
                         </label>
-                        <input
+                        <UserSearchField
                           id={`${baseId}-username`}
-                          type="text"
+                          host={remote.host}
                           value={username}
-                          onChange={(e) => {
-                            setUsername(e.target.value)
+                          onChange={(value) => {
+                            setUsername(value)
                             if (shownFieldError) clearFieldError()
                           }}
+                          statusOf={accessStatus}
                           placeholder={t.usernamePlaceholder}
-                          autoComplete="off"
-                          spellCheck={false}
-                          aria-invalid={shownFieldError ? true : undefined}
-                          aria-describedby={`${baseId}-hint`}
-                          className="field mt-1.5 h-[34px] w-full py-0"
+                          invalid={Boolean(shownFieldError)}
+                          describedBy={`${baseId}-hint`}
                         />
                       </div>
                       {isOrg && (

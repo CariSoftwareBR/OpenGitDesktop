@@ -54,9 +54,13 @@ import type {
   PublishRepositoryInput,
   PublishRepositoryResult,
   AddCollaboratorResult,
+  GitHubNotification,
+  GitHubUserSuggestion,
+  ReceivedInvitation,
   RepositoryCollaborators,
   RepositoryOwner,
-  RepositoryRole
+  RepositoryRole,
+  RepositoryStar
 } from '../shared/github'
 import type { UpdateStatus } from '../shared/updates'
 
@@ -81,6 +85,14 @@ const api = {
     quitAndInstall: (): Promise<void> => invoke('app:quitAndInstall'),
     capturePage: (rect: { x: number; y: number; width: number; height: number }): Promise<string> =>
       invoke('app:capturePage', rect),
+    showNotification: (title: string, body: string): Promise<void> => invoke('app:showNotification', title, body),
+    onNotificationClicked: (callback: () => void): (() => void) => {
+      const listener = (): void => callback()
+      ipcRenderer.on('app:notification-clicked', listener)
+      return () => {
+        ipcRenderer.removeListener('app:notification-clicked', listener)
+      }
+    },
     onUpdateStatus: (callback: (status: UpdateStatus) => void): (() => void) => {
       const listener = (_event: IpcRendererEvent, status: UpdateStatus): void => {
         callback(status)
@@ -281,6 +293,14 @@ const api = {
 
     getRepositoryCollaborators: (host: string, owner: string, repo: string): Promise<RepositoryCollaborators> =>
       invoke('github:getRepositoryCollaborators', host, owner, repo),
+    getReceivedInvitations: (host: string): Promise<ReceivedInvitation[] | null> => invoke('github:getReceivedInvitations', host),
+    acceptInvitation: (host: string, invitationId: number): Promise<void> => invoke('github:acceptInvitation', host, invitationId),
+    declineInvitation: (host: string, invitationId: number): Promise<void> => invoke('github:declineInvitation', host, invitationId),
+    getNotifications: (host: string): Promise<GitHubNotification[] | null> => invoke('github:getNotifications', host),
+    markNotificationRead: (host: string, threadId: string): Promise<void> => invoke('github:markNotificationRead', host, threadId),
+    markAllNotificationsRead: (host: string, lastReadAt: string): Promise<void> => invoke('github:markAllNotificationsRead', host, lastReadAt),
+    getRecentStars: (host: string): Promise<RepositoryStar[] | null> => invoke('github:getRecentStars', host),
+    searchUsers: (host: string, query: string): Promise<GitHubUserSuggestion[]> => invoke('github:searchUsers', host, query),
     addCollaborator: (host: string, owner: string, repo: string, username: string, role?: RepositoryRole): Promise<AddCollaboratorResult> =>
       invoke('github:addCollaborator', host, owner, repo, username, role),
     removeCollaborator: (host: string, owner: string, repo: string, username: string): Promise<void> =>
