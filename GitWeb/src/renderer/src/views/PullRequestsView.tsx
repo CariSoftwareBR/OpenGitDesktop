@@ -157,7 +157,7 @@ function MergeMethodHint({ method }: { method: MergeMethod }): JSX.Element {
   )
 }
 
-function LoginForm(): JSX.Element {
+export function LoginForm({ hint }: { hint?: string }): JSX.Element {
   const remote = usePullRequestStore((s) => s.remote)
   const isBusy = usePullRequestStore((s) => s.isBusy)
   const loginWithToken = usePullRequestStore((s) => s.loginWithToken)
@@ -173,7 +173,7 @@ function LoginForm(): JSX.Element {
       </span>
       <p className="mb-4 text-body text-secondary-text">
         {t.remoteDetected} <strong className="text-primary-text">{remote?.owner}/{remote?.repo}</strong> {t.remoteOn}{' '}
-        <span className="text-tertiary-text">{remote?.host}</span>. {t.loginHint}
+        <span className="text-tertiary-text">{remote?.host}</span>. {hint ?? t.loginHint}
       </p>
 
       <button
@@ -312,7 +312,7 @@ function PrStatePill({ pr }: { pr: PullRequest }): JSX.Element {
 }
 
 /** GitHub serves every account's avatar at github.com/<login>.png; a failed load just hides it. */
-function Avatar({ login, size = 20 }: { login: string; size?: number }): JSX.Element {
+export function Avatar({ login, size = 20, src }: { login: string; size?: number; src?: string | null }): JSX.Element {
   const [failed, setFailed] = useState(false)
   if (failed || !login) {
     return (
@@ -323,7 +323,7 @@ function Avatar({ login, size = 20 }: { login: string; size?: number }): JSX.Ele
   }
   return (
     <img
-      src={`https://github.com/${encodeURIComponent(login)}.png?size=${size * 2}`}
+      src={src || `https://github.com/${encodeURIComponent(login)}.png?size=${size * 2}`}
       alt=""
       width={size}
       height={size}

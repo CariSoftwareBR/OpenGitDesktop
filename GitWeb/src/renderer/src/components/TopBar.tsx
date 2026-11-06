@@ -19,7 +19,8 @@ import {
   RefreshCw,
   Settings2,
   Trash2,
-  UploadCloud
+  UploadCloud,
+  Users
 } from 'lucide-react'
 import { basename } from '../lib/path'
 import DeleteBranchDialog from './DeleteBranchDialog'
@@ -743,6 +744,7 @@ function TopBar(): JSX.Element {
     { id: 'history' as const, label: t.tabs.history, icon: Clock },
     { id: 'stash' as const, label: t.tabs.stash, icon: Archive },
     { id: 'pullRequests' as const, label: t.tabs.pullRequests, icon: GitPullRequest },
+    { id: 'collaborators' as const, label: t.tabs.collaborators, icon: Users },
     { id: 'dashboard' as const, label: t.tabs.dashboard, icon: LayoutDashboard },
     { id: 'settings' as const, label: t.tabs.settings, icon: Settings2 }
   ]

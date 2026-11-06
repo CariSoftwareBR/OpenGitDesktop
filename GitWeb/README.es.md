@@ -78,6 +78,7 @@ src/
 - Stash: crear, aplicar, pop, descartar — conectado a la navegación principal.
 - Sincronización: fetch/pull/push/publicar rama que se adapta al estado ahead/behind/upstream.
 - Pull Requests: inicio de sesión con OAuth Device Flow (GitHub.com) o PAT (GitHub.com o Enterprise), listar, crear, ver archivos/comentarios, fusionar, cerrar/reabrir.
+- Colaboradores: ver quién tiene acceso, invitar por usuario, cancelar invitaciones, quitar personas y cambiar permisos (en repositorios de organización), desde la app.
 - Chat de IA con herramientas (crear/cambiar/fusionar rama, commit, push/pull/fetch, stash, listar/crear PR) con aprobación humana antes de cada acción.
 - Interfaz, mensajes del proceso principal y respuestas de la IA en portugués (Brasil), inglés o español — sigue el idioma del sistema por defecto y se puede cambiar al instante en Configuración.
 - Temas claro/oscuro automáticos (según la preferencia del sistema) y soporte de alto contraste (Windows High Contrast Mode / `prefers-contrast`).

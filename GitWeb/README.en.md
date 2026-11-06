@@ -78,6 +78,7 @@ src/
 - Stash: create, apply, pop, drop — wired into the main navigation.
 - Sync: fetch/pull/push/publish branch that adapts to the ahead/behind/upstream state.
 - Pull Requests: sign in with OAuth Device Flow (GitHub.com) or PAT (GitHub.com or Enterprise), list, create, view files/comments, merge, close/reopen.
+- Collaborators: see who has access, invite by username, cancel invitations, remove people and change permissions (on organization repositories), right in the app.
 - AI chat with tools (create/switch/merge branch, commit, push/pull/fetch, stash, list/create PR) with a human-approval step before each action.
 - Interface, main-process messages and AI answers in Portuguese (Brazil), English or Spanish — following the system language by default, switchable live in Settings.
 - Automatic light/dark themes (from the system preference) and high-contrast support (Windows High Contrast Mode / `prefers-contrast`).

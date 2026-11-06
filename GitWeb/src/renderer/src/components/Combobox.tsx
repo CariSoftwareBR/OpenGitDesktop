@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Check, ChevronDown } from 'lucide-react'
 import { useClickOutside } from '../lib/useClickOutside'
+import { opensUpward } from '../lib/dropdownPlacement'
 import { useT } from '../lib/i18n'
 
 export interface ComboboxOption {
@@ -21,6 +22,24 @@ interface ComboboxProps {
   className?: string
 }
 
+// max-h-64 and the height of one option row, for deciding where the list fits.
+const LIST_MAX_HEIGHT = 256
+const OPTION_HEIGHT = 34
+
+/** Room on each side of the element inside whatever clips it, not just the window. */
+function roomAround(element: HTMLElement): { above: number; below: number } {
+  const rect = element.getBoundingClientRect()
+  let top = 0
+  let bottom = window.innerHeight
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    if (getComputedStyle(parent).overflowY === 'visible') continue
+    const bounds = parent.getBoundingClientRect()
+    top = Math.max(top, bounds.top)
+    bottom = Math.min(bottom, bounds.bottom)
+  }
+  return { above: rect.top - top, below: bottom - rect.bottom }
+}
+
 function Combobox({
   value,
   onChange,
@@ -34,6 +53,7 @@ function Combobox({
   const listboxId = useId()
   const optionIdPrefix = useId()
   const [open, setOpen] = useState(false)
+  const [openUpward, setOpenUpward] = useState(false)
   const [search, setSearch] = useState('')
   const t = useT().ui
   const [highlighted, setHighlighted] = useState(0)
@@ -58,6 +78,11 @@ function Combobox({
     setSearch('')
     const selectedIndex = options.findIndex((o) => o.value === value)
     setHighlighted(Math.max(0, selectedIndex))
+    if (ref.current) {
+      const listHeight = Math.min(LIST_MAX_HEIGHT, options.length * OPTION_HEIGHT + 10)
+      const { above, below } = roomAround(ref.current)
+      setOpenUpward(opensUpward(above, below, listHeight))
+    }
     setOpen(true)
   }
 
@@ -146,7 +171,7 @@ function Combobox({
         <ul
           id={listboxId}
           role="listbox"
-          className="absolute left-0 top-[calc(100%+4px)] z-30 max-h-64 w-full min-w-max overflow-y-auto rounded-md border border-default-border bg-coal-raised p-1 shadow-floating"
+          className={`absolute left-0 ${openUpward ? 'bottom-[calc(100%+4px)]' : 'top-[calc(100%+4px)]'} z-30 max-h-64 w-full min-w-max overflow-y-auto rounded-md border border-default-border bg-coal-raised p-1 shadow-floating`}
         >
           {filtered.length === 0 && (
             <li className="px-3 py-2 text-caption text-tertiary-text" role="presentation">

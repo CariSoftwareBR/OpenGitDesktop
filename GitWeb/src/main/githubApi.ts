@@ -3,6 +3,7 @@ import { getSecret, saveSecret, deleteSecret } from './credentials'
 import { httpFetch } from './httpFetch'
 import { tMain } from './i18n'
 import type {
+  AddCollaboratorResult,
   BranchRules,
   CreatePullRequestInput,
   GitHubRepoSummary,
@@ -15,7 +16,10 @@ import type {
   PullRequestReviewSummary,
   PullRequestState,
   PullRequestStatus,
+  RepositoryCollaborators,
+  RepositoryInvitation,
   RepositoryOwner,
+  RepositoryRole,
   ReviewDecision
 } from '../shared/github'
 
@@ -710,4 +714,140 @@ export async function createRepository(
     })
   })
   return { fullName: repo.full_name, htmlUrl: repo.html_url ?? `https://${host}/${repo.full_name}`, cloneUrl: repo.clone_url }
+}
+
+// --- Collaborators ------------------------------------------------------------
+
+interface ApiCollaborator {
+  login: string
+  avatar_url: string
+  role_name: string
+}
+
+interface ApiInvitation {
+  id: number
+  invitee: { login: string; avatar_url?: string } | null
+  permissions: string
+  created_at: string
+  expired?: boolean
+}
+
+// The write endpoint still takes the role names GitHub used before read/write.
+const API_PERMISSION: Record<RepositoryRole, string> = {
+  read: 'pull',
+  triage: 'triage',
+  write: 'push',
+  maintain: 'maintain',
+  admin: 'admin'
+}
+
+function repositoryPath(owner: string, repo: string): string {
+  return `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`
+}
+
+function toInvitation(invitation: ApiInvitation): RepositoryInvitation {
+  return {
+    id: invitation.id,
+    login: invitation.invitee?.login ?? null,
+    avatarUrl: invitation.invitee?.avatar_url ?? null,
+    role: invitation.permissions,
+    createdAt: invitation.created_at,
+    expired: Boolean(invitation.expired)
+  }
+}
+
+/**
+ * Who has access and what the signed-in account may do about it. Invitations
+ * are allowed to fail on their own: a list of collaborators without them is
+ * still worth showing.
+ */
+export async function getRepositoryCollaborators(host: string, owner: string, repo: string): Promise<RepositoryCollaborators> {
+  const token = await requireToken(host)
+  const base = repositoryPath(owner, repo)
+  const info = await request<{ owner: { login: string; type: string }; permissions?: { admin?: boolean; push?: boolean } }>(host, base, token)
+  const ownerLogin = info.owner.login
+  const ownerKind = info.owner.type === 'Organization' ? 'org' : 'user'
+  const canAdminister = Boolean(info.permissions?.admin)
+  const canView = canAdminister || Boolean(info.permissions?.push)
+  if (!canView) return { ownerLogin, ownerKind, canView, canAdminister, collaborators: [], invitations: [], invitationsError: null }
+
+  const list = (affiliation: 'all' | 'direct'): Promise<ApiCollaborator[]> =>
+    requestAll<ApiCollaborator>(host, `${base}/collaborators?affiliation=${affiliation}&per_page=100`, token)
+
+  let everyone: ApiCollaborator[]
+  let direct: Set<string> | null = null
+  try {
+    // On a personal repository everyone is direct, so asking twice would only cost a request.
+    const [all, directOnly] = await Promise.all([list('all'), ownerKind === 'org' ? list('direct') : null])
+    everyone = all
+    if (directOnly) direct = new Set(directOnly.map((c) => c.login))
+  } catch (err) {
+    // An organization can refuse this list to a sign-in that works everywhere
+    // else, so a bare "Forbidden" would not say where to go next.
+    if (ownerKind === 'org' && err instanceof GitHubApiError && (err.status === 403 || err.status === 404)) {
+      throw new GitHubApiError(tMain().github.collaboratorsForbidden(err.message), err.status)
+    }
+    throw err
+  }
+
+  let invitations: RepositoryInvitation[] = []
+  let invitationsError: string | null = null
+  if (canAdminister) {
+    try {
+      invitations = (await requestAll<ApiInvitation>(host, `${base}/invitations?per_page=100`, token)).map(toInvitation)
+    } catch (err) {
+      invitationsError = err instanceof Error ? err.message : String(err)
+    }
+  }
+
+  return {
+    ownerLogin,
+    ownerKind,
+    canView,
+    canAdminister,
+    collaborators: everyone
+      .map((c) => ({ login: c.login, avatarUrl: c.avatar_url, role: c.role_name, direct: direct ? direct.has(c.login) : true }))
+      .sort((a, b) => a.login.localeCompare(b.login, undefined, { sensitivity: 'base' })),
+    invitations,
+    invitationsError
+  }
+}
+
+/**
+ * Adds a person, or changes the role of one already there — GitHub has a single
+ * endpoint for both. Without a role GitHub applies its default, and on personal
+ * repositories a role is not accepted at all.
+ */
+export async function addCollaborator(
+  host: string,
+  owner: string,
+  repo: string,
+  username: string,
+  role?: RepositoryRole
+): Promise<AddCollaboratorResult> {
+  const token = await requireToken(host)
+  try {
+    const invitation = await request<ApiInvitation | undefined>(
+      host,
+      `${repositoryPath(owner, repo)}/collaborators/${encodeURIComponent(username)}`,
+      token,
+      { method: 'PUT', body: JSON.stringify(role ? { permission: API_PERMISSION[role] } : {}) }
+    )
+    return invitation ? { kind: 'invited', invitation: toInvitation(invitation) } : { kind: 'added' }
+  } catch (err) {
+    if (err instanceof GitHubApiError && err.status === 404) {
+      throw new GitHubApiError(tMain().github.collaboratorNotFound(username), err.status)
+    }
+    throw err
+  }
+}
+
+export async function removeCollaborator(host: string, owner: string, repo: string, username: string): Promise<void> {
+  const token = await requireToken(host)
+  await request(host, `${repositoryPath(owner, repo)}/collaborators/${encodeURIComponent(username)}`, token, { method: 'DELETE' })
+}
+
+export async function cancelRepositoryInvitation(host: string, owner: string, repo: string, invitationId: number): Promise<void> {
+  const token = await requireToken(host)
+  await request(host, `${repositoryPath(owner, repo)}/invitations/${invitationId}`, token, { method: 'DELETE' })
 }

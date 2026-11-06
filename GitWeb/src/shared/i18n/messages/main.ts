@@ -137,6 +137,10 @@ const ptBR = {
     notAuthenticated: (host: string) => `Você não está autenticado em ${host}. Entre com o GitHub e tente de novo.`,
     requestRejected: (status: number) => `GitHub recusou a solicitação (${status}).`,
     checkRunsTruncated: (shown: number, total: number) => `só os primeiros ${shown} de ${total} check runs foram lidos`,
+    collaboratorNotFound: (username: string) =>
+      `O GitHub não encontrou ${username}, ou sua conta não pode gerenciar este repositório.`,
+    collaboratorsForbidden: (reason: string) =>
+      `A organização não liberou a lista de colaboradores para este login. Peça a um administrador da organização para aprovar o app ou, se você entrou com um token, confira o acesso dele. (${reason})`,
     tokenRequired: 'Informe um token.',
     deviceFlowGithubOnly:
       'OAuth Device Flow só é suportado em github.com. Para GitHub Enterprise, use um Personal Access Token.',
@@ -290,6 +294,9 @@ const en: MainMessages = {
     notAuthenticated: (host) => `You are not signed in to ${host}. Sign in with GitHub and try again.`,
     requestRejected: (status) => `GitHub rejected the request (${status}).`,
     checkRunsTruncated: (shown, total) => `only the first ${shown} of ${total} check runs were read`,
+    collaboratorNotFound: (username) => `GitHub could not find ${username}, or your account cannot manage this repository.`,
+    collaboratorsForbidden: (reason) =>
+      `The organization did not allow this sign-in to read the collaborator list. Ask an organization admin to approve the app or, if you signed in with a token, check its access. (${reason})`,
     tokenRequired: 'Enter a token.',
     deviceFlowGithubOnly:
       'OAuth Device Flow is only supported on github.com. For GitHub Enterprise, use a Personal Access Token.',
@@ -442,6 +449,9 @@ const es: MainMessages = {
     notAuthenticated: (host) => `No has iniciado sesión en ${host}. Inicia sesión con GitHub e inténtalo de nuevo.`,
     requestRejected: (status) => `GitHub rechazó la solicitud (${status}).`,
     checkRunsTruncated: (shown, total) => `solo se leyeron los primeros ${shown} de ${total} check runs`,
+    collaboratorNotFound: (username) => `GitHub no encontró a ${username}, o tu cuenta no puede gestionar este repositorio.`,
+    collaboratorsForbidden: (reason) =>
+      `La organización no permitió a este inicio de sesión leer la lista de colaboradores. Pide a un administrador de la organización que apruebe la app o, si entraste con un token, revisa su acceso. (${reason})`,
     tokenRequired: 'Introduce un token.',
     deviceFlowGithubOnly:
       'OAuth Device Flow solo es compatible con github.com. Para GitHub Enterprise, usa un Personal Access Token.',
