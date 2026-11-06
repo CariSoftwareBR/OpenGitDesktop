@@ -9,6 +9,9 @@ const github = {
   cancelRepositoryInvitation: vi.fn()
 }
 vi.stubGlobal('window', { api: { github } })
+// The store picks its language from the OS, and the assertions below are in
+// pt-BR: without this the suite only passes on a machine set to Portuguese.
+vi.stubGlobal('navigator', { languages: ['pt-BR'] })
 
 const { usePullRequestStore } = await import('../src/renderer/src/store/pullRequestStore')
 const { sessionKeyOf, useCollaboratorStore } = await import('../src/renderer/src/store/collaboratorStore')
