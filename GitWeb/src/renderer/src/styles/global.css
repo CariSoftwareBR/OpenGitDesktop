@@ -1122,6 +1122,9 @@
     @apply inline-flex h-4 min-w-4 items-center justify-center rounded-pill bg-hover-overlay px-1 text-[10px] font-semibold tabular-nums text-secondary-text;
     letter-spacing: 0;
   }
+  .count-badge.is-attention {
+    @apply bg-command-blue-soft text-command-blue;
+  }
 
   .chip-command {
     @apply inline-flex items-center gap-1 rounded-pill border border-command-blue/20 bg-command-blue-soft px-2.5 py-0.5 text-label uppercase text-command-blue;
@@ -2375,5 +2378,560 @@
     position: absolute;
     inset: 0;
     clip-path: polygon(62% 0, 100% 0, 100% 100%, 38% 100%);
+  }
+}
+
+/* ── Messages: the account's last 30 days as a night sky ─────────────────── */
+@keyframes sky-line-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes sky-mark-in {
+  0% {
+    opacity: 0;
+    transform: scale(0) rotate(-45deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.35) rotate(6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+@keyframes sky-twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+@keyframes sky-glint {
+  0%,
+  100% {
+    opacity: 0.1;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.15);
+  }
+}
+@keyframes sky-head-pulse {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+}
+@keyframes sky-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes inbox-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes inbox-dash-flow {
+  to {
+    stroke-dashoffset: -0.2;
+  }
+}
+@keyframes inbox-merge-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@layer components {
+  .sky {
+    --sky-star: var(--color-warning-amber);
+    position: relative;
+    overflow: hidden;
+    color: var(--color-primary-text);
+    background:
+      radial-gradient(70% 130% at 88% -20%, color-mix(in oklab, var(--color-command-blue) 26%, transparent), transparent 70%),
+      radial-gradient(45% 90% at 62% 118%, color-mix(in oklab, var(--color-warning-amber) 9%, transparent), transparent 72%),
+      radial-gradient(50% 110% at 8% 10%, color-mix(in oklab, var(--color-command-blue) 9%, transparent), transparent 70%);
+  }
+  /* The sky dissolves into the page instead of ending at an edge. */
+  .sky::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 58px;
+    pointer-events: none;
+    background: linear-gradient(to bottom, transparent, var(--color-midnight-base));
+  }
+  .sky-canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+  }
+  .sky-header {
+    position: relative;
+    z-index: 2;
+    padding-top: 30px;
+    pointer-events: none;
+  }
+  .sky-header button,
+  .sky-header a {
+    pointer-events: auto;
+  }
+  .sky-dust circle {
+    fill: currentColor;
+  }
+  .sky-lights {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .sky-twinkle {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    margin: -1px;
+    border-radius: 999px;
+    background: currentColor;
+    will-change: opacity;
+    animation: sky-twinkle 5.5s ease-in-out infinite;
+  }
+  .sky-glint {
+    position: absolute;
+    width: 34px;
+    height: 34px;
+    margin: -17px;
+    border-radius: 999px;
+    background: radial-gradient(circle, color-mix(in oklab, var(--sky-star) 70%, transparent), transparent 68%);
+    will-change: opacity, transform;
+    animation: sky-glint 2.8s ease-in-out infinite;
+  }
+  .sky-head-pulse {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    margin: -9px;
+    border-radius: 999px;
+    border: 1.5px solid var(--color-primary-text);
+    will-change: opacity, transform;
+    animation: sky-head-pulse 2.8s var(--ease-out-expo) infinite;
+  }
+  .sky-lane line {
+    stroke: var(--color-default-border);
+    stroke-dasharray: 2 7;
+  }
+  .sky-lane text,
+  .sky-tick text,
+  .sky-head text {
+    font-size: var(--text-meta);
+    fill: var(--color-secondary-text);
+    animation: sky-fade 700ms 200ms var(--ease-out-expo) backwards;
+  }
+  .sky-tick line {
+    stroke: var(--color-field-border);
+  }
+  .sky-tick text {
+    font-variant-numeric: tabular-nums;
+  }
+  .sky-path {
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-dasharray: 1;
+    animation: sky-line-draw 1500ms 120ms var(--ease-out-expo) backwards;
+  }
+  .sky-line-start {
+    stop-color: var(--color-field-border);
+  }
+  .sky-line-middle {
+    stop-color: var(--color-command-blue);
+  }
+  .sky-line-end {
+    stop-color: var(--color-primary-text);
+  }
+
+  .sky-hit {
+    fill: transparent;
+  }
+  .sky-point {
+    cursor: default;
+  }
+  .sky-mark {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: sky-mark-in 620ms var(--ease-out-expo) backwards;
+    transition: scale 200ms var(--ease-out-expo);
+  }
+  .sky-halo {
+    fill: var(--point-ink, var(--sky-star));
+    opacity: 0;
+    transition: opacity 180ms var(--ease-out-expo);
+  }
+  .sky-point.is-active .sky-mark,
+  .sky-point:hover .sky-mark {
+    scale: 1.55;
+  }
+  .sky-point.is-active .sky-halo,
+  .sky-point:hover .sky-halo {
+    opacity: 0.18;
+  }
+  .sky-star path {
+    fill: var(--sky-star);
+    filter: drop-shadow(0 0 3px var(--sky-star));
+  }
+  .sky-event {
+    --point-ink: var(--color-command-blue);
+  }
+  .sky-event.is-attention {
+    --point-ink: var(--color-attention-orange);
+  }
+  .sky-dot {
+    fill: var(--color-midnight-base);
+    stroke: var(--point-ink);
+    stroke-width: 2.5;
+  }
+  .sky-head-core {
+    fill: var(--color-primary-text);
+  }
+  .sky-tip {
+    position: absolute;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: max-content;
+    max-width: 280px;
+    padding: 7px 11px 7px 8px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-default-border);
+    background: var(--color-coal-raised);
+    box-shadow: var(--shadow-floating);
+    font-size: var(--text-caption);
+    color: var(--color-secondary-text);
+    pointer-events: none;
+    transform: translate(18px, -50%);
+    animation: tooltip-in 140ms var(--ease-out-expo) backwards;
+  }
+  .sky-tip.is-flipped {
+    transform: translate(calc(-100% - 18px), -50%);
+  }
+  .sky-tip strong {
+    font-weight: 600;
+    color: var(--color-primary-text);
+  }
+  .sky-tip small {
+    display: block;
+    overflow: hidden;
+    font-size: var(--text-meta);
+    color: var(--color-tertiary-text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .inbox-column {
+    width: 100%;
+    max-width: 880px;
+    margin-inline: auto;
+    padding-inline: 28px;
+  }
+  /* Lifted into the sky's fade, so the two read as one surface. */
+  .inbox-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    margin-top: -26px;
+    padding-bottom: 56px;
+  }
+  .inbox-filter {
+    display: flex;
+    padding: 3px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-default-border);
+    background: var(--color-obsidian-panel);
+  }
+
+  .inbox-invite {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px 24px;
+    padding: 22px 24px;
+    border-radius: var(--radius-lg);
+    border: 1px solid color-mix(in oklab, var(--color-command-blue) 42%, var(--color-default-border));
+    background: linear-gradient(120deg, color-mix(in oklab, var(--color-command-blue) 11%, var(--color-obsidian-panel)), var(--color-obsidian-panel) 62%);
+    box-shadow:
+      var(--shadow-raised),
+      0 24px 50px -30px var(--color-command-blue);
+  }
+  .inbox-invite.is-merged {
+    border-color: color-mix(in oklab, var(--color-success-green) 46%, var(--color-default-border));
+    background: linear-gradient(120deg, color-mix(in oklab, var(--color-success-green) 12%, var(--color-obsidian-panel)), var(--color-obsidian-panel) 62%);
+    box-shadow:
+      var(--shadow-raised),
+      0 24px 50px -30px var(--color-success-green);
+  }
+  .inbox-merge {
+    --merge-ink: var(--color-command-blue);
+    position: relative;
+    flex-shrink: 0;
+    width: 132px;
+    height: 84px;
+  }
+  .inbox-merge svg {
+    display: block;
+  }
+  .inbox-merge path {
+    stroke-width: 2.5;
+    stroke-linecap: round;
+  }
+  .inbox-merge-main {
+    stroke: var(--color-field-border);
+  }
+  .inbox-merge-branch {
+    stroke: var(--merge-ink);
+    /* pathLength is 1, so these read as fractions of the curve. */
+    stroke-dasharray: 0.05 0.05;
+    transition: stroke-dasharray 200ms var(--ease-out-expo);
+  }
+  .inbox-merge-node {
+    fill: var(--color-obsidian-panel);
+    stroke: var(--merge-ink);
+    stroke-width: 2.5;
+    transition: fill 180ms var(--ease-out-expo);
+  }
+  .inbox-merge-avatar {
+    position: absolute;
+    left: 0;
+    display: grid;
+    border-radius: 999px;
+    background: var(--color-obsidian-panel);
+    box-shadow: 0 0 0 3px var(--color-obsidian-panel);
+  }
+  /* Pointing at Accept previews the merge before anything is committed to. */
+  .inbox-invite:has(.inbox-accept:hover:not(:disabled)) .inbox-merge-branch,
+  .inbox-invite:has(.inbox-accept:focus-visible) .inbox-merge-branch {
+    stroke-dasharray: 1 0;
+  }
+  .inbox-invite:has(.inbox-accept:hover:not(:disabled)) .inbox-merge-node,
+  .inbox-invite:has(.inbox-accept:focus-visible) .inbox-merge-node {
+    fill: var(--merge-ink);
+  }
+  .inbox-merge.is-merging .inbox-merge-branch {
+    animation: inbox-dash-flow 600ms linear infinite;
+  }
+  .inbox-merge.is-merged {
+    --merge-ink: var(--color-success-green);
+  }
+  .inbox-merge.is-merged .inbox-merge-main {
+    stroke: var(--merge-ink);
+  }
+  .inbox-merge.is-merged .inbox-merge-branch {
+    stroke-dasharray: 1;
+    animation: inbox-merge-draw 620ms var(--ease-out-expo) backwards;
+  }
+  .inbox-merge.is-merged .inbox-merge-node {
+    fill: var(--merge-ink);
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: pop 420ms 420ms var(--ease-out-expo) backwards;
+  }
+
+  .inbox-panel {
+    overflow: hidden;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-default-border);
+    background: var(--color-obsidian-panel);
+    box-shadow: var(--shadow-raised);
+  }
+  .inbox-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    transition: background-color 120ms var(--ease-out-expo);
+    animation: inbox-row-in 460ms calc(min(var(--i, 0), 10) * 40ms + 260ms) var(--ease-out-expo) backwards;
+  }
+  .inbox-row + .inbox-row {
+    border-top: 1px solid var(--color-default-border);
+  }
+  .inbox-row:hover,
+  .inbox-row.is-active {
+    background: var(--color-hover-overlay);
+  }
+  .inbox-tile {
+    --tile-ink: var(--color-command-blue);
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+    color: var(--tile-ink);
+    background: color-mix(in oklab, var(--tile-ink) 14%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--tile-ink) 22%, transparent);
+  }
+  .inbox-tile.is-attention {
+    --tile-ink: var(--color-attention-orange);
+  }
+  .inbox-person {
+    position: relative;
+    display: grid;
+    flex-shrink: 0;
+  }
+  .inbox-person-star {
+    position: absolute;
+    right: -3px;
+    bottom: -3px;
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    color: var(--color-warning-amber);
+    background: var(--color-coal-raised);
+    box-shadow: 0 0 0 2px var(--color-obsidian-panel);
+  }
+  .inbox-row-body {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    border-radius: var(--radius-sm);
+  }
+  a.inbox-row-body:focus-visible {
+    outline: 2px solid var(--color-command-blue);
+    outline-offset: 4px;
+  }
+  .inbox-row-title {
+    display: block;
+    overflow: hidden;
+    font-size: var(--text-body);
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--color-primary-text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  a.inbox-row-body:hover .inbox-row-title {
+    color: var(--color-command-blue);
+  }
+  .inbox-row-meta {
+    display: block;
+    overflow: hidden;
+    margin-top: 2px;
+    font-size: var(--text-caption);
+    color: var(--color-tertiary-text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .inbox-row-time {
+    flex-shrink: 0;
+    min-width: 60px;
+    font-size: var(--text-caption);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    color: var(--color-tertiary-text);
+  }
+  /* Quiet until the row is in play, but always there for the keyboard. */
+  .inbox-row-action {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border-radius: var(--radius-sm);
+    color: var(--color-secondary-text);
+    opacity: 0;
+    transition:
+      opacity 120ms var(--ease-out-expo),
+      background-color 120ms var(--ease-out-expo),
+      color 120ms var(--ease-out-expo);
+  }
+  .inbox-row:hover .inbox-row-action,
+  .inbox-row.is-active .inbox-row-action,
+  .inbox-row-action:focus-visible {
+    opacity: 1;
+  }
+  .inbox-row-action:hover {
+    color: var(--color-success-green);
+    background: var(--color-hover-overlay);
+  }
+  .inbox-row-action:focus-visible {
+    outline: 2px solid var(--color-command-blue);
+  }
+  .inbox-ghost {
+    display: block;
+    height: 11px;
+    border-radius: 4px;
+    background: var(--color-hover-overlay);
+    animation: pulse 1.6s ease-in-out infinite;
+  }
+  .inbox-ghost.is-small {
+    height: 8px;
+    margin-top: 8px;
+  }
+}
+
+/* On a light canvas amber has to be chosen again: the text token reads brown as a mark, and dark dust reads as dirt. */
+[data-theme='light'] .sky {
+  --sky-star: #b87a00;
+}
+[data-theme='light'] .sky-dust {
+  opacity: 0.35;
+}
+
+/* Subtlety is what a high-contrast reader can't rely on: no dust, no wash, solid lines. */
+[data-theme$='hc'] .sky {
+  background: none;
+}
+[data-theme$='hc'] .sky-dust,
+[data-theme$='hc'] .sky-twinkle,
+[data-theme$='hc'] .sky-glint {
+  display: none;
+}
+[data-theme$='hc'] .sky-star path {
+  filter: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sky-twinkle,
+  .sky-glint,
+  .sky-head-pulse,
+  .sky-lane text,
+  .sky-tick text,
+  .sky-head text,
+  .sky-path,
+  .sky-mark,
+  .sky-tip,
+  .inbox-merge.is-merging .inbox-merge-branch,
+  .inbox-merge.is-merged .inbox-merge-branch,
+  .inbox-merge.is-merged .inbox-merge-node,
+  .inbox-row,
+  .inbox-ghost {
+    animation: none;
   }
 }

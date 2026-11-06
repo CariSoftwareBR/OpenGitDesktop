@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { canManageCollaborator, normalizeGitHubUsername } from '../src/shared/github'
+import { canManageCollaborator, normalizeGitHubUsername, userSearchQuery } from '../src/shared/github'
 import { getMessages } from '../src/shared/i18n'
 
 vi.mock('../src/main/credentials', () => ({ getSecret: vi.fn(async () => 'token'), saveSecret: vi.fn(), deleteSecret: vi.fn() }))
 vi.mock('../src/main/httpFetch', () => ({ httpFetch: vi.fn() }))
 
 const { httpFetch } = await import('../src/main/httpFetch')
-const { addCollaborator, cancelRepositoryInvitation, getRepositoryCollaborators, removeCollaborator } = await import(
+const { addCollaborator, cancelRepositoryInvitation, getRepositoryCollaborators, removeCollaborator, searchUsers } = await import(
   '../src/main/githubApi'
 )
 
@@ -33,6 +33,45 @@ const INVITATIONS = '/repos/o/r/invitations?per_page=100'
 
 beforeEach(() => {
   vi.mocked(httpFetch).mockReset()
+})
+
+describe('searchUsers', () => {
+  it('returns people with their names, and leaves out results that are not users', async () => {
+    serve({
+      '/graphql': {
+        status: 200,
+        body: {
+          data: {
+            search: {
+              nodes: [{ login: 'ana', name: 'Ana Souza', avatarUrl: 'https://a/ana' }, { login: 'bia', name: '', avatarUrl: 'https://a/bia' }, {}, null]
+            }
+          }
+        }
+      }
+    })
+    await expect(searchUsers('github.com', 'an')).resolves.toEqual([
+      { login: 'ana', name: 'Ana Souza', avatarUrl: 'https://a/ana' },
+      { login: 'bia', name: null, avatarUrl: 'https://a/bia' }
+    ])
+    const init = vi.mocked(httpFetch).mock.calls[0][1] as RequestInit
+    expect(JSON.parse(String(init.body)).variables.q).toBe('an type:user')
+  })
+
+  it('reports a failure instead of pretending nobody was found', async () => {
+    serve({ '/graphql': { status: 200, body: { errors: [{ message: 'rate limited' }] } } })
+    await expect(searchUsers('github.com', 'an')).rejects.toThrow('rate limited')
+  })
+})
+
+describe('userSearchQuery', () => {
+  it('finds the login in a pasted mention or profile URL', () => {
+    expect(userSearchQuery(' @octocat ')).toBe('octocat')
+    expect(userSearchQuery('https://github.com/octocat')).toBe('octocat')
+  })
+
+  it('keeps a full name as typed', () => {
+    expect(userSearchQuery(' Ana Souza ')).toBe('Ana Souza')
+  })
 })
 
 describe('getRepositoryCollaborators', () => {

@@ -29,7 +29,7 @@ import { directPushBlock } from '../lib/branchProtection'
 import { isInsidePath, joinPath, pathKey } from '../lib/path'
 import { extractHunkPatch, parseFileDiff } from '../../../shared/patch'
 
-type ViewName = 'changes' | 'history' | 'stash' | 'pullRequests' | 'collaborators' | 'dashboard' | 'settings' | 'about'
+type ViewName = 'changes' | 'history' | 'stash' | 'pullRequests' | 'collaborators' | 'dashboard' | 'messages' | 'settings' | 'about'
 
 interface SelectedFile {
   path: string

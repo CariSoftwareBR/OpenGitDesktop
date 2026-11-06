@@ -80,6 +80,40 @@ function demoCollaboratorVariant(): string | null {
   }
 }
 
+let demoReceivedInvitations = [
+  {
+    id: 9001,
+    repoFullName: 'ana-souza/financeiro',
+    htmlUrl: 'https://github.com/ana-souza/financeiro/invitations',
+    isPrivate: true,
+    inviterLogin: 'ana-souza',
+    inviterAvatarUrl: null,
+    role: 'write',
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+  }
+]
+
+let demoNotifications = [
+  {
+    id: '1',
+    kind: 'PullRequest',
+    reason: 'review_requested',
+    title: 'Corrige o cálculo de frete',
+    repoFullName: 'demo/gitweb',
+    htmlUrl: 'https://github.com/demo/gitweb/pull/42',
+    updatedAt: new Date(Date.now() - 40 * 60 * 1000).toISOString()
+  },
+  {
+    id: '2',
+    kind: 'Issue',
+    reason: 'mention',
+    title: 'Erro ao abrir repositório grande',
+    repoFullName: 'demo/gitweb',
+    htmlUrl: 'https://github.com/demo/gitweb/issues/7',
+    updatedAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString()
+  }
+]
+
 let demoCollaborators = [
   { login: 'demo', avatarUrl: '', role: 'admin', direct: true },
   { login: 'demo-dev', avatarUrl: '', role: 'admin', direct: true },
@@ -331,6 +365,8 @@ function installBrowserApiStub(): void {
       capturePage: async () => {
         throw new Error('Captura de página indisponível no navegador.')
       },
+      showNotification: async () => undefined,
+      onNotificationClicked: () => () => undefined,
       onUpdateStatus: () => () => undefined
     },
     git: {
@@ -562,6 +598,49 @@ function installBrowserApiStub(): void {
           invitations: variant === 'readOnly' ? [] : demoInvitations,
           invitationsError: null
         }
+      },
+      getReceivedInvitations: async () => (demoGithub() ? demoReceivedInvitations : null),
+      acceptInvitation: async (_host, id) => {
+        demoReceivedInvitations = demoReceivedInvitations.filter((i) => i.id !== id)
+      },
+      declineInvitation: async (_host, id) => {
+        demoReceivedInvitations = demoReceivedInvitations.filter((i) => i.id !== id)
+      },
+      getNotifications: async () => (demoGithub() ? demoNotifications : null),
+      markNotificationRead: async (_host, threadId) => {
+        demoNotifications = demoNotifications.filter((n) => n.id !== threadId)
+      },
+      markAllNotificationsRead: async () => {
+        demoNotifications = []
+      },
+      getRecentStars: async () =>
+        demoGithub()
+          ? (
+              [
+                ['ana-souza', 'demo/gitweb', 3],
+                ['bruno-lima', 'demo/gitweb', 28],
+                ['carla-dev', 'demo/api-pagamentos', 74],
+                ['dmitri-k', 'demo/gitweb', 150],
+                ['elisa-m', 'demo/site', 240],
+                ['fabio-r', 'demo/api-pagamentos', 410],
+                ['gabi-tech', 'demo/gitweb', 600]
+              ] as const
+            ).map(([login, repoFullName, hours]) => ({
+              repoFullName,
+              login,
+              avatarUrl: '',
+              profileUrl: `https://github.com/${login}`,
+              starredAt: new Date(Date.now() - hours * 60 * 60 * 1000).toISOString()
+            }))
+          : null,
+      searchUsers: async (_host, query) => {
+        if (!demoGithub()) throw new Error(GITHUB_UNAVAILABLE)
+        const q = query.toLowerCase()
+        return [
+          { login: 'demo-dev', name: 'Demo Dev', avatarUrl: '' },
+          { login: 'ana-souza', name: 'Ana Souza', avatarUrl: '' },
+          { login: 'anabeatriz', name: null, avatarUrl: '' }
+        ].filter((u) => u.login.includes(q) || u.name?.toLowerCase().includes(q))
       },
       addCollaborator: async (_host, _owner, _repo, username, role) => {
         if (!demoGithub()) throw new Error(GITHUB_UNAVAILABLE)

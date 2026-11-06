@@ -201,6 +201,55 @@ export function normalizeGitHubUsername(input: string): string | null {
   return /^[a-z\d](?:[a-z\d_-]{0,37}[a-z\d_])?$/i.test(login) ? login : null
 }
 
+/** An invitation the signed-in account received to join someone's repository. */
+export interface ReceivedInvitation {
+  id: number
+  repoFullName: string
+  /** The invitation's page on GitHub. */
+  htmlUrl: string
+  isPrivate: boolean
+  /** GitHub can leave this out, for instance when the account that invited was deleted. */
+  inviterLogin: string | null
+  inviterAvatarUrl: string | null
+  role: string
+  createdAt: string
+}
+
+/** An unread item from GitHub's notifications: a pull request, an issue, a mention, and so on. */
+export interface GitHubNotification {
+  id: string
+  /** GitHub's subject type, such as PullRequest or Issue. */
+  kind: string
+  /** Why GitHub notified this account, such as review_requested or mention. */
+  reason: string
+  title: string
+  repoFullName: string
+  htmlUrl: string
+  updatedAt: string
+}
+
+/** Someone starring a repository the signed-in account owns or works on through an organization. */
+export interface RepositoryStar {
+  repoFullName: string
+  login: string
+  avatarUrl: string
+  profileUrl: string
+  starredAt: string
+}
+
+/** One account offered while typing who to invite. */
+export interface GitHubUserSuggestion {
+  login: string
+  /** The profile name, when the person set one. It is what tells two similar logins apart. */
+  name: string | null
+  avatarUrl: string
+}
+
+/** What to look up for the text in the field: the login in a pasted `@octocat` or URL, otherwise the words as typed. */
+export function userSearchQuery(input: string): string {
+  return normalizeGitHubUsername(input) ?? input.trim()
+}
+
 /**
  * Whether this person's access can be changed from here. The owner cannot lose
  * access, inherited access is not this repository's to remove, and an admin

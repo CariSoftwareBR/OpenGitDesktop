@@ -17,6 +17,7 @@ import collaborators from './messages/collaborators'
 import githubLogin from './messages/githubLogin'
 import graph from './messages/graph'
 import graphTools from './messages/graphTools'
+import inbox from './messages/inbox'
 import ui from './messages/ui'
 import security from './messages/security'
 import stores from './messages/stores'
@@ -38,6 +39,7 @@ const namespaces = {
   graph,
   graphTools,
   history,
+  inbox,
   initial,
   main,
   publish,

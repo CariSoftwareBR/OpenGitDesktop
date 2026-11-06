@@ -53,9 +53,13 @@ import type {
   PublishRepositoryInput,
   PublishRepositoryResult,
   AddCollaboratorResult,
+  GitHubNotification,
+  GitHubUserSuggestion,
+  ReceivedInvitation,
   RepositoryCollaborators,
   RepositoryOwner,
-  RepositoryRole
+  RepositoryRole,
+  RepositoryStar
 } from '../shared/github'
 import type { UpdateStatus } from '../shared/updates'
 
@@ -66,6 +70,9 @@ export interface Api {
     checkForUpdates: () => Promise<UpdateStatus>
     quitAndInstall: () => Promise<void>
     capturePage: (rect: { x: number; y: number; width: number; height: number }) => Promise<string>
+    /** A system notification; clicking it brings the window forward and fires onNotificationClicked. */
+    showNotification: (title: string, body: string) => Promise<void>
+    onNotificationClicked: (callback: () => void) => () => void
     onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void
   }
   git: {
@@ -198,6 +205,18 @@ export interface Api {
     listUserReposWithToken: (host: string, token: string) => Promise<GitHubRepoSummary[]>
 
     getRepositoryCollaborators: (host: string, owner: string, repo: string) => Promise<RepositoryCollaborators>
+    /** Invitations this account received; null when it isn't signed in on that host. */
+    getReceivedInvitations: (host: string) => Promise<ReceivedInvitation[] | null>
+    acceptInvitation: (host: string, invitationId: number) => Promise<void>
+    declineInvitation: (host: string, invitationId: number) => Promise<void>
+    /** Unread GitHub notifications; null when not signed in on that host. */
+    getNotifications: (host: string) => Promise<GitHubNotification[] | null>
+    markNotificationRead: (host: string, threadId: string) => Promise<void>
+    markAllNotificationsRead: (host: string, lastReadAt: string) => Promise<void>
+    /** Recent stars on this account's repositories; null when not signed in on that host. */
+    getRecentStars: (host: string) => Promise<RepositoryStar[] | null>
+    /** Accounts matching a login or profile name, for suggesting who to invite. */
+    searchUsers: (host: string, query: string) => Promise<GitHubUserSuggestion[]>
     /** Invites a person, or changes the role of one already there. */
     addCollaborator: (host: string, owner: string, repo: string, username: string, role?: RepositoryRole) => Promise<AddCollaboratorResult>
     removeCollaborator: (host: string, owner: string, repo: string, username: string) => Promise<void>

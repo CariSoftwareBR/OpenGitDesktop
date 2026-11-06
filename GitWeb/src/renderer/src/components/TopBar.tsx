@@ -12,6 +12,7 @@ import {
   GitBranch,
   GitMerge,
   GitPullRequest,
+  Inbox,
   LayoutDashboard,
   Loader2,
   Pencil,
@@ -31,6 +32,7 @@ import { NARROW_LAYOUT_QUERY, useMediaQuery } from '../lib/useMediaQuery'
 import { updateStatusLabel, useUpdateStatus } from '../lib/useUpdateStatus'
 import { useRepoStore } from '../store/repoStore'
 import { useGithubAuthStore } from '../store/githubAuthStore'
+import { pendingMessageCount, useInboxStore } from '../store/inboxStore'
 import ConfirmDialog, { PromptDialog } from './ConfirmDialog'
 import Github from './icons/Github'
 import { openSettings } from '../lib/openAiSettings'
@@ -737,15 +739,18 @@ function TopBar(): JSX.Element {
   const setView = useRepoStore((s) => s.setView)
   const closeRepository = useRepoStore((s) => s.closeRepository)
   const t = useT().topBar
+  const messagesLabel = useT().inbox.title
+  const pendingMessages = useInboxStore(pendingMessageCount)
   const narrow = useMediaQuery(NARROW_LAYOUT_QUERY)
 
-  const tabs = [
+  const tabs: { id: typeof view; label: string; icon: typeof Inbox; count?: number }[] = [
     { id: 'changes' as const, label: t.tabs.changes, icon: FileDiff },
     { id: 'history' as const, label: t.tabs.history, icon: Clock },
     { id: 'stash' as const, label: t.tabs.stash, icon: Archive },
     { id: 'pullRequests' as const, label: t.tabs.pullRequests, icon: GitPullRequest },
     { id: 'collaborators' as const, label: t.tabs.collaborators, icon: Users },
     { id: 'dashboard' as const, label: t.tabs.dashboard, icon: LayoutDashboard },
+    { id: 'messages' as const, label: messagesLabel, icon: Inbox, count: pendingMessages },
     { id: 'settings' as const, label: t.tabs.settings, icon: Settings2 }
   ]
 
@@ -795,7 +800,7 @@ function TopBar(): JSX.Element {
               type="button"
               onClick={() => setView(tab.id)}
               title={tab.label}
-              aria-label={tab.label}
+              aria-label={tab.count ? `${tab.label} (${tab.count})` : tab.label}
               aria-current={active ? 'page' : undefined}
               className={
                 active
@@ -805,6 +810,7 @@ function TopBar(): JSX.Element {
             >
               <Icon size={14} aria-hidden />
               {!narrow && tab.label}
+              {Boolean(tab.count) && <span className="count-badge is-attention">{tab.count}</span>}
             </button>
           )
         })}
