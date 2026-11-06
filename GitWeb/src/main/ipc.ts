@@ -85,7 +85,7 @@ import { saveSecret, getSecret, deleteSecret } from './credentials'
 import { startDeviceFlow, pollDeviceFlow, cancelDeviceFlow, getOAuthAppInfo } from './githubDeviceFlow'
 import * as githubApi from './githubApi'
 import { isAppOrigin } from './security'
-import type { CreatePullRequestInput, MergeMethod, PublishRepositoryInput, PullRequestState } from '../shared/github'
+import type { CreatePullRequestInput, MergeMethod, PublishRepositoryInput, PullRequestState, RepositoryRole } from '../shared/github'
 import { openDirectoryDialog } from './dialogs'
 import {
   addRecentRepositories,
@@ -348,6 +348,19 @@ export function registerIpcHandlers(): void {
   handle('github:publishRepository', (_e, cwd: string, input: PublishRepositoryInput) => publishRepository(cwd, input))
   handle('github:listUserReposWithToken', (_e, host: string, token: string) =>
     githubApi.listUserReposWithToken(host, token)
+  )
+
+  handle('github:getRepositoryCollaborators', (_e, host: string, owner: string, repo: string) =>
+    githubApi.getRepositoryCollaborators(host, owner, repo)
+  )
+  handle('github:addCollaborator', (_e, host: string, owner: string, repo: string, username: string, role?: RepositoryRole) =>
+    githubApi.addCollaborator(host, owner, repo, username, role)
+  )
+  handle('github:removeCollaborator', (_e, host: string, owner: string, repo: string, username: string) =>
+    githubApi.removeCollaborator(host, owner, repo, username)
+  )
+  handle('github:cancelRepositoryInvitation', (_e, host: string, owner: string, repo: string, invitationId: number) =>
+    githubApi.cancelRepositoryInvitation(host, owner, repo, invitationId)
   )
 
   handle('github:listPullRequests', (_e, host: string, owner: string, repo: string, state: PullRequestState) =>

@@ -87,6 +87,7 @@ const ptBR = {
     history: 'Histórico',
     stash: 'Stash',
     pullRequests: 'Pull Requests',
+    collaborators: 'Colaboradores',
     dashboard: 'Dashboard',
     settings: 'Configurações'
   },
@@ -183,6 +184,7 @@ const en: M = {
     history: 'History',
     stash: 'Stash',
     pullRequests: 'Pull Requests',
+    collaborators: 'Collaborators',
     dashboard: 'Dashboard',
     settings: 'Settings'
   },
@@ -277,6 +279,7 @@ const es: M = {
     history: 'Historial',
     stash: 'Stash',
     pullRequests: 'Pull Requests',
+    collaborators: 'Colaboradores',
     dashboard: 'Panel',
     settings: 'Configuración'
   },

@@ -13,6 +13,7 @@ import pullRequests from './messages/pullRequests'
 import publish from './messages/publish'
 import aiSettings from './messages/aiSettings'
 import clone from './messages/clone'
+import collaborators from './messages/collaborators'
 import githubLogin from './messages/githubLogin'
 import graph from './messages/graph'
 import graphTools from './messages/graphTools'
@@ -30,6 +31,7 @@ const namespaces = {
   aiSettings,
   changes,
   clone,
+  collaborators,
   common,
   dashboard,
   githubLogin,

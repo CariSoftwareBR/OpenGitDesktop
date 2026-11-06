@@ -69,6 +69,31 @@ function demoGithub(): boolean {
 
 const DEMO_USER = { login: 'demo-dev', name: 'Demo Dev', avatarUrl: 'https://github.com/github.png' }
 
+// localStorage.demoCollaborators picks which situation the Collaborators screen
+// is designed against: 'org' | 'readOnly' | 'noAccess' | 'denied' (default: a
+// personal repository administered by the demo user).
+function demoCollaboratorVariant(): string | null {
+  try {
+    return localStorage.getItem('demoCollaborators')
+  } catch {
+    return null
+  }
+}
+
+let demoCollaborators = [
+  { login: 'demo', avatarUrl: '', role: 'admin', direct: true },
+  { login: 'demo-dev', avatarUrl: '', role: 'admin', direct: true },
+  { login: 'dependabot', avatarUrl: '', role: 'triage', direct: false },
+  { login: 'hubot', avatarUrl: '', role: 'maintain', direct: false },
+  { login: 'monalisa', avatarUrl: '', role: 'read', direct: true },
+  { login: 'octocat', avatarUrl: '', role: 'write', direct: true }
+]
+
+let demoInvitations = [
+  { id: 2, login: 'torvalds', avatarUrl: null, role: 'write', createdAt: new Date(Date.now() - 3 * 3_600_000).toISOString(), expired: false },
+  { id: 1, login: 'defunkt', avatarUrl: null, role: 'read', createdAt: new Date(Date.now() - 9 * 86_400_000).toISOString(), expired: true }
+]
+
 const hoursAgo = (h: number): string => new Date(Date.now() - h * 3600e3).toISOString()
 
 const DEMO_PRS = [
@@ -515,6 +540,47 @@ function installBrowserApiStub(): void {
       },
       listUserReposWithToken: async () => {
         throw new Error(GITHUB_UNAVAILABLE)
+      },
+
+      getRepositoryCollaborators: async () => {
+        if (!demoGithub()) throw new Error(GITHUB_UNAVAILABLE)
+        const variant = demoCollaboratorVariant()
+        if (variant === 'denied') throw new Error('GitHub recusou a solicitação (403).')
+        if (variant === 'noAccess') {
+          return { ownerLogin: 'demo', ownerKind: 'user' as const, canView: false, canAdminister: false, collaborators: [], invitations: [], invitationsError: null }
+        }
+        const collaborators =
+          variant === 'org'
+            ? demoCollaborators
+            : demoCollaborators.filter((c) => c.direct).map((c) => (c.role === 'admin' ? c : { ...c, role: 'write' }))
+        return {
+          ownerLogin: 'demo',
+          ownerKind: variant === 'org' ? ('org' as const) : ('user' as const),
+          canView: true,
+          canAdminister: variant !== 'readOnly',
+          collaborators,
+          invitations: variant === 'readOnly' ? [] : demoInvitations,
+          invitationsError: null
+        }
+      },
+      addCollaborator: async (_host, _owner, _repo, username, role) => {
+        if (!demoGithub()) throw new Error(GITHUB_UNAVAILABLE)
+        if (username.toLowerCase() === 'ghost-user') throw new Error(`O GitHub não encontrou ${username}, ou sua conta não pode gerenciar este repositório.`)
+        const existing = demoCollaborators.find((c) => c.login.toLowerCase() === username.toLowerCase())
+        if (existing) {
+          if (role) existing.role = role
+          existing.direct = true
+          return { kind: 'added' as const }
+        }
+        const invitation = { id: Date.now(), login: username, avatarUrl: null, role: role ?? 'write', createdAt: new Date().toISOString(), expired: false }
+        demoInvitations = [invitation, ...demoInvitations]
+        return { kind: 'invited' as const, invitation }
+      },
+      removeCollaborator: async (_host, _owner, _repo, username) => {
+        demoCollaborators = demoCollaborators.filter((c) => c.login !== username)
+      },
+      cancelRepositoryInvitation: async (_host, _owner, _repo, invitationId) => {
+        demoInvitations = demoInvitations.filter((i) => i.id !== invitationId)
       },
 
       listPullRequests: async (_host, _owner, _repo, state) =>

@@ -53,7 +53,10 @@ import type {
   PullRequestStatus,
   PublishRepositoryInput,
   PublishRepositoryResult,
-  RepositoryOwner
+  AddCollaboratorResult,
+  RepositoryCollaborators,
+  RepositoryOwner,
+  RepositoryRole
 } from '../shared/github'
 import type { UpdateStatus } from '../shared/updates'
 
@@ -275,6 +278,15 @@ const api = {
       invoke('github:publishRepository', cwd, input),
     listUserReposWithToken: (host: string, token: string): Promise<GitHubRepoSummary[]> =>
       invoke('github:listUserReposWithToken', host, token),
+
+    getRepositoryCollaborators: (host: string, owner: string, repo: string): Promise<RepositoryCollaborators> =>
+      invoke('github:getRepositoryCollaborators', host, owner, repo),
+    addCollaborator: (host: string, owner: string, repo: string, username: string, role?: RepositoryRole): Promise<AddCollaboratorResult> =>
+      invoke('github:addCollaborator', host, owner, repo, username, role),
+    removeCollaborator: (host: string, owner: string, repo: string, username: string): Promise<void> =>
+      invoke('github:removeCollaborator', host, owner, repo, username),
+    cancelRepositoryInvitation: (host: string, owner: string, repo: string, invitationId: number): Promise<void> =>
+      invoke('github:cancelRepositoryInvitation', host, owner, repo, invitationId),
 
     listPullRequests: (host: string, owner: string, repo: string, state: PullRequestState): Promise<PullRequest[]> =>
       invoke('github:listPullRequests', host, owner, repo, state),

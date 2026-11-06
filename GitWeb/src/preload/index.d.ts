@@ -52,7 +52,10 @@ import type {
   PullRequestStatus,
   PublishRepositoryInput,
   PublishRepositoryResult,
-  RepositoryOwner
+  AddCollaboratorResult,
+  RepositoryCollaborators,
+  RepositoryOwner,
+  RepositoryRole
 } from '../shared/github'
 import type { UpdateStatus } from '../shared/updates'
 
@@ -193,6 +196,12 @@ export interface Api {
     /** Creates the repo on github.com, adds it as origin and pushes the current branch. */
     publishRepository: (cwd: string, input: PublishRepositoryInput) => Promise<PublishRepositoryResult>
     listUserReposWithToken: (host: string, token: string) => Promise<GitHubRepoSummary[]>
+
+    getRepositoryCollaborators: (host: string, owner: string, repo: string) => Promise<RepositoryCollaborators>
+    /** Invites a person, or changes the role of one already there. */
+    addCollaborator: (host: string, owner: string, repo: string, username: string, role?: RepositoryRole) => Promise<AddCollaboratorResult>
+    removeCollaborator: (host: string, owner: string, repo: string, username: string) => Promise<void>
+    cancelRepositoryInvitation: (host: string, owner: string, repo: string, invitationId: number) => Promise<void>
 
     listPullRequests: (host: string, owner: string, repo: string, state: PullRequestState) => Promise<PullRequest[]>
     getPullRequest: (host: string, owner: string, repo: string, number: number) => Promise<PullRequest>

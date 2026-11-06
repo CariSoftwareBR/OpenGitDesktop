@@ -13,6 +13,7 @@ import FileInsightPanel from './components/FileInsightPanel'
 import RebasePlannerDialog from './components/RebasePlannerDialog'
 import StashesView from './views/StashesView'
 import PullRequestsView from './views/PullRequestsView'
+import CollaboratorsView from './views/CollaboratorsView'
 import DashboardView from './views/DashboardView'
 import AiChatView from './views/AiChatView'
 import SettingsView from './views/SettingsView'
@@ -310,6 +311,7 @@ function App(): JSX.Element {
           {view === 'history' && <HistoryView />}
           {view === 'stash' && <StashesView />}
           {view === 'pullRequests' && <PullRequestsView />}
+          {view === 'collaborators' && <CollaboratorsView />}
           {view === 'dashboard' && <DashboardView />}
           {view === 'settings' && <SettingsView />}
         </main>

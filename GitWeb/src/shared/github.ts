@@ -147,6 +147,78 @@ export function sanitizeRepositoryName(value: string): string {
     .slice(0, 100)
 }
 
+/** GitHub's five standard repository roles, as `role_name` spells them. */
+export const REPOSITORY_ROLES = ['read', 'triage', 'write', 'maintain', 'admin'] as const
+export type RepositoryRole = (typeof REPOSITORY_ROLES)[number]
+
+export interface RepositoryCollaborator {
+  login: string
+  avatarUrl: string
+  /** A standard role, or the name of a custom role defined by the organization. */
+  role: string
+  /** False when access only comes from the organization or a team, which this repository cannot take away. */
+  direct: boolean
+}
+
+export interface RepositoryInvitation {
+  id: number
+  /** Null when the invitation went to an e-mail address with no account behind it. */
+  login: string | null
+  avatarUrl: string | null
+  role: string
+  createdAt: string
+  expired: boolean
+}
+
+export interface RepositoryCollaborators {
+  /** As GitHub reports it: the remote URL can still name the owner from before a transfer or rename. */
+  ownerLogin: string
+  ownerKind: 'user' | 'org'
+  /** GitHub only lists collaborators to accounts with write access or higher. */
+  canView: boolean
+  canAdminister: boolean
+  collaborators: RepositoryCollaborator[]
+  invitations: RepositoryInvitation[]
+  /** Set when the invitations could not be read — an empty list then means "unknown", not "none". */
+  invitationsError: string | null
+}
+
+/** 201 means GitHub sent an invitation; 204 means access changed right away. */
+export type AddCollaboratorResult = { kind: 'invited'; invitation: RepositoryInvitation } | { kind: 'added' }
+
+/**
+ * The login in whatever the user typed or pasted (`@octocat`, a profile URL),
+ * or null when it cannot be one, such as an e-mail address. Underscores are
+ * legal only for Enterprise Managed Users, but those are real logins.
+ */
+export function normalizeGitHubUsername(input: string): string | null {
+  const login = input
+    .trim()
+    .replace(/^(?:https?:\/\/[^/]+|(?:[a-z\d-]+\.)+[a-z]{2,}(?::\d+)?)\//i, '')
+    .replace(/[?#].*$/, '')
+    .replace(/\/+$/, '')
+    .replace(/^@/, '')
+  return /^[a-z\d](?:[a-z\d_-]{0,37}[a-z\d_])?$/i.test(login) ? login : null
+}
+
+/**
+ * Whether this person's access can be changed from here. The owner cannot lose
+ * access, inherited access is not this repository's to remove, and an admin
+ * changing their own access could lock themselves out with no way back.
+ */
+export function canManageCollaborator(
+  collaborator: RepositoryCollaborator,
+  context: { canAdminister: boolean; owner: string; viewer: string }
+): boolean {
+  const login = collaborator.login.toLowerCase()
+  return (
+    context.canAdminister &&
+    collaborator.direct &&
+    login !== context.owner.toLowerCase() &&
+    login !== context.viewer.toLowerCase()
+  )
+}
+
 export type PullRequestReviewEvent = 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT'
 
 export interface PullRequestReviewCommentInput {
