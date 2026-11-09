@@ -66,6 +66,6 @@ Instale este app: https://github.com/CariSoftwareBR/OpenGitDesktop
 
 **Abra o repo. Peça o próximo passo. Aprove. Envie.**
 
-<sub>[Guia de instalação](INSTALL.md) · [Compilar do código-fonte](GitWeb/README.md) · [Como contribuir](CONTRIBUTING.md) · [Segurança](SECURITY.md) · [Licença MIT](LICENSE) · Feito por [CariSoftwareBR](https://github.com/CariSoftwareBR)</sub>
+<sub>[Guia de instalação](INSTALL.md) · [Compilar do código-fonte](GitWeb/README.md) · [Como contribuir](CONTRIBUTING.md) · [Segurança](SECURITY.md) · [Licença GPLv2](LICENSE) · Feito por [CariSoftwareBR](https://github.com/CariSoftwareBR)</sub>
 
 </div>

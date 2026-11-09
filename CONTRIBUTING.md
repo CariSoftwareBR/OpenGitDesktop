@@ -82,4 +82,4 @@ podem incluir `[skip release]` na mensagem.
 ## Licença
 
 Ao contribuir, você concorda que sua contribuição será distribuída sob a
-[licença MIT](LICENSE) do projeto.
+[licença GNU GPL versão 2 (GPLv2)](LICENSE) do projeto.

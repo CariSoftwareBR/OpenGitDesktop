@@ -9,6 +9,7 @@
     "Grok <grok@example.com>"
   ],
   "homepage": "https://github.com/CariSoftwareBR/OpenGitDesktop",
+  "license": "GPL-2.0-only",
   "private": true,
   "scripts": {
     "dev": "electron-vite dev",
