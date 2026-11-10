@@ -66,6 +66,6 @@ Install this app: https://github.com/CariSoftwareBR/OpenGitDesktop
 
 **Open the repo. Ask for the next step. Approve. Push.**
 
-<sub>[Install guide](INSTALL.md) · [Build from source](GitWeb/README.en.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [MIT License](LICENSE) · Made by [CariSoftwareBR](https://github.com/CariSoftwareBR)</sub>
+<sub>[Install guide](INSTALL.md) · [Build from source](GitWeb/README.en.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [GPLv2 License](LICENSE) · Made by [CariSoftwareBR](https://github.com/CariSoftwareBR)</sub>
 
 </div>
