@@ -25,6 +25,7 @@ import CloneDestinationField from './CloneDestinationField'
 import { useCloneProgress } from '../lib/useCloneProgress'
 import { useFormatters, useLocale, useT } from '../lib/i18n'
 import { relativeTime } from '../lib/relativeTime'
+import SegmentThumb from './SegmentThumb'
 
 type CloneTab = 'github' | 'url' | 'token'
 
@@ -650,6 +651,7 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
 
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
             <div className="clone-segmented" role="tablist" aria-label={t.methodAria}>
+              <SegmentThumb activeKey={cloneTab} />
               {tabs.map((tab) => (
                 <button
                   key={tab.id}

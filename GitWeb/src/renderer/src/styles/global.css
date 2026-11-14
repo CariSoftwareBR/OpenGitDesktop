@@ -360,6 +360,16 @@
    — the investigation's active filename, and the chat's own busy labels. The
    surrounding row stays stable, so the motion signals work without making the
    whole progress line visually noisy. */
+@keyframes agent-draft-ripple {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  45% {
+    transform: scaleY(0.35);
+  }
+}
+
 @keyframes agent-busy-shimmer {
   0% {
     background-position: 160% 0;
@@ -534,6 +544,30 @@
   100% {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* New PR wizard: the step that just became current sends one ring out. */
+@keyframes wizard-node-ping {
+  0% {
+    box-shadow:
+      0 0 0 4px var(--color-command-blue-soft),
+      0 0 0 0 color-mix(in oklab, var(--color-command-blue) 45%, transparent);
+  }
+  100% {
+    box-shadow:
+      0 0 0 4px var(--color-command-blue-soft),
+      0 0 0 14px transparent;
+  }
+}
+@keyframes wizard-card-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
   }
 }
 
@@ -977,6 +1011,59 @@
      and the sparkle turns, so the AI entry point feels alive without
      competing with the primary action. While generating, the label uses the
      agent shimmer instead. */
+  /* "Redigir pelo diff": the PR draft button. Its mark is a little diff stat
+     (green adds, red deletes) in a recessed well — what the agent reads —
+     instead of the generic AI sparkle. Hover ripples the bars once around;
+     while the agent reads, they keep rippling. */
+  .agent-draft {
+    @apply inline-flex h-8 items-center gap-2 rounded-button border border-default-border bg-coal-raised pl-1 pr-3 text-caption font-medium text-primary-text active:scale-[0.97];
+    box-shadow: var(--shadow-raised);
+    transition:
+      border-color 180ms ease-out,
+      background-color 180ms ease-out,
+      transform 150ms var(--ease-out-expo);
+  }
+  .agent-draft:hover:not(:disabled) {
+    border-color: color-mix(in oklab, var(--color-command-blue) 45%, transparent);
+    background-color: color-mix(in oklab, var(--color-command-blue) 8%, var(--color-coal-raised));
+  }
+  .agent-draft:disabled {
+    cursor: progress;
+  }
+  .agent-draft-glyph {
+    @apply flex h-6 w-9 items-end justify-center gap-[2px] rounded-md border border-default-border bg-midnight-base px-1.5 pb-[5px];
+  }
+  .agent-draft-glyph > svg {
+    align-self: center;
+  }
+  .agent-draft-glyph > i {
+    width: 3px;
+    border-radius: 1px;
+    transform-origin: bottom;
+  }
+  .agent-draft-glyph > i.is-add {
+    background: var(--color-diff-add-ink);
+  }
+  .agent-draft-glyph > i.is-del {
+    background: var(--color-danger-red);
+  }
+  .agent-draft:hover:not(:disabled) .agent-draft-glyph > i {
+    animation: agent-draft-ripple 560ms var(--ease-out-expo) 1 backwards;
+  }
+  .agent-draft.is-reading .agent-draft-glyph {
+    border-color: color-mix(in oklab, var(--color-command-blue) 45%, transparent);
+  }
+  .agent-draft.is-reading .agent-draft-glyph > i {
+    animation: agent-draft-ripple 900ms ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .agent-draft-glyph > i,
+    .agent-draft:hover:not(:disabled) .agent-draft-glyph > i,
+    .agent-draft.is-reading .agent-draft-glyph > i {
+      animation: none;
+    }
+  }
+
   .btn-agent {
     @apply relative inline-flex h-7 items-center gap-1.5 overflow-hidden rounded-button border border-command-blue/30 bg-command-blue-soft px-3 text-caption font-medium text-command-blue active:scale-[0.97];
     box-shadow: var(--shadow-raised);
@@ -1103,6 +1190,51 @@
 
   /* Empty-state medallion: one icon on a raised tile — used for every
      "nothing here yet" state so they share a single voice. */
+  .wizard-node-active {
+    animation: wizard-node-ping 900ms var(--ease-out-expo) 1;
+  }
+  /* The rail's leading edge glows while it grows, then rests. */
+  .wizard-rail-fill {
+    box-shadow: 0 0 8px color-mix(in oklab, var(--color-command-blue) 60%, transparent);
+  }
+  .wizard-card {
+    animation: wizard-card-in 360ms var(--ease-out-expo) backwards;
+    transition:
+      background-color 180ms ease-out,
+      border-color 180ms ease-out,
+      box-shadow 220ms var(--ease-out-expo),
+      transform 220ms var(--ease-out-expo);
+  }
+  .wizard-card:not([data-selected='true']):not([data-disabled='true']):hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-raised);
+  }
+  .wizard-card[data-selected='true'] {
+    box-shadow:
+      0 0 0 3px var(--color-command-blue-soft),
+      var(--shadow-raised);
+  }
+  .wizard-card .empty-medallion {
+    transition:
+      color 180ms ease-out,
+      border-color 180ms ease-out,
+      background-color 180ms ease-out;
+  }
+  .wizard-card[data-selected='true'] .empty-medallion {
+    color: var(--color-command-blue);
+    border-color: color-mix(in oklab, var(--color-command-blue) 40%, transparent);
+    background-color: var(--color-command-blue-soft);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .wizard-node-active,
+    .wizard-card {
+      animation: none;
+    }
+    .wizard-card:hover {
+      transform: none;
+    }
+  }
+
   .empty-medallion {
     @apply flex size-11 items-center justify-center rounded-md border border-default-border bg-coal-raised text-secondary-text;
     box-shadow: var(--shadow-raised);
@@ -1488,6 +1620,8 @@
   }
 
   .clone-segmented {
+    position: relative;
+    isolation: isolate;
     display: inline-flex;
     gap: 2px;
     padding: 3px;
@@ -1496,6 +1630,8 @@
     background: var(--color-midnight-base);
   }
   .clone-segment {
+    position: relative;
+    z-index: 1;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -1510,17 +1646,47 @@
       color 150ms var(--ease-out-expo),
       box-shadow 150ms var(--ease-out-expo);
   }
+  /* Hover only lifts the label: a hover surface under the pointer read as a
+     second selection arriving before the sliding thumb did. */
   .clone-segment:hover {
     color: var(--color-primary-text);
-    background: var(--color-hover-overlay);
   }
-  .clone-segment[aria-selected='true'] {
+  /* The active option's surface is the sliding thumb below, so the option
+     itself only brightens its label. */
+  .clone-segment[aria-selected='true'],
+  .clone-segment[aria-checked='true'],
+  .clone-segment[aria-selected='true']:hover,
+  .clone-segment[aria-checked='true']:hover {
     color: var(--color-primary-text);
+    background: transparent;
+  }
+  .clone-segment[aria-selected='true'] svg,
+  .clone-segment[aria-checked='true'] svg {
+    color: var(--color-command-blue);
+  }
+  .clone-segment-thumb {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 0;
+    z-index: 0;
+    width: 0;
+    border-radius: 6px;
     background: var(--color-obsidian-panel);
     box-shadow: var(--shadow-raised);
+    opacity: 0;
+    pointer-events: none;
   }
-  .clone-segment[aria-selected='true'] svg {
-    color: var(--color-command-blue);
+  .clone-segment-thumb[data-ready='true'] {
+    transition:
+      transform 280ms cubic-bezier(0.32, 0.72, 0, 1),
+      width 280ms cubic-bezier(0.32, 0.72, 0, 1),
+      opacity 150ms ease-out;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .clone-segment-thumb[data-ready='true'] {
+      transition: none;
+    }
   }
 
   .clone-monogram {
@@ -2192,6 +2358,40 @@
 
 /* ── Settings: grouped rows, choice tiles, theme miniatures ──────────────── */
 @layer components {
+  /* Collaborators: rows settle in, warm under the pointer, and keep their
+     destructive action out of sight until the row is pointed at or focused. */
+  .collab-row {
+    animation: rise-in 360ms var(--ease-out-expo) backwards;
+    transition: background-color 150ms ease-out;
+  }
+  .collab-row:hover,
+  .collab-row:focus-within {
+    background-color: var(--color-hover-overlay);
+  }
+  /* The people list keeps overflow visible (for the role menus), so the
+     hover fill rounds its own outer corners to stay inside the card. */
+  .collab-row:first-child {
+    border-top-left-radius: calc(var(--radius-lg) - 1px);
+    border-top-right-radius: calc(var(--radius-lg) - 1px);
+  }
+  .collab-row:last-child {
+    border-bottom-left-radius: calc(var(--radius-lg) - 1px);
+    border-bottom-right-radius: calc(var(--radius-lg) - 1px);
+  }
+  .collab-row .collab-action {
+    opacity: 0;
+    transition: opacity 150ms ease-out;
+  }
+  .collab-row:hover .collab-action,
+  .collab-row:focus-within .collab-action {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .collab-row {
+      animation: none;
+    }
+  }
+
   .settings-heading {
     display: flex;
     align-items: center;

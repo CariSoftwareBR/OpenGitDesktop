@@ -442,16 +442,6 @@ function AiSettingsForm(): JSX.Element | null {
         </>
       )}
 
-      <div className="flex gap-2 border-t border-default-border pt-3">
-        <button type="button" onClick={() => void handleSave()} disabled={isBusy} className="btn-primary flex-1 justify-center">
-          {savedFlash ? <Check size={14} /> : null} {savedFlash ? t.saved : t.save}
-        </button>
-        <button type="button" onClick={() => void handleTest()} disabled={isBusy} className="btn-secondary flex-1 justify-center">
-          {t.testConnection}
-        </button>
-      </div>
-      {testResult && <p className="text-caption text-success-green">{testResult}</p>}
-
       <div className="flex items-start gap-3 border-t border-default-border pt-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-coal-raised text-secondary-text">
           <Bot size={17} aria-hidden />
@@ -481,6 +471,17 @@ function AiSettingsForm(): JSX.Element | null {
           </div>
         </div>
       </div>
+
+      {/* Last, under everything they act on: Save keeps the whole form. */}
+      <div className="flex gap-2 border-t border-default-border pt-3">
+        <button type="button" onClick={() => void handleSave()} disabled={isBusy} className="btn-primary flex-1 justify-center">
+          {savedFlash ? <Check size={14} /> : null} {savedFlash ? t.saved : t.save}
+        </button>
+        <button type="button" onClick={() => void handleTest()} disabled={isBusy} className="btn-secondary flex-1 justify-center">
+          {t.testConnection}
+        </button>
+      </div>
+      {testResult && <p className="text-caption text-success-green">{testResult}</p>}
     </div>
   )
 }

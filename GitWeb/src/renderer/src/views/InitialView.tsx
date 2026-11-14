@@ -47,7 +47,6 @@ import type {
 import type { Messages } from '../../../shared/i18n'
 import { useLocale, useT } from '../lib/i18n'
 import { relativeTime } from '../lib/relativeTime'
-import ThemeToggle from '../components/ThemeToggle'
 import RepoLane, { LaneMark } from '../components/RepoLane'
 import BenchPulse, { WINDOW_DAYS } from '../components/BenchPulse'
 
@@ -785,7 +784,6 @@ function InitialView(): JSX.Element {
                 </p>
               )}
             </div>
-            <ThemeToggle className="size-9 shrink-0" />
           </header>
 
           {/* While cloning, the modal shows this same error inside itself. */}

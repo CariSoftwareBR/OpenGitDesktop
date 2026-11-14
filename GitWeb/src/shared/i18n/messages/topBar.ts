@@ -92,8 +92,6 @@ const ptBR = {
     settings: 'Configurações'
   },
   backToRecents: 'Voltar para recentes',
-  themeToLight: 'Mudar para o tema claro',
-  themeToDark: 'Mudar para o tema escuro',
   repoBranchSync: 'Repositório, branch e sincronização',
   repoViews: 'Visões do repositório'
 }
@@ -189,8 +187,6 @@ const en: M = {
     settings: 'Settings'
   },
   backToRecents: 'Back to recents',
-  themeToLight: 'Switch to light theme',
-  themeToDark: 'Switch to dark theme',
   repoBranchSync: 'Repository, branch and sync',
   repoViews: 'Repository views'
 }
@@ -284,8 +280,6 @@ const es: M = {
     settings: 'Configuración'
   },
   backToRecents: 'Volver a recientes',
-  themeToLight: 'Cambiar al tema claro',
-  themeToDark: 'Cambiar al tema oscuro',
   repoBranchSync: 'Repositorio, rama y sincronización',
   repoViews: 'Vistas del repositorio'
 }

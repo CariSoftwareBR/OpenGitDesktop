@@ -510,7 +510,8 @@ function SettingsView(): JSX.Element {
   const tabRefs = useRef<Partial<Record<SettingsTab, HTMLButtonElement | null>>>({})
   const t = useT().settings
 
-  // `hint` is the short line under each tab; `description` heads the panel.
+  // `hint` is the short line under each tab; `description` heads the panel
+  // only when the narrow tab strip has no room for hints.
   const tabText: Record<SettingsTab, { label: string; hint: string; description: string }> = {
     general: { label: t.tabs.general, hint: t.tabs.generalHint, description: t.tabs.generalHint },
     ai: { label: t.tabs.ai, hint: t.tabs.aiHint, description: t.ai.hint },
@@ -622,10 +623,10 @@ function SettingsView(): JSX.Element {
             aria-labelledby={tabId(tab)}
             className="view-enter flex min-w-0 max-w-2xl flex-col gap-6"
           >
-            <header className="flex flex-col gap-1">
-              <h2 className="text-title font-semibold text-primary-text">{tabText[tab].label}</h2>
-              <p className="text-caption text-secondary-text">{tabText[tab].description}</p>
-            </header>
+            {/* Wide: the selected tab beside the panel already names it and says
+                what it holds, so the panel starts straight with its content.
+                Narrow: the tab strip shows names only, so the description stays. */}
+            {narrow && <p className="text-caption text-secondary-text">{tabText[tab].description}</p>}
 
             {tab === 'general' && <GeneralPanel />}
             {tab === 'ai' && (
