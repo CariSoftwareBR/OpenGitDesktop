@@ -34,6 +34,7 @@ export default function DeleteBranchDialog({ name, repoPath, onCancel, onDelete,
   useEffect(() => {
     if (!name || !repoPath) return
     let current = true
+    // oxlint-disable-next-line react/set-state-in-effect -- shows loading while the branch check runs over IPC
     setState({ status: 'loading' })
     window.api.git
       .branchDeleteCheck(repoPath, name)
@@ -149,7 +150,14 @@ export default function DeleteBranchDialog({ name, repoPath, onCancel, onDelete,
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4" role="presentation" onClick={onCancel}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4"
+      role="presentation"
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.target === e.currentTarget) onCancel()
+      }}
+    >
       <div
         ref={panelRef}
         role="alertdialog"
@@ -157,7 +165,6 @@ export default function DeleteBranchDialog({ name, repoPath, onCancel, onDelete,
         aria-labelledby={titleId}
         aria-busy={state.status === 'loading'}
         className="max-h-full w-full min-w-0 max-w-lg overflow-y-auto rounded-lg border border-default-border bg-obsidian-panel p-5 shadow-floating"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3">
           <span className={`flex size-9 shrink-0 items-center justify-center rounded-md border ${tile}`}>

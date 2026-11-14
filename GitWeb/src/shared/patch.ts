@@ -145,7 +145,7 @@ function ensureDiffPreamble(file: ParsedFileDiff): string[] {
   if (hasGitHeader && hasMinus && hasPlus) return file.preamble.filter((line) => !line.startsWith('@@'))
 
   const path = file.newPath || file.oldPath
-  const next = [...file.preamble.filter((line) => !line.startsWith('@@'))]
+  const next = file.preamble.filter((line) => !line.startsWith('@@'))
   if (!hasGitHeader) next.unshift(`diff --git a/${path} b/${path}`)
   if (!hasMinus) next.push(`--- a/${file.oldPath || path}`)
   if (!hasPlus) next.push(`+++ b/${file.newPath || path}`)

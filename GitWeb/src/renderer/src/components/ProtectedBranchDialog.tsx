@@ -43,6 +43,7 @@ export default function ProtectedBranchDialog({
   const open = block !== null
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- clears the typed name when the dialog closes
     if (!open) setName('')
   }, [open])
 
@@ -101,7 +102,14 @@ export default function ProtectedBranchDialog({
   ]
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4" role="presentation" onClick={onCancel}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4"
+      role="presentation"
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.target === e.currentTarget) onCancel()
+      }}
+    >
       <div
         ref={panelRef}
         role="dialog"
@@ -109,7 +117,6 @@ export default function ProtectedBranchDialog({
         aria-labelledby={titleId}
         aria-describedby={descId}
         className="max-h-full w-full min-w-0 max-w-lg overflow-y-auto rounded-lg border border-default-border bg-obsidian-panel p-5 shadow-floating"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-warning-amber/25 bg-warning-amber-soft text-warning-amber">

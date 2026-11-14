@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CloneProgress } from '../../../shared/git'
 
 interface CloneProgressState {
@@ -21,10 +21,12 @@ interface CloneProgressState {
 export function useCloneProgress(destination: string | null): CloneProgressState {
   const [progress, setProgress] = useState<CloneProgress | null>(null)
   const [stalledFor, setStalledFor] = useState(0)
-  const lastEventAt = useRef<number>(Date.now())
+  const lastEventAt = useRef(0)
   // Read inside the listener so the subscription survives destination changes.
   const watched = useRef(destination)
-  watched.current = destination
+  useLayoutEffect(() => {
+    watched.current = destination
+  })
 
   useEffect(() => {
     return window.api.git.onCloneProgress((next) => {

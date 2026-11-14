@@ -136,7 +136,9 @@ function LastCommitMenu({
   const menuRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const openRef = useRef(false)
-  openRef.current = open
+  useLayoutEffect(() => {
+    openRef.current = open
+  })
   const close = useCallback(() => {
     if (!openRef.current) return
     setOpen(false)
@@ -713,7 +715,7 @@ function ChangesView(): JSX.Element {
     if (!first) return
     const isStaged = staged.some((e) => e.path === first.path) && !conflicted.some((e) => e.path === first.path)
     void selectFile(first.path, isStaged)
-  }, [narrow, totalCount, selectedFile, conflicted, staged, unstaged, selectFile])
+  }, [narrow, totalCount, selectedFile, conflicted, staged, unstaged, selectFile, clearSelectedFile])
 
   useEffect(() => {
     if (!shouldVirtualize) return
@@ -1096,10 +1098,11 @@ function ChangesView(): JSX.Element {
               {conflicted.map((entry) => {
                 const flatIdx = flatEntries.findIndex((f) => f.kind === 'conflict' && f.entry.path === entry.path)
                 return (
-                  <li key={entry.path} onContextMenu={(e) => void openFileContextMenu(e, entry)}>
+                  <li key={entry.path}>
                     <button
                       type="button"
                       onClick={() => selectFlat(flatIdx)}
+                      onContextMenu={(e) => void openFileContextMenu(e, entry)}
                       className={`list-row w-full text-left ${selectedFile?.path === entry.path ? 'is-selected' : ''} [--row-accent:var(--color-warning-amber)] ${isRowFocused('conflict', entry.path) ? 'ring-1 ring-command-blue/50' : ''}`}
                     >
                       <AlertTriangle size={14} className="shrink-0 text-warning-amber" aria-hidden />
@@ -1232,7 +1235,7 @@ function ChangesView(): JSX.Element {
                         />
                       ) : row.type === 'empty-unstaged' ? (
                         <div role="row">
-                          <p role="gridcell" className="px-3 py-2 text-caption text-tertiary-text">{t.noUnstaged}</p>
+                          <div role="gridcell" className="px-3 py-2 text-caption text-tertiary-text">{t.noUnstaged}</div>
                         </div>
                       ) : (
                         (() => {

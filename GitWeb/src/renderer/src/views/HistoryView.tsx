@@ -224,6 +224,7 @@ function ContainedIn({ hash }: { hash: string }): JSX.Element {
   useEffect(() => {
     if (!currentRepoPath) return
     let cancelled = false
+    // oxlint-disable-next-line react/set-state-in-effect -- drops the previous commit's refs while the new ones load over IPC
     setRefs(null)
     window.api.git
       .refsContaining(currentRepoPath, hash)
@@ -327,6 +328,7 @@ function HistoryView(): JSX.Element {
 
   // A focus request means "show me this commit in the graph": a search would hide it.
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- a focus request clears the search so the focused commit shows in the graph
     if (historyFocus) setQuery('')
   }, [historyFocus])
 
@@ -403,14 +405,15 @@ function HistoryView(): JSX.Element {
     return count
   }, [graph, log])
 
-  const [page, setPage] = useState(1)
-  const pageCount = Math.max(1, Math.ceil(filteredLog.length / HISTORY_PAGE_SIZE))
-  useEffect(() => {
+  const [requestedPage, setPage] = useState(1)
+  const pageKey = `${query}\0${logPath ?? ''}`
+  const [pageKeyShown, setPageKeyShown] = useState(pageKey)
+  if (pageKeyShown !== pageKey) {
+    setPageKeyShown(pageKey)
     setPage(1)
-  }, [query, logPath])
-  useEffect(() => {
-    setPage((p) => Math.min(p, pageCount))
-  }, [pageCount])
+  }
+  const pageCount = Math.max(1, Math.ceil(filteredLog.length / HISTORY_PAGE_SIZE))
+  const page = Math.min(requestedPage, pageCount)
   // The graph is one continuous, virtualized canvas; paging would cut its lanes.
   const visibleLog = graphMode ? filteredLog : filteredLog.slice((page - 1) * HISTORY_PAGE_SIZE, page * HISTORY_PAGE_SIZE)
 

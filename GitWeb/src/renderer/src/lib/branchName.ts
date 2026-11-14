@@ -14,6 +14,7 @@ export function validateBranchName(name: string, existing: string[] = []): strin
   const t = getT().stores
   if (name.startsWith('-')) return t.branchStartsWithDash
   if (name === '@') return t.branchIsAt
+  // oxlint-disable-next-line no-control-regex -- git refuses control characters in ref names
   if (/[~^:?*[\\\x00-\x1f\x7f]/.test(name)) return t.branchControlChars
   if (name.includes('..')) return t.branchDoubleDot
   if (name.includes('@{')) return t.branchAtBrace

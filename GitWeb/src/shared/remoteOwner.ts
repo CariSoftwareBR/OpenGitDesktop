@@ -56,6 +56,7 @@ export function ownerFolders(owner: string): string[] | null {
   const segments = owner.split('/').filter(Boolean)
   if (segments.length === 0) return null
   // A trailing dot also covers `.` and `..`; Windows strips trailing dots and spaces.
+  // oxlint-disable-next-line no-control-regex -- control characters are not valid in a folder name
   const safe = segments.every((segment) => !/[<>:"|?*\\\x00-\x1f]|[. ]$/.test(segment))
   return safe ? segments : null
 }

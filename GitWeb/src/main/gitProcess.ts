@@ -464,7 +464,7 @@ export function parseStatusBranchHeader(header: string): {
 } {
   let branch: string | null = null
   let upstream: string | null = null
-  if (!/^## HEAD \(no branch\)/.test(header)) {
+  if (!header.startsWith('## HEAD (no branch)')) {
     const headerMatch = header.match(/^## (?:No commits yet on )?(.+?)(?:\.\.\.(\S+))?(?:\s|$)/)
     if (headerMatch) {
       branch = headerMatch[1]?.trim() || null
@@ -1296,6 +1296,8 @@ export async function getBranchIntegration(
 
   // A few at a time: a repo with dozens of branches would otherwise spawn
   // several git processes per branch all at once.
+  // Pre-sized on purpose: parallel workers write their result into its own slot.
+  // oxlint-disable-next-line unicorn/no-new-array
   const branches: BranchIntegration[] = new Array(candidates.length)
   let next = 0
   const worker = async (): Promise<void> => {
@@ -1390,7 +1392,7 @@ export async function deleteIntegratedBranches(
   const protectedNames = new Set(report.protectedNames)
 
   const results: BranchDeletionResult[] = []
-  for (const name of [...new Set(names.map((n) => n.trim()).filter(Boolean))]) {
+  for (const name of new Set(names.map((n) => n.trim()).filter(Boolean))) {
     const info = local.get(name)
     let reason: string | undefined
     if (protectedNames.has(name.toLowerCase())) reason = t.protectedBranch(name)

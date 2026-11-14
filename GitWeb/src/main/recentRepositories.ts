@@ -2,7 +2,7 @@ import { existsSync } from 'fs'
 import { randomUUID } from 'crypto'
 import { basename, isAbsolute, relative, resolve } from 'path'
 import { readJson, updateJson } from './appDataStore'
-import type { RecentReposData, RecentRepository, RepoGroup } from '../shared/git'
+import type { RecentReposData, RepoGroup } from '../shared/git'
 
 const FILE_NAME = 'recent-repos.json'
 

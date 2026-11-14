@@ -60,6 +60,7 @@ const NAME_RULES: { kind: SensitiveKind; test: (name: string, path: string) => b
 
 // Built from pieces so this file never contains a literal that a secret
 // scanner (gitleaks, GitHub push protection, this module) would flag.
+// oxlint-disable-next-line no-useless-concat -- split on purpose, see above
 const PRIVATE_KEY_HEADER = new RegExp('-----BEGIN (?:[A-Z0-9]+ )*PRIVATE ' + 'KEY(?: BLOCK)?-----')
 
 // Order matters: the first matching rule names the kind (sk-ant- before sk-).

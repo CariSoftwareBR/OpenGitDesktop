@@ -372,7 +372,7 @@ export function parseCheckoutBlockers(stderr: string): string[] | null {
     if (/would be overwritten by checkout:\s*$/.test(line)) {
       inList = true
       matched = true
-    } else if (inList && /^\t/.test(line)) {
+    } else if (inList && line.startsWith('\t')) {
       files.push(line.trim())
     } else {
       inList = false

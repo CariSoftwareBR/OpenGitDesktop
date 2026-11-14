@@ -259,13 +259,16 @@ function AiSettingsForm(): JSX.Element | null {
   }, [settings, loadSettings])
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- seeds the editable draft once settings arrive from the store
     if (settings) setDraft((current) => current ?? settings)
   }, [settings])
 
+  // Keyed on the provider alone: the key reloads when it changes, not on every edit to the draft.
+  const activeProvider = draft?.activeProvider
   useEffect(() => {
-    if (!draft) return
-    window.api.secrets.get(credentialKey(draft.activeProvider)).then((key) => setApiKeyDraft(key ?? ''))
-  }, [draft?.activeProvider])
+    if (!activeProvider) return
+    window.api.secrets.get(credentialKey(activeProvider)).then((key) => setApiKeyDraft(key ?? ''))
+  }, [activeProvider])
 
   if (!draft) return null
 

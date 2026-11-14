@@ -57,7 +57,7 @@ const PANEL =
   'rounded-md border border-default-border bg-obsidian-panel p-1 shadow-floating'
 
 function Separator(): JSX.Element {
-  return <div className="my-1 h-px bg-default-border" role="separator" />
+  return <hr className="my-1 h-px border-0 bg-default-border" />
 }
 
 function FileContextMenu({
@@ -86,6 +86,7 @@ function FileContextMenu({
 
   useLayoutEffect(() => {
     if (!open) {
+      // oxlint-disable-next-line react/set-state-in-effect -- the submenu closes with the menu; the rest of this layout effect measures it
       setFolderOpen(false)
       return
     }
@@ -263,6 +264,7 @@ function FileContextMenu({
               {folderOpen && (
                 <div
                   role="menu"
+                  tabIndex={-1}
                   className={`absolute top-0 z-50 min-w-[180px] ${PANEL} ${
                     submenuLeft ? 'left-full ml-1' : 'right-full mr-1'
                   }`}

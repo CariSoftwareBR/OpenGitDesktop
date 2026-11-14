@@ -560,6 +560,7 @@ function SettingsView(): JSX.Element {
         <div className={narrow ? 'flex flex-col gap-6' : 'grid grid-cols-[232px_minmax(0,1fr)] items-start gap-10'}>
           <div
             role="tablist"
+            tabIndex={-1}
             aria-label={t.tabs.label}
             aria-orientation={narrow ? 'horizontal' : 'vertical'}
             onKeyDown={handleTabKeyDown}

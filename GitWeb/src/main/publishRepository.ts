@@ -43,7 +43,7 @@ export async function publishRepository(cwd: string, input: PublishRepositoryInp
     await pushBranch(cwd, branch, true)
   } catch (err) {
     const reason = (err instanceof Error ? err.message : String(err)).split('\n')[0].trim()
-    throw new Error(t.pushFailed(repo.htmlUrl, reason.endsWith('.') ? reason : `${reason}.`))
+    throw new Error(t.pushFailed(repo.htmlUrl, reason.endsWith('.') ? reason : `${reason}.`), { cause: err })
   }
   return { fullName: repo.fullName, htmlUrl: repo.htmlUrl, branch }
 }

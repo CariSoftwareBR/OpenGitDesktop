@@ -7,6 +7,7 @@ import { redactSensitiveText, scanForSensitive, sensitiveFileKind, sensitiveLine
 
 // Fake secrets are assembled at runtime so no literal in this file looks like
 // a real one to gitleaks or GitHub push protection.
+/* oxlint-disable no-useless-concat -- the split is the point */
 const fake = {
   github: 'gh' + 'p_' + 'A1b2C3d4E5'.repeat(4),
   aws: 'AK' + 'IA' + 'Q3ZK7W2M9X4B6N1P',
@@ -15,6 +16,7 @@ const fake = {
   privateKey: '-----BEGIN RSA PRIVATE ' + 'KEY-----',
   hex: 'a8f5f167' + 'f44f4964' + 'e6c998de' + 'e827110c'
 }
+/* oxlint-enable no-useless-concat */
 
 vi.mock('electron', () => ({ shell: { trashItem: vi.fn() }, app: { getPath: () => tmpdir() } }))
 vi.mock('../src/main/credentials', () => ({ getSecret: vi.fn(async () => null) }))

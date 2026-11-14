@@ -343,7 +343,7 @@ describe('reorganizing repositories', () => {
   })
 
   it('rechecks nested worktree registrations when applying the preview', async () => {
-    const site = repo('site', 'https://github.com/acme/site.git')
+    repo('site', 'https://github.com/acme/site.git')
     const child = repo('site/child')
     const preview = await planReorganization(root)
     const worktree = join(root, '.worktrees', 'side')

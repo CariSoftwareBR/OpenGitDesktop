@@ -197,6 +197,7 @@ function MoveToGroupMenu({
       ref={ref}
       className="absolute right-2 top-10 z-20 min-w-44 rounded-md border border-default-border bg-obsidian-panel p-1 shadow-floating"
       role="menu"
+      tabIndex={-1}
       onKeyDown={(e) => e.key === 'Escape' && onClose()}
     >
       {options.map((option) => (
@@ -416,6 +417,8 @@ function InitialView(): JSX.Element {
     const laneTitle = chips.length > 0 ? chips.map((c) => c.title).join('\n') : check?.message
 
     return (
+      // Dragging is the pointer shortcut; the row's "move to folder" button does the same from the keyboard.
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
       <li
         key={repo.path}
         draggable

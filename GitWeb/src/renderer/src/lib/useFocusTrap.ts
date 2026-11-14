@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import type { RefObject } from 'react'
 
 const FOCUSABLE =
@@ -28,7 +28,9 @@ export function useFocusTrap(
   // keeps the effect from re-running mid-dialog and yanking focus back to the
   // initial element.
   const onEscapeRef = useRef(onEscape)
-  onEscapeRef.current = onEscape
+  useLayoutEffect(() => {
+    onEscapeRef.current = onEscape
+  })
 
   useEffect(() => {
     if (!active) return

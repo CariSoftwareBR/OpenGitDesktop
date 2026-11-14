@@ -68,6 +68,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # oxlint fails only on errors (real bugs); warnings are listed in the log
+      # and stay non-blocking until the backlog is cleared — see .oxlintrc.json.
+      - name: Lint
+        run: npm run lint
+
       - name: Typecheck
         run: npm run typecheck
 
