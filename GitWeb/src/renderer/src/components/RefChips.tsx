@@ -34,30 +34,30 @@ function RefChips({
     // Inline in a commit row the chips share one line and shrink; in a longer
     // list ("present in") they wrap so none gets cut at the edge.
     <span className={`flex min-w-0 shrink items-center gap-1 ${max > 3 ? 'flex-wrap' : ''}`}>
-      {visible.map((ref) => {
+      {visible.map((chip) => {
         const kindClass =
-          ref.kind === 'tag'
+          chip.kind === 'tag'
             ? 'ref-chip-tag'
-            : ref.kind === 'remote'
+            : chip.kind === 'remote'
               ? 'ref-chip-remote'
-              : ref.kind === 'head'
+              : chip.kind === 'head'
                 ? 'ref-chip-head'
-                : ref.current
+                : chip.current
                   ? 'ref-chip-current'
                   : 'ref-chip-local'
-        const Icon = ref.kind === 'tag' ? Tag : ref.kind === 'remote' ? Cloud : GitBranch
+        const Icon = chip.kind === 'tag' ? Tag : chip.kind === 'remote' ? Cloud : GitBranch
         return (
-          <span key={`${ref.kind}:${ref.name}`} className={`ref-chip ${kindClass}`} title={ref.name}>
+          <span key={`${chip.kind}:${chip.name}`} className={`ref-chip ${kindClass}`} title={chip.name}>
             <Icon size={10} className="shrink-0" aria-hidden />
-            <span>{ref.name}</span>
-            {ref.kind === 'local' && hasRemoteTwin(ref.name) && <Cloud size={10} className="shrink-0 opacity-70" aria-hidden />}
-            {ref.current && ahead > 0 && (
+            <span>{chip.name}</span>
+            {chip.kind === 'local' && hasRemoteTwin(chip.name) && <Cloud size={10} className="shrink-0 opacity-70" aria-hidden />}
+            {chip.current && ahead > 0 && (
               <span className="flex shrink-0 items-center" title={t.aheadTitle(ahead)}>
                 <ArrowUp size={10} aria-hidden />
                 {ahead}
               </span>
             )}
-            {ref.current && behind > 0 && (
+            {chip.current && behind > 0 && (
               <span className="flex shrink-0 items-center" title={t.behindTitle(behind)}>
                 <ArrowDown size={10} aria-hidden />
                 {behind}

@@ -3,6 +3,8 @@ import { parseBranchOverview, parseChurnLog, parseNumstatZ, renamedPath } from '
 
 describe('parseNumstatZ', () => {
   it('reads plain rows, binaries and renames', () => {
+    // Split so '\0' is never followed by a digit, which would read as an octal escape.
+    // oxlint-disable-next-line no-useless-concat
     const out = '3\t1\tsrc/a.ts\0-\t-\timg.png\0' + '5\t0\t\0old/b.ts\0new/b.ts\0'
     expect(parseNumstatZ(out)).toEqual([
       { path: 'src/a.ts', additions: 3, deletions: 1, binary: false },

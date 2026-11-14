@@ -611,7 +611,14 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4" role="presentation" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4"
+      role="presentation"
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
       <div
         ref={panelRef}
         role="dialog"
@@ -619,7 +626,6 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
         aria-labelledby={titleId}
         aria-describedby={descId}
         className={`clone-sheet flex ${cloneTab === 'url' || (cloneTab === 'token' && tokenRepos.length === 0 && !loadingTokenRepos) ? 'max-h-[calc(100vh-2rem)]' : 'h-[min(40rem,calc(100vh-2rem))]'} w-full max-w-[48rem] flex-col overflow-hidden rounded-lg border border-default-border bg-obsidian-panel shadow-floating`}
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Header: title, method switch and — on the GitHub tab — whose repos these are. */}
         <div className="flex shrink-0 flex-col gap-4 px-6 pt-5 pb-4">

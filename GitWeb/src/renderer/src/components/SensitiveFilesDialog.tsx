@@ -54,7 +54,14 @@ export default function SensitiveFilesDialog({
   const Icon = blocked ? ShieldBan : ShieldAlert
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4" role="presentation" onClick={onCancel}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4"
+      role="presentation"
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.target === e.currentTarget) onCancel()
+      }}
+    >
       <div
         ref={panelRef}
         role="alertdialog"
@@ -62,7 +69,6 @@ export default function SensitiveFilesDialog({
         aria-labelledby={titleId}
         aria-describedby={descId}
         className="flex max-h-full w-full min-w-0 max-w-lg flex-col rounded-lg border border-default-border bg-obsidian-panel p-5 shadow-floating"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3">
           <span

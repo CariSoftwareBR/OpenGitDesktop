@@ -114,14 +114,20 @@ export default function ReorganizeReposDialog({ open, onClose }: { open: boolean
   const canMove = Boolean(plan && plan.moves.length > 0) && !moving
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4" role="presentation" onClick={close}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4"
+      role="presentation"
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.target === e.currentTarget) close()
+      }}
+    >
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         className="flex max-h-[calc(100vh-2rem)] w-full min-w-0 max-w-2xl flex-col rounded-lg border border-default-border bg-obsidian-panel p-5 shadow-floating"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex shrink-0 items-start gap-3">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-command-blue/30 bg-command-blue-soft text-command-blue">

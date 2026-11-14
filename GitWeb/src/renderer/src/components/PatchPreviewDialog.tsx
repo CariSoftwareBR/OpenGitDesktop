@@ -34,7 +34,14 @@ function PatchPreviewDialog({
   if (!open) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4" role="presentation" onClick={onCancel}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4"
+      role="presentation"
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.target === e.currentTarget) onCancel()
+      }}
+    >
       <div
         ref={panelRef}
         role="dialog"
@@ -42,7 +49,6 @@ function PatchPreviewDialog({
         aria-labelledby={titleId}
         aria-describedby={descId}
         className="flex h-[min(36rem,calc(100vh-2rem))] w-full min-w-0 max-w-3xl flex-col rounded-lg border border-default-border bg-obsidian-panel p-5 shadow-floating"
-        onClick={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className="shrink-0 text-title font-semibold text-primary-text">
           {title}

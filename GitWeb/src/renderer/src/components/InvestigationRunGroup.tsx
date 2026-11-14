@@ -65,6 +65,7 @@ function InvestigationRunGroup({
   const showDetail = !canShowProblems
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- opens the problem list once the run completes; the user can still collapse it
     if (canShowProblems) setShowProblems(true)
   }, [canShowProblems])
 

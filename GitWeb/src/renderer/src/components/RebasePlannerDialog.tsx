@@ -56,6 +56,7 @@ function RebasePlannerDialog(): JSX.Element | null {
   useEffect(() => {
     if (!open || !repoPath) return
     let cancelled = false
+    // oxlint-disable-next-line react/set-state-in-effect -- drops the previous plan while the new one loads over IPC
     setInfo(null)
     setDone(null)
     window.api.git.localRebaseInfo(repoPath).then((result) => {
@@ -132,7 +133,14 @@ function RebasePlannerDialog(): JSX.Element | null {
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4" role="presentation" onClick={close}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4"
+      role="presentation"
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.target === e.currentTarget) close()
+      }}
+    >
       <div
         ref={panelRef}
         role="dialog"
@@ -140,7 +148,6 @@ function RebasePlannerDialog(): JSX.Element | null {
         aria-labelledby={titleId}
         tabIndex={-1}
         className="rise-in flex outline-none max-h-[88vh] w-full max-w-3xl min-w-0 flex-col rounded-lg border border-default-border bg-obsidian-panel shadow-floating [animation-duration:260ms]"
-        onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-start gap-3 border-b border-default-border p-5 pb-4">
           <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-attention-orange-soft text-attention-orange">
@@ -174,6 +181,8 @@ function RebasePlannerDialog(): JSX.Element | null {
                 {rows.map((row, index) => {
                   const isOver = overIndex === index && dragIndex !== null && dragIndex !== index
                   return (
+                    // Dragging is the pointer shortcut; the row's move buttons do the same from the keyboard.
+                    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
                     <li
                       key={row.hash}
                       draggable={!applying}

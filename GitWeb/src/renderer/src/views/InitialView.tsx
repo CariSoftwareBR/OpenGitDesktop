@@ -211,6 +211,7 @@ function MoveToGroupMenu({
       ref={ref}
       className="absolute right-2 top-10 z-20 min-w-44 rounded-md border border-default-border bg-obsidian-panel p-1 shadow-floating"
       role="menu"
+      tabIndex={-1}
       onKeyDown={(e) => e.key === 'Escape' && onClose()}
     >
       {options.map((option) => (

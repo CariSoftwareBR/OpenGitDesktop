@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Locale } from '../../../shared/i18n'
 import { relativeTime } from '../lib/relativeTime'
 
@@ -43,7 +44,7 @@ function BenchPulse({
   windowLabel: string
   title: string
 }): JSX.Element | null {
-  const now = Date.now()
+  const [now] = useState(Date.now)
   const placed = points
     .filter((p) => Number.isFinite(Date.parse(p.date)))
     .map((p) => ({ ...p, t: ageRatio(p.date, now) }))

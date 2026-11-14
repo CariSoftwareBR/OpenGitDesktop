@@ -1248,7 +1248,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       try {
         steps = parseRebasePlan(a.plan ?? '')
       } catch (err) {
-        throw new Error(`${g.rebaseBadLine(err instanceof Error ? err.message : String(err))}\n\n${listing}`)
+        throw new Error(`${g.rebaseBadLine(err instanceof Error ? err.message : String(err))}\n\n${listing}`, { cause: err })
       }
       const validation = validateRebasePlan(steps, info.commits.map((c) => c.hash))
       if (!validation.ok) throw new Error(`${describeRebaseProblem(validation.problem)}\n\n${listing}`)
@@ -1585,7 +1585,8 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string | T
           throw new Error(
             similar.length > 0
               ? t.pathMissingSimilar(a.path, formatFileList(similar, 20))
-              : t.pathMissing(a.path)
+              : t.pathMissing(a.path),
+            { cause: err }
           )
         }
         throw err

@@ -97,9 +97,12 @@ function Combobox({
     if (open) inputRef.current?.focus()
   }, [open])
 
-  useEffect(() => {
+  // A new search starts the highlight over at the top, decided during render.
+  const [searchShown, setSearchShown] = useState(search)
+  if (searchShown !== search) {
+    setSearchShown(search)
     setHighlighted(0)
-  }, [search])
+  }
 
   function handleKeyDown(e: React.KeyboardEvent): void {
     if (e.key === 'Escape') {

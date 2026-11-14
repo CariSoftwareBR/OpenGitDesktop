@@ -224,7 +224,7 @@ export async function httpFetch(
       // Checked on the signal itself: net.fetch reports both a timeout and a
       // user cancel as a plain AbortError, and only the latter is "cancelled".
       if (timeoutSignal.aborted && !init?.signal?.aborted) {
-        throw new Error(tMain().network.requestTimedOut(originLabel(url), timeoutMs / 1000))
+        throw new Error(tMain().network.requestTimedOut(originLabel(url), timeoutMs / 1000), { cause: err })
       }
       if (err instanceof Error && err.name === 'AbortError') throw err
       lastError = err

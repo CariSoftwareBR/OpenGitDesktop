@@ -130,6 +130,7 @@ function AboutView(): JSX.Element {
       (updateStatus.state === 'downloading' && updateStatus.version)
     ) {
       const next = { version: updateStatus.version ?? '', notes: updateStatus.releaseNotes ?? null }
+      // oxlint-disable-next-line react/set-state-in-effect -- remembers the incoming version and notes across update events from main
       setTarget((prev) => (prev?.version === next.version && prev.notes === next.notes ? prev : next))
     }
   }, [updateStatus])

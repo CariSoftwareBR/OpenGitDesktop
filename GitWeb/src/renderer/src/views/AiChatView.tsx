@@ -228,13 +228,13 @@ function ToolCallCard({ messageId, uiCall }: { messageId: string; uiCall: import
   )
 }
 
-function ChatAvatar({ role }: { role: 'user' | 'assistant' }): JSX.Element {
+function ChatAvatar({ speaker }: { speaker: 'user' | 'assistant' }): JSX.Element {
   const avatarUrl = useGithubAuthStore((s) => s.user?.avatarUrl)
   // A signed-in user sees their own GitHub photo here, the same identity the
   // top bar shows; the generic icon stays the fallback for signed-out sessions
   // and for a photo that fails to load.
   const [avatarFailed, setAvatarFailed] = useState(false)
-  const isUser = role === 'user'
+  const isUser = speaker === 'user'
 
   if (isUser && avatarUrl && !avatarFailed) {
     return (
@@ -266,7 +266,7 @@ function ThinkingBubble(): JSX.Element {
   const ui = useAiUi()
   return (
     <div className="flex items-start gap-2">
-      <ChatAvatar role="assistant" />
+      <ChatAvatar speaker="assistant" />
       <div className="flex items-center pt-[3px] text-body">
         <span className="agent-busy-shimmer leading-[22px]" role="status">
           {ui.chatThinking}
@@ -367,7 +367,9 @@ function AiChatView(): JSX.Element {
     return () => cancelAnimationFrame(frame)
   }
 
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs when the ghost appears; dustAndSwap is a per-render helper, not a trigger
   useEffect(() => (ghost ? dustAndSwap(() => setGhost(null)) : undefined), [ghost])
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- runs when the welcome dusts off; dustAndSwap is a per-render helper, not a trigger
   useEffect(() => (welcomeDusting ? dustAndSwap(() => setWelcomeDusting(false)) : undefined), [welcomeDusting])
 
   // Only real approval gates count here. Read-only tools run without asking
@@ -407,6 +409,7 @@ function AiChatView(): JSX.Element {
       }
     }
     bottomRef.current?.scrollIntoView({ behavior: 'auto' })
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- these are the triggers for following the conversation to its end
   }, [messages, phase, lastMessage])
 
   function handleChatScroll(): void {
@@ -664,7 +667,7 @@ function AiChatView(): JSX.Element {
                   // full column) so the group card lines up with the replies
                   // and tool cards above and below it.
                   <div key={item.id} className="flex items-start gap-2">
-                    <ChatAvatar role="assistant" />
+                    <ChatAvatar speaker="assistant" />
                     <div className="flex min-w-0 flex-1 flex-col items-start gap-2">
                       <ToolRunGroup
                         toolName={item.toolName}
@@ -679,7 +682,7 @@ function AiChatView(): JSX.Element {
                     data-message-id={item.message.id}
                     className={`flex gap-2 ${item.message.role === 'user' ? 'flex-row-reverse items-end' : 'items-start'}`}
                   >
-                    <ChatAvatar role={item.message.role === 'user' ? 'user' : 'assistant'} />
+                    <ChatAvatar speaker={item.message.role === 'user' ? 'user' : 'assistant'} />
                     <div
                       className={`flex min-w-0 flex-col gap-2 ${
                         item.message.role === 'user' ? 'max-w-[85%] items-end' : 'flex-1 items-start'

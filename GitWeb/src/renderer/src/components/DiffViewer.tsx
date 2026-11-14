@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { FileDiff, Plus } from 'lucide-react'
 import { annotateDiff, parseFileDiff, type AnnotatedDiffLine } from '../../../shared/patch'
@@ -214,9 +214,11 @@ function DiffViewer({
   // The viewer keeps its place in the tree when another file is selected, so the
   // confirmation bar has to be dropped with the diff it belonged to — otherwise
   // confirming it would discard a hunk of the file the user just left.
-  useEffect(() => {
+  const [diffShown, setDiffShown] = useState(diffText)
+  if (diffShown !== diffText) {
+    setDiffShown(diffText)
     setConfirmDiscard(null)
-  }, [diffText])
+  }
 
   const parsed = useMemo(() => (hunkMode !== 'none' ? parseFileDiff(diffText) : null), [diffText, hunkMode])
   const hunkRows = useMemo<DiffRow[] | null>(() => {

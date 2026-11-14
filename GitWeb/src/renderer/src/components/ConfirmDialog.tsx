@@ -41,7 +41,14 @@ function ConfirmDialog({
   if (!open) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4" role="presentation" onClick={onCancel}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4"
+      role="presentation"
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.target === e.currentTarget) onCancel()
+      }}
+    >
       <div
         ref={panelRef}
         role="alertdialog"
@@ -49,7 +56,6 @@ function ConfirmDialog({
         aria-labelledby={titleId}
         aria-describedby={descId}
         className="w-full min-w-0 max-w-md rounded-lg border border-default-border bg-obsidian-panel p-5 shadow-floating"
-        onClick={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className="text-title font-semibold text-primary-text">
           {title}
@@ -119,6 +125,7 @@ export function PromptDialog({
   const errorId = useId()
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- resets the typed confirmation each time the dialog opens
     setValue(open ? initialValue : '')
     if (open && initialValue) requestAnimationFrame(() => inputRef.current?.select())
   }, [open, initialValue])
@@ -137,7 +144,14 @@ export function PromptDialog({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4" role="presentation" onClick={onCancel}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4"
+      role="presentation"
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.target === e.currentTarget) onCancel()
+      }}
+    >
       <div
         ref={panelRef}
         role="dialog"
@@ -145,7 +159,6 @@ export function PromptDialog({
         aria-labelledby={titleId}
         aria-describedby={message ? descId : undefined}
         className="w-full min-w-0 max-w-md rounded-lg border border-default-border bg-obsidian-panel p-5 shadow-floating"
-        onClick={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className="text-title font-semibold text-primary-text">
           {title}
