@@ -5,7 +5,6 @@ import {
   proposeFixUserMessage,
   type AiLanguage
 } from '../../../../shared/aiPrompts'
-import type { AiSettings } from '../../../../shared/ai'
 import { sendChatRequest } from './providers'
 import { unifiedPreview } from '../../../../shared/patch'
 import type { ResolvedAiConfig } from '../../../../shared/ai'

@@ -464,7 +464,7 @@ export function parseStatusBranchHeader(header: string): {
 } {
   let branch: string | null = null
   let upstream: string | null = null
-  if (!/^## HEAD \(no branch\)/.test(header)) {
+  if (!header.startsWith('## HEAD (no branch)')) {
     const headerMatch = header.match(/^## (?:No commits yet on )?(.+?)(?:\.\.\.(\S+))?(?:\s|$)/)
     if (headerMatch) {
       branch = headerMatch[1]?.trim() || null
@@ -1064,13 +1064,26 @@ async function compareWithDefault(
   return { vsHead, hasLocalDefault, vsLocalDefault: hasLocalDefault ? vsLocalDefaultRaw : null }
 }
 
+/** HEAD's subject and committer date, or null on an unborn branch. */
+async function readLastCommit(cwd: string): Promise<{ subject: string; date: string } | null> {
+  const result = await readGit(['log', '-1', '--format=%cI%x00%s', 'HEAD', '--'], cwd)
+  if (result.exitCode !== 0) return null
+  const [date, subject] = result.stdout.trim().split('\0')
+  return date ? { date, subject: subject ?? '' } : null
+}
+
 export async function getRepoUpdateStatus(
   cwd: string,
   options?: { fetch?: boolean }
 ): Promise<RepoUpdateStatus> {
   // Both are read-only and skip the repo queue, so they can overlap.
-  const [status, remoteUrl] = await Promise.all([getStatus(cwd), getRemoteUrlForPolling(cwd)])
+  const [status, remoteUrl, lastCommit] = await Promise.all([
+    getStatus(cwd),
+    getRemoteUrlForPolling(cwd),
+    readLastCommit(cwd)
+  ])
   const common = {
+    lastCommit,
     branch: status.branch,
     defaultBranch: null as string | null,
     behindDefault: 0,
@@ -1296,6 +1309,8 @@ export async function getBranchIntegration(
 
   // A few at a time: a repo with dozens of branches would otherwise spawn
   // several git processes per branch all at once.
+  // Pre-sized on purpose: parallel workers write their result into its own slot.
+  // oxlint-disable-next-line unicorn/no-new-array
   const branches: BranchIntegration[] = new Array(candidates.length)
   let next = 0
   const worker = async (): Promise<void> => {
@@ -1390,7 +1405,7 @@ export async function deleteIntegratedBranches(
   const protectedNames = new Set(report.protectedNames)
 
   const results: BranchDeletionResult[] = []
-  for (const name of [...new Set(names.map((n) => n.trim()).filter(Boolean))]) {
+  for (const name of new Set(names.map((n) => n.trim()).filter(Boolean))) {
     const info = local.get(name)
     let reason: string | undefined
     if (protectedNames.has(name.toLowerCase())) reason = t.protectedBranch(name)

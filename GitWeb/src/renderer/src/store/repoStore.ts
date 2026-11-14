@@ -612,7 +612,6 @@ export const useRepoStore = create<RepoState>((set, get) => ({
         window.api.git.remoteBranches(path).catch(() => [] as string[])
       ])
       if (generation !== repoOpenGeneration || get().currentRepoPath !== path) return
-      const local = new Set(branches.map((b) => b.name))
       set({ branches, remoteBranches: remoteBranchesToOffer(remote, branches.map((b) => b.name)) })
     } catch (err) {
       if (generation !== repoOpenGeneration || get().currentRepoPath !== path) return

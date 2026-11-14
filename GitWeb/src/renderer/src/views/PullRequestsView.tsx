@@ -6,7 +6,6 @@ import {
   Bot,
   Check,
   ChevronDown,
-  ChevronRight,
   ExternalLink,
   CircleHelp,
   CircleCheck,

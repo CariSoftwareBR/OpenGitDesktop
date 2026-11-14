@@ -158,6 +158,8 @@ export interface RepoUpdateStatus {
    * fresh fetch is still running — shown right away, but not acted upon.
    */
   refreshing?: boolean
+  /** HEAD's subject and committer date (ISO) — the row's "last activity". */
+  lastCommit?: { subject: string; date: string } | null
 }
 
 export type RepoUpdateOutcome =
@@ -372,7 +374,7 @@ export function parseCheckoutBlockers(stderr: string): string[] | null {
     if (/would be overwritten by checkout:\s*$/.test(line)) {
       inList = true
       matched = true
-    } else if (inList && /^\t/.test(line)) {
+    } else if (inList && line.startsWith('\t')) {
       files.push(line.trim())
     } else {
       inList = false

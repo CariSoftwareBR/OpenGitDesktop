@@ -242,7 +242,14 @@ const recent: RecentRepository[] = [
 
 // One recent repository per state the start screen can draw.
 function demoRepoStatus(path: string): RepoUpdateStatus {
-  const base = { ...demoUpdateStatus, localChanges: 0, ahead: 0, behind: 0, refreshing: false }
+  const base = {
+    ...demoUpdateStatus,
+    localChanges: 0,
+    ahead: 0,
+    behind: 0,
+    refreshing: false,
+    lastCommit: { subject: 'Ajusta o espaçamento do cabeçalho', date: new Date(Date.now() - 3 * 3600_000).toISOString() }
+  }
   if (path.endsWith('api-pagamentos')) {
     return { ...base, state: 'diverged', branch: 'develop', defaultBranch: 'main', localDefaultAhead: 2, localDefaultBehind: 5, behindDefault: 5, canFastForward: false, message: 'main local divergiu de origin/main.' }
   }

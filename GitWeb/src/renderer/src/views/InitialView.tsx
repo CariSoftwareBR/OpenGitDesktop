@@ -12,6 +12,7 @@ import {
   Folder,
   FolderInput,
   GitBranch,
+  GitCommitHorizontal,
   Pencil,
   CloudOff,
   DownloadCloud,
@@ -44,9 +45,11 @@ import type {
   RepoUpdateStatus
 } from '../../../shared/git'
 import type { Messages } from '../../../shared/i18n'
-import { useT } from '../lib/i18n'
+import { useLocale, useT } from '../lib/i18n'
+import { relativeTime } from '../lib/relativeTime'
 import ThemeToggle from '../components/ThemeToggle'
 import RepoLane, { LaneMark } from '../components/RepoLane'
+import BenchPulse, { WINDOW_DAYS } from '../components/BenchPulse'
 
 type InitialMessages = Messages['initial']
 
@@ -75,6 +78,17 @@ function FetchCheckBadge({ check }: { check?: RepoUpdateStatus }): JSX.Element |
     default:
       return null
   }
+}
+
+/** The header summary's dot colours, for one repo: the same legend, reused. */
+function railTone(check?: RepoUpdateStatus): string {
+  if (!check || check.state === 'checking') return 'bg-tertiary-text/50'
+  if (check.state === 'failed') return 'bg-danger-red'
+  if (check.state === 'diverged') return 'bg-warning-amber'
+  if (check.state === 'behind') return 'bg-attention-orange'
+  if (check.localChanges > 0) return 'bg-command-blue'
+  if (check.state === 'upToDate') return 'bg-success-green'
+  return 'bg-tertiary-text/50'
 }
 
 interface StatusChip {
@@ -253,6 +267,7 @@ function InitialView(): JSX.Element {
   const setView = useRepoStore((s) => s.setView)
   const messages = useT()
   const t = messages.initial
+  const locale = useLocale()
 
   // Single source of truth for "is the user signed in to GitHub" — shared
   // with CloneModal's GitHub tab, so cloning reflects an existing login
@@ -408,14 +423,18 @@ function InitialView(): JSX.Element {
     return { behind, diverged, changes, ok, failed, checking }
   })()
 
-  function renderRepoCard(repo: RecentRepository): JSX.Element {
+  function renderRepoCard(repo: RecentRepository, index: number): JSX.Element {
     const check = repo.missing ? undefined : recentRepoChecks[repo.path]
     const result = batchUpdateResults[repo.path]
     const selectable = Boolean(check?.canFastForward && !check.refreshing)
     const chips = check && check.state !== 'checking' ? repoStatusChips(t, check) : []
     const laneTitle = chips.length > 0 ? chips.map((c) => c.title).join('\n') : check?.message
+    const lastCommit = check?.lastCommit ?? null
 
     return (
+      // The row click is a pointer convenience only: keyboard users open the
+      // repo through the button inside it, which stays the accessible target.
+      // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
       <li
         key={repo.path}
         draggable
@@ -425,7 +444,14 @@ function InitialView(): JSX.Element {
           setDraggingPath(repo.path)
         }}
         onDragEnd={() => setDraggingPath(null)}
-        className={`workbench-row group flex cursor-grab items-center gap-1 py-1.5 pl-2 pr-1.5 ${repo.missing ? 'opacity-60' : ''}`}
+        // The whole row reads as one target (it highlights on hover), so a click
+        // anywhere on it opens the repo — except on its own controls and menu.
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('button, input, a, [role="menu"]')) return
+          if (!isBusy && !repo.missing) openRepository(repo.path)
+        }}
+        style={{ animationDelay: `${Math.min(index, 12) * 28}ms` }}
+        className={`workbench-row workbench-row-enter group flex ${repo.missing ? 'cursor-grab' : 'cursor-pointer'} items-center gap-1 py-1.5 pl-2 pr-1.5 ${repo.missing ? 'opacity-60' : ''}`}
       >
         {showSelection && (
           <span className="flex w-6 shrink-0 items-center justify-start">
@@ -474,33 +500,51 @@ function InitialView(): JSX.Element {
           </span>
         </button>
 
-        {/* State, said in numbers: the lane draws it, these count it. */}
+        {/* State, said in numbers: the lane draws it, these count it. A healthy
+            repo has nothing to count, so the column tells what last happened
+            in it instead — the one thing that tells two green rows apart. */}
         {!repo.missing && (
-          <span className="hidden w-[232px] shrink-0 items-center gap-1 overflow-hidden md:flex">
+          <span className="hidden w-[280px] shrink-0 flex-col justify-center gap-0.5 overflow-hidden md:flex">
             {chips.length > 0 ? (
-              chips.map((chip) => (
-                <span
-                  key={chip.title}
-                  className="inline-flex items-center gap-1 rounded-pill bg-attention-orange-soft px-1.5 py-px text-meta font-semibold leading-4 tabular-nums text-attention-orange"
-                  title={chip.title}
-                  aria-label={chip.title}
-                >
-                  <chip.icon size={11} aria-hidden />
-                  {chip.value}
-                </span>
-              ))
-            ) : (
+              <span className="flex items-center gap-1">
+                {chips.map((chip) => (
+                  <span
+                    key={chip.title}
+                    className="inline-flex items-center gap-1 rounded-pill bg-attention-orange-soft px-1.5 py-px text-meta font-semibold leading-4 tabular-nums text-attention-orange"
+                    title={chip.title}
+                    aria-label={chip.title}
+                  >
+                    <chip.icon size={11} aria-hidden />
+                    {chip.value}
+                  </span>
+                ))}
+              </span>
+            ) : check?.state === 'failed' || !lastCommit ? (
               <span
                 className={`truncate text-meta leading-4 ${check?.state === 'failed' ? 'text-danger-red' : 'text-tertiary-text'}`}
                 title={check?.message}
               >
                 {check?.message ?? ''}
               </span>
+            ) : (
+              <span className="flex min-w-0 items-center gap-1.5" title={lastCommit.subject}>
+                <GitCommitHorizontal size={13} className="shrink-0 text-tertiary-text" aria-hidden />
+                <span className="truncate text-caption leading-4 text-secondary-text">{lastCommit.subject}</span>
+              </span>
+            )}
+            {lastCommit && (
+              <time
+                dateTime={lastCommit.date}
+                title={new Date(lastCommit.date).toLocaleString(locale)}
+                className={`truncate text-meta leading-4 tabular-nums text-tertiary-text ${chips.length > 0 || check?.state === 'failed' ? '' : 'pl-[19px]'}`}
+              >
+                {relativeTime(locale, lastCommit.date)}
+              </time>
             )}
           </span>
         )}
 
-        <span className="flex w-[116px] shrink-0 items-center justify-end opacity-0 transition-opacity duration-100 focus-within:opacity-100 group-hover:opacity-100">
+        <span className="workbench-row-actions pointer-events-none absolute right-8 top-1/2 flex -translate-y-1/2 items-center justify-end rounded-r-md py-1 pl-8 opacity-0 transition-opacity duration-100 focus-within:pointer-events-auto focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
           {/* Keyboard-reachable equivalent of dragging the row. */}
           <button
             type="button"
@@ -571,6 +615,12 @@ function InitialView(): JSX.Element {
     setCreateOpen(true)
   }
 
+  const recentlyOpened = recentRepos.filter((r) => !r.missing).slice(0, 3)
+  const pulsePoints = recentRepos.flatMap((r) => {
+    const last = r.missing ? null : recentRepoChecks[r.path]?.lastCommit
+    return last ? [{ name: r.name, date: last.date }] : []
+  })
+
   const summaryParts: { tone: string; text: string }[] = [
     summary.behind > 0 && { tone: 'bg-attention-orange', text: t.summaryBehind(summary.behind) },
     summary.diverged > 0 && { tone: 'bg-warning-amber', text: t.summaryDiverged(summary.diverged) },
@@ -584,7 +634,7 @@ function InitialView(): JSX.Element {
       type="button"
       onClick={() => setView('messages')}
       aria-label={pendingMessages > 0 ? `${messagesLabel} (${pendingMessages})` : messagesLabel}
-      className="flex items-center gap-1.5 text-caption text-tertiary-text transition-colors duration-100 hover:text-primary-text"
+      className="flex items-center gap-1.5 rounded-sm px-1.5 py-1 text-caption text-tertiary-text transition-colors duration-100 hover:bg-hover-overlay hover:text-primary-text"
     >
       <Inbox size={13} aria-hidden />
       {messagesLabel}
@@ -597,15 +647,12 @@ function InitialView(): JSX.Element {
       {/* The bench: who you are, and the three ways in. Stays put while the
           repository list scrolls beside it. */}
       <aside className="flex shrink-0 flex-col border-b border-default-border bg-obsidian-panel lg:h-full lg:w-[340px] lg:border-b-0 lg:border-r">
-        <div className="flex flex-col gap-6 px-6 pb-5 pt-6 lg:flex-1 lg:gap-8 lg:overflow-y-auto lg:pt-10">
+        <div className="flex flex-col gap-6 px-6 pb-5 pt-6 lg:flex-1 lg:gap-7 lg:overflow-y-auto lg:pt-9">
           <div className="rise-in flex items-center gap-3.5">
             <span className="flex size-[52px] shrink-0 items-center justify-center rounded-lg border border-default-border bg-midnight-base shadow-[var(--shadow-raised)]">
               <LaneMark size={34} />
             </span>
-            <div className="min-w-0">
-              <h1 className="text-headline font-semibold text-primary-text">OpenGitDesktop</h1>
-              <p className="mt-0.5 text-caption text-pretty text-secondary-text">{t.tagline}</p>
-            </div>
+            <h1 className="min-w-0 truncate text-headline font-semibold text-primary-text">OpenGitDesktop</h1>
           </div>
 
           <nav aria-label={t.repositories} className="rise-in grid gap-2 [animation-delay:60ms] sm:grid-cols-3 lg:grid-cols-1">
@@ -640,41 +687,73 @@ function InitialView(): JSX.Element {
               <RailAction icon={Github} label={t.signInGithub} description={t.signInGithubHint} onClick={() => setLoginModalOpen(true)} disabled={isBusy} />
             )}
           </nav>
+
+          {/* The list on the right is filed by folder; this is the other way
+              people look for a repo — "the one I was just in". The store keeps
+              recents most-recently-opened first, so the head is exactly that. */}
+          {recentlyOpened.length > 0 && (
+            <section aria-labelledby="rail-recent" className="rise-in hidden flex-col gap-1.5 [animation-delay:120ms] lg:flex">
+              <h2 id="rail-recent" className="flex items-center gap-2 px-1 pb-1">
+                <span className="text-label uppercase tracking-wide text-secondary-text">{t.recentlyOpened}</span>
+                <span className="h-px flex-1 bg-default-border" aria-hidden />
+              </h2>
+              <ul className="flex flex-col gap-0.5">
+                {recentlyOpened.map((repo) => {
+                  const check = recentRepoChecks[repo.path]
+                  const when = check?.lastCommit ? relativeTime(locale, check.lastCommit.date) : null
+                  return (
+                    <li key={repo.path}>
+                      <button
+                        type="button"
+                        onClick={() => openRepository(repo.path)}
+                        disabled={isBusy}
+                        title={repo.path}
+                        aria-label={t.openRecent(repo.name)}
+                        className="list-row w-full gap-3 px-2.5 py-2 text-left disabled:cursor-default disabled:opacity-60"
+                      >
+                        <span className={`size-1.5 shrink-0 rounded-full ${railTone(check)}`} aria-hidden />
+                        <span className="min-w-0 flex-1 truncate text-body text-primary-text">{repo.name}</span>
+                        {when && <span className="shrink-0 text-meta tabular-nums text-tertiary-text">{when}</span>}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </section>
+          )}
         </div>
 
-        <footer className="hidden flex-col gap-3 border-t border-default-border px-6 py-4 lg:flex">
-          {user && (
-            <div className="flex min-w-0 items-center gap-2.5" title={t.githubAccount(user.login)}>
-              <span className="relative shrink-0">
-                <img src={user.avatarUrl} alt="" className="size-8 rounded-full border border-default-border object-cover" />
-                <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-obsidian-panel bg-success-green" aria-hidden />
-              </span>
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate text-caption font-semibold text-primary-text">{user.name || user.login}</span>
-                <span className="truncate text-meta text-tertiary-text">
-                  @{user.login} · {t.githubConnected}
+        {/* Who is signed in — drawn as HEAD, with the bench's recent commits
+            trailing off its branch. The three places outside the bench ride
+            quietly at the end of that same row instead of a block of their own. */}
+        <footer className="hidden border-t border-default-border px-5 pb-4 pt-4 lg:block">
+          <div className="flex flex-col px-1">
+            <div className="flex min-w-0 items-center gap-3">
+              {user && (
+                <span className="flex min-w-0 flex-1 items-center gap-3" title={`${t.githubAccount(user.login)} · ${t.githubConnected}`}>
+                  <span className="relative shrink-0">
+                    <img src={user.avatarUrl} alt="" className="size-9 rounded-full object-cover ring-1 ring-default-border" />
+                    <span className="absolute -bottom-px -right-px size-3 rounded-full border-2 border-obsidian-panel bg-success-green" aria-hidden />
+                  </span>
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="truncate text-body font-semibold leading-5 text-primary-text">{user.name || user.login}</span>
+                    <span className="flex min-w-0 items-center gap-1.5 text-meta leading-4 text-tertiary-text">
+                      <Github size={11} className="shrink-0" />
+                      <span className="truncate">{user.login}</span>
+                      <span className="sr-only">· {t.githubConnected}</span>
+                    </span>
+                  </span>
                 </span>
-              </span>
+              )}
+              <nav className="ml-auto flex shrink-0 items-center">
+                <FooterIcon icon={Inbox} label={messagesLabel} badge={pendingMessages} onClick={() => setView('messages')} />
+                <FooterIcon icon={Settings2} label={t.settings} onClick={() => setView('settings')} />
+                <FooterIcon icon={Info} label={t.about} onClick={() => setView('about')} />
+              </nav>
             </div>
-          )}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            {messagesLink}
-            <button
-              type="button"
-              onClick={() => setView('settings')}
-              className="flex items-center gap-1.5 text-caption text-tertiary-text transition-colors duration-100 hover:text-primary-text"
-            >
-              <Settings2 size={13} aria-hidden />
-              {t.settings}
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('about')}
-              className="flex items-center gap-1.5 text-caption text-tertiary-text transition-colors duration-100 hover:text-primary-text"
-            >
-              <Info size={13} aria-hidden />
-              {t.about}
-            </button>
+            {user && (
+              <BenchPulse points={pulsePoints} locale={locale} windowLabel={t.pulseWindow(WINDOW_DAYS)} title={t.pulseTitle(WINDOW_DAYS)} />
+            )}
           </div>
         </footer>
       </aside>
@@ -818,12 +897,12 @@ function InitialView(): JSX.Element {
           )}
 
           {/* Narrow windows hide the rail's footer; its links live here instead. */}
-          <footer className="flex justify-center gap-4 pt-2 lg:hidden">
+          <footer className="flex justify-center gap-1 pt-2 lg:hidden">
             {messagesLink}
             <button
               type="button"
               onClick={() => setView('settings')}
-              className="flex items-center gap-1.5 text-caption text-tertiary-text transition-colors duration-100 hover:text-primary-text"
+              className="flex items-center gap-1.5 rounded-sm px-1.5 py-1 text-caption text-tertiary-text transition-colors duration-100 hover:bg-hover-overlay hover:text-primary-text"
             >
               <Settings2 size={13} aria-hidden />
               {t.settings}
@@ -831,7 +910,7 @@ function InitialView(): JSX.Element {
             <button
               type="button"
               onClick={() => setView('about')}
-              className="flex items-center gap-1.5 text-caption text-tertiary-text transition-colors duration-100 hover:text-primary-text"
+              className="flex items-center gap-1.5 rounded-sm px-1.5 py-1 text-caption text-tertiary-text transition-colors duration-100 hover:bg-hover-overlay hover:text-primary-text"
             >
               <Info size={13} aria-hidden />
               {t.about}
@@ -884,6 +963,32 @@ function InitialView(): JSX.Element {
         }}
       />
     </main>
+  )
+}
+
+/** A quiet icon at the end of the account row; the name lives in its tooltip. */
+function FooterIcon({
+  icon: Icon,
+  label,
+  badge = 0,
+  onClick
+}: {
+  icon: LucideIcon
+  label: string
+  badge?: number
+  onClick: () => void
+}): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={badge > 0 ? `${label} (${badge})` : label}
+      aria-label={badge > 0 ? `${label} (${badge})` : label}
+      className="relative flex size-8 items-center justify-center rounded-md text-tertiary-text transition-colors duration-100 hover:bg-hover-overlay hover:text-primary-text active:bg-primary-text/10"
+    >
+      <Icon size={16} aria-hidden />
+      {badge > 0 && <span className="absolute right-1.5 top-1.5 size-2 rounded-full border-2 border-obsidian-panel bg-command-blue" aria-hidden />}
+    </button>
   )
 }
 

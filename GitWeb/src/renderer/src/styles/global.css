@@ -1396,6 +1396,47 @@
     background-color: var(--color-obsidian-panel);
     border-color: var(--color-default-border);
   }
+  /* Same leading pill as .list-row, so the start screen's rows answer the
+     pointer in the vocabulary every other list in the app already uses. */
+  .workbench-row::before {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: 50%;
+    width: 3px;
+    height: 46%;
+    max-height: 24px;
+    border-radius: 99px;
+    background-color: var(--color-primary-text);
+    transform: translateY(-50%) scaleY(0);
+    opacity: 0;
+    transition:
+      transform 220ms var(--ease-out-expo),
+      opacity 150ms ease-out;
+    pointer-events: none;
+  }
+  .workbench-row:hover::before,
+  .workbench-row:focus-within::before {
+    opacity: 0.22;
+    transform: translateY(-50%) scaleY(1);
+  }
+  /* Hover actions float over the row's tail instead of reserving an empty
+     column for themselves; the fade lets the text under them recede. */
+  .workbench-row-actions {
+    background: linear-gradient(to right, transparent, var(--color-obsidian-panel) 28px);
+  }
+  /* First paint: the list settles in a short cascade, once per mount. */
+  .workbench-row-enter {
+    animation: rise-in 360ms var(--ease-out-expo) backwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .workbench-row-enter {
+      animation: none;
+    }
+    .workbench-row::before {
+      transition: none;
+    }
+  }
   [data-theme='light'] .workbench-row:hover,
   [data-theme='light'] .workbench-row:focus-within,
   [data-theme='light-hc'] .workbench-row:hover,

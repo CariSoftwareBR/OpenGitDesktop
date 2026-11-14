@@ -1,12 +1,16 @@
 import { useEffect, useState, type CSSProperties } from 'react'
-import { AlertCircle, ArrowLeft, CheckCircle2, Download, FolderGit2, Loader2, RefreshCw, RotateCcw } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Bug, CheckCircle2, Download, Loader2, RefreshCw, RotateCcw, Scale, Tag } from 'lucide-react'
 import { useRepoStore } from '../store/repoStore'
 import Markdown from '../components/Markdown'
+import AboutGraph from '../components/AboutGraph'
+import Github from '../components/icons/Github'
 import type { UpdateStatus } from '../../../shared/updates'
 import { allTranslations, type Locale, type Messages } from '../../../shared/i18n'
 import { useLocale, useT } from '../lib/i18n'
 
 type AboutMessages = Messages['about']
+
+const REPO_URL = 'https://github.com/CariSoftwareBR/OpenGitDesktop'
 
 function formatBuildTime(locale: Locale, iso: string): string {
   const date = new Date(iso)
@@ -161,9 +165,20 @@ function AboutView(): JSX.Element {
         : 0
   const notes = inFlow ? (target?.notes ?? null) : null
 
+  // What each update action would be, said in git — a footnote, never the label.
+  const gitHint = state === 'downloaded' ? 'git merge --ff-only' : downloading ? 'git pull' : 'git fetch'
+  const remoteRef =
+    state === 'downloaded'
+      ? { text: `origin/main · v${target?.version ?? ''}`, tone: 'border-success-green/25 bg-success-green-soft text-success-green' }
+      : downloading
+        ? { text: `origin/main · v${target?.version ?? '…'}`, tone: 'border-attention-orange/25 bg-attention-orange-soft text-attention-orange' }
+        : state === 'not-available'
+          ? { text: 'origin/main', tone: 'border-default-border bg-coal-raised text-secondary-text' }
+          : null
+
   return (
     <main className="relative flex h-screen flex-col overflow-hidden bg-midnight-base">
-      <header className="relative z-10 flex items-center px-4 py-3">
+      <header className="absolute left-0 top-0 z-10 flex items-center px-4 py-3">
         <button
           type="button"
           onClick={handleBack}
@@ -178,38 +193,56 @@ function AboutView(): JSX.Element {
       {/* Full-width scroller (thumb on the window's right edge), content
           centered inside it. Anchored from the top, not centered vertically:
           the update panel grows as an update comes in, and centering made the
-          logo and title ride up and down with it. */}
+          graph and title ride up and down with it. */}
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-md flex-col items-center px-6 pt-[7vh] pb-16">
-          <div className="rise-in about-emblem" style={stagger(0)}>
-            <FolderGit2 size={34} strokeWidth={1.75} aria-hidden />
-          </div>
+        <div className="pt-[6vh]">
+          <AboutGraph state={state} percent={percent} targetVersion={target?.version ?? null} label={t.graphLabel} />
+        </div>
 
-          <h1 className="rise-in mt-8 text-display font-semibold text-primary-text" style={stagger(1)}>
+        <div className="mx-auto flex w-full max-w-xl flex-col items-center px-6 pb-14">
+          <h1 className="rise-in mt-2 text-display font-semibold text-primary-text" style={stagger(1)}>
             OpenGitDesktop
           </h1>
           <p className="rise-in mt-3 text-center text-body text-secondary-text" style={stagger(1)}>
             {t.tagline}
           </p>
 
-          <div className="rise-in mt-5 flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1.5" style={stagger(2)}>
-            <span className="chip-command min-w-[5.5ch] justify-center tabular-nums normal-case tracking-normal">
-              {version ? `v${version}` : '…'}
+          {/* The decorations `git log` prints beside a commit. */}
+          <div className="rise-in mt-5 flex flex-wrap items-center justify-center gap-1.5 font-mono text-meta" style={stagger(2)}>
+            <span className="rounded-pill border border-command-blue/25 bg-command-blue-soft px-2 py-0.5 text-command-blue">HEAD → main</span>
+            <span className="rounded-pill border border-default-border bg-coal-raised px-2 py-0.5 tabular-nums text-secondary-text">
+              tag: {version ? `v${version}` : '…'}
             </span>
-            <span className="text-caption tabular-nums text-tertiary-text">{t.buildOf(buildLabel)}</span>
+            {remoteRef && <span className={`rounded-pill border px-2 py-0.5 tabular-nums ${remoteRef.tone}`}>{remoteRef.text}</span>}
           </div>
 
-          <section
-            aria-label={t.updates}
-            className="rise-in card mt-10 w-full overflow-hidden p-0"
-            style={stagger(3)}
-          >
-            <div className="flex items-center justify-between gap-3 px-5 pt-4">
-              <h2 className="text-label uppercase text-tertiary-text">{t.updates}</h2>
-              <StateChip t={t} status={updateStatus} />
+          {/* `git log -1`, for the app itself: the commit, who, when, under what
+              licence — and below the rule, its remote. */}
+          <section aria-label={t.updates} className="rise-in card mt-9 w-full overflow-hidden p-0" style={stagger(3)}>
+            <div className="flex flex-col gap-3 px-5 pb-4 pt-4">
+              <p className="flex items-baseline gap-2 font-mono text-caption">
+                <span className="text-tertiary-text">commit</span>
+                <span className="text-warning-amber">{__BUILD_COMMIT__ || '—'}</span>
+              </p>
+              <dl className="grid grid-cols-[max-content_1fr] gap-x-5 gap-y-1.5 text-caption">
+                <dt className="text-tertiary-text">{t.author}</dt>
+                <dd className="text-secondary-text">CariSoftwareBR</dd>
+                <dt className="text-tertiary-text">{t.builtAt}</dt>
+                <dd className="tabular-nums text-secondary-text">{buildLabel}</dd>
+                <dt className="text-tertiary-text">{t.license}</dt>
+                <dd className="text-secondary-text">GPL-2.0</dd>
+              </dl>
             </div>
 
-            <div className="flex flex-col gap-4 px-5 pt-3 pb-5">
+            <div className="flex flex-col gap-4 border-t border-default-border px-5 pb-5 pt-4">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="flex items-center gap-2 text-label uppercase text-tertiary-text">
+                  {t.updates}
+                  <span className="font-mono normal-case tracking-normal text-tertiary-text/80">origin/main</span>
+                </h2>
+                <StateChip t={t} status={updateStatus} />
+              </div>
+
               <div className="flex items-start gap-2.5">
                 <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center">
                   <StatusIcon status={updateStatus} />
@@ -267,7 +300,10 @@ function AboutView(): JSX.Element {
               )}
 
               {state !== 'disabled' && (
-                <div className="flex justify-end">
+                <div className="flex items-center justify-end gap-3">
+                  <code className="font-mono text-meta text-tertiary-text" title={t.gitEquivalent(gitHint)}>
+                    $ {gitHint}
+                  </code>
                   {state === 'downloaded' ? (
                     <button type="button" className="btn-primary" onClick={() => void handleInstall()}>
                       <RotateCcw size={14} aria-hidden />
@@ -307,6 +343,26 @@ function AboutView(): JSX.Element {
               </div>
             )}
           </section>
+
+          <nav className="rise-in mt-6 flex flex-wrap items-center justify-center gap-1" style={stagger(4)}>
+            {[
+              { href: REPO_URL, icon: Github, label: t.repository },
+              { href: `${REPO_URL}/releases`, icon: Tag, label: t.releases },
+              { href: `${REPO_URL}/blob/main/LICENSE`, icon: Scale, label: t.license },
+              { href: `${REPO_URL}/issues/new`, icon: Bug, label: t.reportIssue }
+            ].map(({ href, icon: Icon, label }) => (
+              <a
+                key={href}
+                href={href}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 rounded-sm px-2 py-1 text-caption text-tertiary-text transition-colors duration-100 hover:bg-hover-overlay hover:text-primary-text"
+              >
+                <Icon size={13} className="shrink-0" aria-hidden />
+                {label}
+              </a>
+            ))}
+          </nav>
         </div>
       </div>
     </main>

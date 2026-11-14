@@ -462,7 +462,7 @@ export async function investigateCommitWithWorkers(input: CommitInvestigationInp
         )
         const chunk = chunks[index]
         findings.push(...parseFindings(response.content).map((finding) => ({ ...finding, chunk })))
-      } catch (error) {
+      } catch {
         if (input.isCancelled()) return { path: file.path, coverage: 'partial', findings }
         coverage = 'partial'
       } finally {
