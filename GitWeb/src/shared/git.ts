@@ -446,6 +446,24 @@ export function isHistoryRewrittenMessage(message: string): boolean {
  * local name (main tracking origin/master) or even live on origin (a fork's
  * remote); with none yet, the app publishes the branch to origin as is.
  */
+/**
+ * Remote-tracking names worth offering for checkout. `origin/feature` is hidden
+ * once a local `feature` exists — that checkout would only recreate it.
+ * `upstream/feature` stays: a local `feature` does not contain the other
+ * remote's commits. A local branch already named `upstream/feature` covers it.
+ */
+export function remoteBranchesToOffer(remoteBranches: readonly string[], localNames: readonly string[]): string[] {
+  const local = new Set(localNames)
+  return remoteBranches.filter((remote) => {
+    if (local.has(remote)) return false
+    const slash = remote.indexOf('/')
+    if (slash <= 0) return true
+    const remoteName = remote.slice(0, slash)
+    const short = remote.slice(slash + 1)
+    return !(remoteName === 'origin' && local.has(short))
+  })
+}
+
 export function pushTargetBranch(status: Pick<RepoStatus, 'branch' | 'upstream'>): string | null {
   if (!status.branch) return null
   if (!status.upstream) return status.branch

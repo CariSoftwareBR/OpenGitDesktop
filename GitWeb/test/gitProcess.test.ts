@@ -1,5 +1,5 @@
 import { execFileSync } from 'child_process'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,9 +7,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('electron', () => ({ shell: { trashItem: vi.fn() } }))
 vi.mock('../src/main/credentials', () => ({ getSecret: vi.fn(async () => null) }))
 
-const { cloneRepository, isCommitPublished, locateFileInHistory, parseStatusEntries, pushBranch, readGit, runGit, undoUnpublishedCommit } = await import(
-  '../src/main/gitProcess'
-)
+const {
+  checkoutRemoteBranch,
+  cloneRepository,
+  getStatus,
+  isCommitPublished,
+  locateFileInHistory,
+  parseStatusBranchHeader,
+  parseStatusEntries,
+  pushBranch,
+  readGit,
+  readRepoFile,
+  runGit,
+  undoUnpublishedCommit
+} = await import('../src/main/gitProcess')
 
 function git(cwd: string, ...args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
@@ -315,5 +326,78 @@ describe('with real repositories', () => {
     expect(info.onRemote).toBe(true)
     expect(info.existsOnDisk).toBe(true)
     expect(info.inIndex).toBe(true)
+  })
+})
+
+describe('parseStatusBranchHeader', () => {
+  it('keeps dotted branch names and the upstream that follows ...', () => {
+    expect(parseStatusBranchHeader('## feature/1.2.3...origin/feature/1.2.3 [ahead 1, behind 2]')).toEqual({
+      branch: 'feature/1.2.3',
+      upstream: 'origin/feature/1.2.3',
+      ahead: 1,
+      behind: 2
+    })
+    expect(parseStatusBranchHeader('## No commits yet on main')).toMatchObject({ branch: 'main', upstream: null })
+  })
+
+  it('does not turn a detached HEAD into a branch named HEAD', () => {
+    expect(parseStatusBranchHeader('## HEAD (no branch)')).toEqual({
+      branch: null,
+      upstream: null,
+      ahead: 0,
+      behind: 0
+    })
+  })
+})
+
+describe('detached HEAD and symlink reads', () => {
+  let repo: string
+
+  beforeEach(() => {
+    repo = mkdtempSync(join(tmpdir(), 'ogd-status-'))
+    git(repo, 'init', '-q', '-b', 'main')
+    git(repo, 'config', 'user.name', 'Test')
+    git(repo, 'config', 'user.email', 'test@example.com')
+    commitFile(repo, 'a.txt', 'a\n', 'initial')
+  })
+
+  afterEach(() => {
+    rmSync(repo, { recursive: true, force: true })
+  })
+
+  it('reports no branch when HEAD is detached', async () => {
+    git(repo, 'checkout', '-q', '--detach')
+    expect((await getStatus(repo)).branch).toBeNull()
+  })
+
+  it('reads a file inside the repo and refuses a link that leaves it', async () => {
+    expect(await readRepoFile(repo, 'a.txt')).toBe('a\n')
+    const outside = mkdtempSync(join(tmpdir(), 'ogd-outside-'))
+    try {
+      writeFileSync(join(outside, 'secret.txt'), 'secret')
+      symlinkSync(outside, join(repo, 'leak'), process.platform === 'win32' ? 'junction' : 'dir')
+      await expect(readRepoFile(repo, 'leak/secret.txt')).rejects.toThrow(/escapes the repository root/)
+    } finally {
+      rmSync(outside, { recursive: true, force: true })
+    }
+  })
+
+  it('checks out origin/feature as feature, and upstream/main beside an existing main', async () => {
+    git(repo, 'remote', 'add', 'origin', repo)
+    git(repo, 'remote', 'add', 'upstream', repo)
+    git(repo, 'update-ref', 'refs/remotes/origin/feature', 'HEAD')
+    git(repo, 'update-ref', 'refs/remotes/upstream/main', 'HEAD')
+
+    expect((await checkoutRemoteBranch('origin/feature', repo)).switched).toBe(true)
+    expect(git(repo, 'branch', '--show-current')).toBe('feature')
+
+    git(repo, 'checkout', '-q', 'main')
+    expect((await checkoutRemoteBranch('upstream/main', repo)).switched).toBe(true)
+    expect(git(repo, 'branch', '--show-current')).toBe('upstream/main')
+    // The short name is ambiguous with the local branch, so git prints
+    // remotes/upstream/main. The upstream ref itself is still the remote one.
+    expect(git(repo, 'rev-parse', '@{upstream}')).toBe(git(repo, 'rev-parse', 'refs/remotes/upstream/main'))
+    expect((await getStatus(repo)).branch).toBe('upstream/main')
+    expect(git(repo, 'rev-parse', 'main')).toBe(git(repo, 'rev-parse', 'upstream/main'))
   })
 })

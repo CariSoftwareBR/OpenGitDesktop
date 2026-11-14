@@ -443,25 +443,42 @@ export async function getStatus(cwd: string): Promise<RepoStatus> {
   const header = headerEnd >= 0 ? raw.slice(0, headerEnd) : raw
   const rest = headerEnd >= 0 ? raw.slice(headerEnd + 1) : ''
 
-  let branch: string | null = null
-  let upstream: string | null = null
-  let ahead = 0
-  let behind = 0
-
-  // Branch names may contain dots (e.g. fix/1.0.0). The upstream separator is
-  // the literal "..." sequence, not the first "." in the branch name.
-  const headerMatch = header.match(/^## (?:No commits yet on )?(.+?)(?:\.\.\.(\S+))?(?:\s|$)/)
-  if (headerMatch) {
-    branch = (headerMatch[1] ?? null)?.trim() || null
-    upstream = headerMatch[2] ?? null
-  }
-  const aheadMatch = header.match(/ahead (\d+)/)
-  const behindMatch = header.match(/behind (\d+)/)
-  if (aheadMatch) ahead = Number(aheadMatch[1])
-  if (behindMatch) behind = Number(behindMatch[1])
+  const { branch, upstream, ahead, behind } = parseStatusBranchHeader(header)
 
   const mergeHead = await readGit(['rev-parse', '-q', '--verify', 'MERGE_HEAD'], cwd)
   return { entries: parseStatusEntries(rest), branch, ahead, behind, upstream, mergeInProgress: mergeHead.exitCode === 0 }
+}
+
+/**
+ * The `## ` record from `git status -b`. Branch names may contain dots
+ * (`fix/1.0.0`); the upstream separator is the literal `...`, not the first dot.
+ * Detached HEAD is `## HEAD (no branch)`. The first space must not become the
+ * branch name — `HEAD` is not a branch, and publishing it would commit onto
+ * nothing and then try to push a branch called HEAD.
+ */
+export function parseStatusBranchHeader(header: string): {
+  branch: string | null
+  upstream: string | null
+  ahead: number
+  behind: number
+} {
+  let branch: string | null = null
+  let upstream: string | null = null
+  if (!/^## HEAD \(no branch\)/.test(header)) {
+    const headerMatch = header.match(/^## (?:No commits yet on )?(.+?)(?:\.\.\.(\S+))?(?:\s|$)/)
+    if (headerMatch) {
+      branch = headerMatch[1]?.trim() || null
+      upstream = headerMatch[2] ?? null
+    }
+  }
+  const aheadMatch = header.match(/ahead (\d+)/)
+  const behindMatch = header.match(/behind (\d+)/)
+  return {
+    branch,
+    upstream,
+    ahead: aheadMatch ? Number(aheadMatch[1]) : 0,
+    behind: behindMatch ? Number(behindMatch[1]) : 0
+  }
 }
 
 export async function stageFiles(paths: string[], cwd: string): Promise<void> {
@@ -655,9 +672,26 @@ export async function getRemoteBranches(cwd: string): Promise<string[]> {
     .map(([name]) => name)
 }
 
-/** Creates the local branch tracking `origin/<name>` and switches to it. */
+/**
+ * Creates the local branch tracking `remoteBranch` (`origin/feature`) and
+ * switches to it. `git checkout --track` names the local branch after the
+ * part following the first slash, so `upstream/main` would collide with an
+ * existing `main` and be refused. In that case the local branch keeps the
+ * full remote name (`upstream/main`), which is a different ref. `origin/*`
+ * keeps the old refusal: a local `feature` already is that branch.
+ */
 export async function checkoutRemoteBranch(remoteBranch: string, cwd: string): Promise<SwitchBranchResult> {
   assertNotOption(remoteBranch, tMain().git.optionLabel.remoteBranch)
+  const slash = remoteBranch.indexOf('/')
+  const remoteName = slash === -1 ? '' : remoteBranch.slice(0, slash)
+  const short = slash === -1 ? remoteBranch : remoteBranch.slice(slash + 1)
+  const shortTaken = short !== remoteBranch && (await refExists(cwd, `refs/heads/${short}`))
+  if (shortTaken && remoteName !== 'origin') {
+    if (await refExists(cwd, `refs/heads/${remoteBranch}`)) return runCheckout(['checkout', remoteBranch], cwd)
+    // The start point is the full remote-tracking ref, so a local name equal
+    // to `upstream/main` is not read as the remote ref itself.
+    return runCheckout(['checkout', '-b', remoteBranch, '--track', `refs/remotes/${remoteBranch}`], cwd)
+  }
   return runCheckout(['checkout', '--track', remoteBranch], cwd)
 }
 
@@ -1184,14 +1218,24 @@ export async function getBranchIntegration(
     })
   const localNames = new Set(refs.filter((r) => r.ref.startsWith('refs/heads/')).map((r) => r.name))
 
+  const localTipByName = new Map(refs.filter((r) => r.ref.startsWith('refs/heads/')).map((r) => [r.name, r.tip]))
   const candidates = refs.filter((r) => {
     if (onlyLocal !== undefined) return r.ref === `refs/heads/${onlyLocal}`
     if (r.symref || r.ref === baseRef.ref) return false
     if (r.ref.startsWith('refs/heads/')) return r.name !== baseShort
-    // Remote: skip the remote's copy of the base and anything already covered
-    // by a local branch of the same name.
-    const branchName = r.name.slice(r.name.indexOf('/') + 1)
-    return branchName !== baseShort && !localNames.has(branchName)
+    // Remote: `origin/feature` is the local `feature` looked at from the other
+    // side, so it is not a second branch. `upstream/feature` is, unless it
+    // points at the same commit — a fork's main can be ahead of origin/main
+    // while sharing the short name.
+    const slash = r.name.indexOf('/')
+    const remoteName = slash === -1 ? '' : r.name.slice(0, slash)
+    const branchName = slash === -1 ? r.name : r.name.slice(slash + 1)
+    if (localNames.has(r.name)) return false
+    if (refs.some((local) => local.ref.startsWith('refs/heads/') && local.upstream === r.name)) return false
+    if (remoteName === 'origin' && (branchName === baseShort || localNames.has(branchName))) return false
+    const localTip = localTipByName.get(branchName)
+    if (localTip && localTip === r.tip) return false
+    return true
   })
 
   // Several branches usually fork from the same base commit — scan it once.
@@ -1665,7 +1709,10 @@ async function resolveRealWithinRepo(cwd: string, relativePath: string): Promise
 }
 
 export async function readRepoFile(cwd: string, relativePath: string): Promise<string> {
-  return readFile(resolveWithinRepo(cwd, relativePath), 'utf-8')
+  // Same real-path check as writeRepoFile. A lexical join follows a symlink
+  // (`notes.txt` → `~/.ssh/id_rsa`) out of the repo, and this reader feeds the
+  // diff, conflict resolution and the fix proposal that goes to the model.
+  return readFile(await resolveRealWithinRepo(cwd, relativePath), 'utf-8')
 }
 
 // --- Files the AI agent is allowed to see -----------------------------------

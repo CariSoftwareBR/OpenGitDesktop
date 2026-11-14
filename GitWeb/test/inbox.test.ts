@@ -87,6 +87,7 @@ beforeEach(() => {
     signedIn: null,
     isLoading: false,
     answeringId: null,
+    checkedAt: null,
     error: null,
     notice: null
   })
@@ -154,6 +155,25 @@ describe('getRecentStars', () => {
   it('treats no sign-in as null', async () => {
     vi.mocked(getSecret).mockResolvedValue(null)
     await expect(getRecentStars('github.com')).resolves.toBeNull()
+  })
+
+  it('keeps the stars it could read when a repository node is missing', async () => {
+    respond(200, {
+      data: {
+        viewer: {
+          login: 'me',
+          repositories: {
+            nodes: [
+              null,
+              { nameWithOwner: 'me/app', stargazers: { edges: [edge('ana', daysAgo(1))] } },
+              { nameWithOwner: 'me/hidden', stargazers: null }
+            ]
+          }
+        }
+      },
+      errors: [{ message: 'Could not resolve a repository' }]
+    })
+    await expect(getRecentStars('github.com')).resolves.toMatchObject([{ login: 'ana', repoFullName: 'me/app' }])
   })
 })
 
@@ -274,10 +294,22 @@ describe('inbox store', () => {
     const one = invitation()
     github.getReceivedInvitations.mockResolvedValue([one])
     github.getRecentStars.mockRejectedValue(new Error('stars unavailable'))
+    useInboxStore.setState({ checkedAt: 1 })
     await store().refresh()
     expect(store().invitations).toEqual([one])
     expect(store().error).toBe('stars unavailable')
+    expect(store().checkedAt).toBeGreaterThan(1)
     expect(app.showNotification).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not move the clock when every source fails', async () => {
+    useInboxStore.setState({ checkedAt: 1 })
+    github.getReceivedInvitations.mockRejectedValue(new Error('offline'))
+    github.getNotifications.mockRejectedValue(new Error('offline'))
+    github.getRecentStars.mockRejectedValue(new Error('offline'))
+    await store().refresh()
+    expect(store().checkedAt).toBe(1)
+    expect(store().error).toBe('offline')
   })
 
   it('announces new activity on a notification it already announced', async () => {

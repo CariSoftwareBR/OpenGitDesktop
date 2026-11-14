@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { sameRepoStatus, type RepoStatus } from '../src/shared/git'
+import { remoteBranchesToOffer, sameRepoStatus, type RepoStatus } from '../src/shared/git'
 
 const base: RepoStatus = {
   entries: [
@@ -43,5 +43,17 @@ describe('sameRepoStatus', () => {
     expect(sameRepoStatus(base, renamed)).toBe(false)
     const reordered = copy({ entries: [...base.entries].reverse() })
     expect(sameRepoStatus(base, reordered)).toBe(false)
+  })
+})
+
+describe('remoteBranchesToOffer', () => {
+  const remote = ['origin/main', 'origin/feature', 'upstream/main', 'upstream/feature']
+
+  it('hides origin branches that already have a local branch, and keeps the other remote', () => {
+    expect(remoteBranchesToOffer(remote, ['main', 'feature'])).toEqual(['upstream/main', 'upstream/feature'])
+  })
+
+  it('hides a remote once a local branch is already named after it', () => {
+    expect(remoteBranchesToOffer(remote, ['main', 'upstream/main'])).toEqual(['origin/feature', 'upstream/feature'])
   })
 })

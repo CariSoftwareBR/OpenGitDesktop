@@ -146,14 +146,18 @@ export const useInboxStore = create<InboxStoreState>((set, get) => {
       if (generation !== loadGeneration) return
       const signedOut = invitations.status === 'fulfilled' && invitations.value === null
       const failure = [invitations, notifications, stars].find((result) => result.status === 'rejected')
+      // A star query that GitHub only half answers must not freeze "last
+      // checked". The timestamp moves when anything came back; it stays put
+      // only when every source failed, so an offline startup retries from the
+      // same clock. The error for the source that failed is still shown.
+      const delivered = [invitations, notifications, stars].some((result) => result.status === 'fulfilled')
       set((state) => ({
         invitations: invitations.status === 'fulfilled' ? (invitations.value ?? []) : state.invitations,
         notifications: signedOut ? [] : notifications.status === 'fulfilled' ? (notifications.value ?? []) : state.notifications,
         stars: signedOut ? [] : stars.status === 'fulfilled' ? (stars.value ?? []) : state.stars,
         signedIn: invitations.status === 'fulfilled' ? !signedOut : state.signedIn,
-        // Offline at startup, say: what was on screen stays, and the next check tries again.
         error: failure ? describeError(failure.reason) : null,
-        checkedAt: failure ? state.checkedAt : Date.now(),
+        checkedAt: delivered ? Date.now() : state.checkedAt,
         isLoading: false
       }))
       announce(get())
