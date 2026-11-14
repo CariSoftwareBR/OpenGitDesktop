@@ -63,6 +63,8 @@ export function ChurnChart({ points, bins }: { points: ChurnPoint[]; bins: Perio
   const compact = useCompact()
   const fmt = useFormatters()
   const [active, setActive] = useState<number | null>(null)
+  // Measured on hover, not read from the ref while rendering.
+  const [wrapWidth, setWrapWidth] = useState(0)
   const wrapRef = useRef<HTMLDivElement>(null)
 
   const series = useMemo(() => {
@@ -104,7 +106,10 @@ export function ChurnChart({ points, bins }: { points: ChurnPoint[]; bins: Perio
             <div
               key={bins[i]?.start ?? i}
               className={`churn-col relative flex min-w-0 flex-1 flex-col ${active === i ? 'is-active' : ''}`}
-              onPointerEnter={() => setActive(i)}
+              onPointerEnter={() => {
+                setActive(i)
+                setWrapWidth(wrapRef.current?.clientWidth ?? 0)
+              }}
             >
               <div className="flex flex-1 items-end">
                 <span
@@ -127,8 +132,8 @@ export function ChurnChart({ points, bins }: { points: ChurnPoint[]; bins: Perio
           {bins.length > 2 && <span>{bins[Math.floor(bins.length / 2)]?.label}</span>}
           <span>{bins[bins.length - 1]?.label}</span>
         </div>
-        {active !== null && bins[active] && wrapRef.current && (
-          <HoverTip x={((active + 0.5) / n) * wrapRef.current.clientWidth} y={8}>
+        {active !== null && bins[active] && wrapWidth > 0 && (
+          <HoverTip x={((active + 0.5) / n) * wrapWidth} y={8}>
             <p className="font-medium text-primary-text">{bins[active].title}</p>
             <p className="tabular-nums">
               <span className="text-diff-add-ink">+{fmt.number(series[active].additions)}</span>{' '}

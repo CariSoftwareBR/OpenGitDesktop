@@ -85,6 +85,8 @@ function NotificationRow({ notification, onRead, active, style, onActivate }: Ro
   const reason = t.reasons[notification.reason]
   const urgent = needsYou(notification.reason)
   return (
+    // Hover only mirrors the row onto the sky above; the row's link stays the control.
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <li className={`inbox-row ${active ? 'is-active' : ''}`} style={style} onMouseEnter={() => onActivate(true)} onMouseLeave={() => onActivate(false)}>
       <span className={`inbox-tile ${urgent ? 'is-attention' : ''}`}>
         <Icon size={17} aria-hidden />
@@ -116,6 +118,8 @@ function StarRow({ star, isNew, active, style, onActivate }: RowProps & { star: 
   const t = useT().inbox
   const locale = useLocale()
   return (
+    // Hover only mirrors the row onto the sky above; the row's link stays the control.
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <li className={`inbox-row ${active ? 'is-active' : ''}`} style={style} onMouseEnter={() => onActivate(true)} onMouseLeave={() => onActivate(false)}>
       <span className="inbox-person">
         <Avatar login={star.login} src={star.avatarUrl} size={38} />

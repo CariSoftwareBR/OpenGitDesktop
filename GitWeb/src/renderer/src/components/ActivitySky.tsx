@@ -50,6 +50,7 @@ function ActivitySky({ items, needsYou, newStarsSince, activeKey, onActivate, ch
 
   const sky = useMemo(() => layoutSky(items, width, HEIGHT), [items, width])
   const active = sky.points.find((point) => point.key === activeKey)
+  // oxlint-disable-next-line react/purity -- the sky reads the clock on every render so ages and the "now" mark stay current
   const now = Date.now()
 
   return (

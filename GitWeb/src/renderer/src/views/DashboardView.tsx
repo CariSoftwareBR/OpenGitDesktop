@@ -175,6 +175,8 @@ function buildBins(t: DashboardMessages, times: number[], period: Period, now: n
     if ((end.getFullYear() - cursor.getFullYear()) * 12 + end.getMonth() - cursor.getMonth() < 2) {
       cursor.setMonth(cursor.getMonth() - 1)
     }
+    // cursor advances through setMonth() at the bottom, which the rule can't see.
+    // oxlint-disable-next-line no-unmodified-loop-condition
     while (cursor < end) {
       const start = cursor.getTime()
       const next = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)
@@ -497,11 +499,15 @@ function ActivityChart({ bins }: { bins: Bin[] }): JSX.Element {
   return (
     <div ref={wrapRef} className="relative w-full">
       {width > 0 && (
+        // Explorable chart: focus it and the arrow keys move the readout. Still
+        // announced as one picture with its summary, hence role="img".
+        // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
         <svg
           width={width}
           height={height}
           role="img"
           aria-label={t.chartAria}
+          // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
           tabIndex={0}
           className="block outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-command-blue/50"
           onPointerMove={(e) => pick(e.clientX, e.currentTarget.getBoundingClientRect())}
@@ -846,10 +852,12 @@ function DashboardView(): JSX.Element {
 
   useEffect(() => {
     const cached = cache && cache.path === currentRepoPath ? cache : null
+    // oxlint-disable-next-line react/set-state-in-effect -- shows the cached data for this repository at once, then refreshes over IPC
     setData(cached ? cached.data : null)
     if (!cached || Date.now() - cached.at > CACHE_TTL) void load()
   }, [load, currentRepoPath])
 
+  // oxlint-disable-next-line react/memo-dependencies, react/purity -- "now" is re-read only when new data arrives, so period stats hold still between loads
   const now = useMemo(() => Date.now(), [data]) // eslint-disable-line react-hooks/exhaustive-deps
   const stats = useMemo(
     () => (data ? computeStats(t, data.commits, period, now, data.commits.length >= LOG_LIMIT) : null),
@@ -863,6 +871,7 @@ function DashboardView(): JSX.Element {
   const [churn, setChurn] = useState<RepoChurn | null>(() => churnCache.get(churnKey) ?? null)
   useEffect(() => {
     if (!currentRepoPath || !data) return
+    // oxlint-disable-next-line react/set-state-in-effect -- shows the cached churn for this period at once, then refreshes over IPC
     setChurn(churnCache.get(churnKey) ?? null)
     let alive = true
     window.api.git

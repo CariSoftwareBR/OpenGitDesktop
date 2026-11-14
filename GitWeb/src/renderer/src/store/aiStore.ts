@@ -713,7 +713,6 @@ export const useAiStore = create<AiState>((set, get) => ({
   applyPendingFix: async () => {
     const pending = get().pendingFix
     const repoPath = useRepoStore.getState().currentRepoPath
-    const { settings, apiKey } = get()
     if (!pending || pending.status !== 'ready' || !repoPath) return
     const language = getLocale()
     set({ pendingFix: { ...pending, status: 'applying' }, isBusy: true, error: null })

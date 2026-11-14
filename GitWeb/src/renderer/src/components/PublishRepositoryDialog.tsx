@@ -64,6 +64,7 @@ export default function PublishRepositoryDialog({ open, onClose }: { open: boole
   // Fresh form on every open, named after the folder.
   useEffect(() => {
     if (!open || !repoPath) return
+    // oxlint-disable-next-line react/set-state-in-effect -- fresh form, named after the folder, each time the dialog opens
     setName(sanitizeRepositoryName(basename(repoPath)))
     setDescription('')
     setIsPrivate(true)
@@ -146,7 +147,10 @@ export default function PublishRepositoryDialog({ open, onClose }: { open: boole
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4"
           role="presentation"
-          onClick={publishing ? undefined : onClose}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (!publishing && e.target === e.currentTarget) onClose()
+          }}
         >
           <div
             ref={panelRef}
@@ -154,7 +158,6 @@ export default function PublishRepositoryDialog({ open, onClose }: { open: boole
             aria-modal="true"
             aria-labelledby={titleId}
             className="flex max-h-full w-full min-w-0 max-w-lg flex-col overflow-y-auto rounded-lg border border-default-border bg-obsidian-panel p-5 shadow-floating"
-            onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-3">
               <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-command-blue/30 bg-command-blue-soft text-command-blue">

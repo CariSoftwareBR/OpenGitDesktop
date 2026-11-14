@@ -37,6 +37,7 @@ function CloneDestinationField({
   useEffect(() => {
     if (!open) return
     const selectedIndex = baseFolders.findIndex((folder) => pathsEqual(folder, selectedBase))
+    // oxlint-disable-next-line react/set-state-in-effect -- re-highlights the chosen folder each time the list opens
     setHighlighted(Math.max(0, selectedIndex))
   }, [open, baseFolders, selectedBase])
 

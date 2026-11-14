@@ -46,8 +46,8 @@ export async function captureDust(rect: DOMRect, options?: DustOptions): Promise
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image()
-    image.onload = () => resolve(image)
-    image.onerror = () => reject(new Error('Falha ao carregar a captura.'))
+    image.addEventListener('load', () => resolve(image), { once: true })
+    image.addEventListener('error', () => reject(new Error('Falha ao carregar a captura.')), { once: true })
     image.src = src
   })
 }

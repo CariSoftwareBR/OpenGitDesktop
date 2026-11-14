@@ -6,7 +6,6 @@ import {
   Bot,
   Check,
   ChevronDown,
-  ChevronRight,
   ExternalLink,
   CircleHelp,
   CircleCheck,
@@ -707,6 +706,7 @@ function NewPullRequestWizard({
   // origin chosen in fase 1 (a branch created there must still target main).
   const [baseTouched, setBaseTouched] = useState(false)
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- the target branch follows the default until the user picks one
     if (!baseTouched || !base || base === head) setBase(pickDefaultBase(branches, head))
   }, [head, base, branches, baseTouched])
 
@@ -826,6 +826,8 @@ function NewPullRequestWizard({
                       placeholder="feature/…"
                       aria-label={t.newBranchName}
                       aria-invalid={Boolean(newBranchProblem)}
+                      // The field only appears after "new branch" is chosen, so focus belongs here.
+                      // oxlint-disable-next-line jsx-a11y/no-autofocus
                       autoFocus
                       spellCheck={false}
                       value={newBranchName}
@@ -1812,14 +1814,14 @@ function PullRequestsView(): JSX.Element {
   const branchPr = pullRequestForBranch(pullRequests, checkedOutBranch, remote?.owner)
   const orderedPullRequests = branchPr ? [branchPr, ...pullRequests.filter((pr) => pr !== branchPr)] : pullRequests
 
-  const [page, setPage] = useState(1)
-  const pageCount = Math.max(1, Math.ceil(pullRequests.length / PR_PAGE_SIZE))
-  useEffect(() => {
+  const [requestedPage, setPage] = useState(1)
+  const [filterShown, setFilterShown] = useState(stateFilter)
+  if (filterShown !== stateFilter) {
+    setFilterShown(stateFilter)
     setPage(1)
-  }, [stateFilter])
-  useEffect(() => {
-    setPage((p) => Math.min(p, pageCount))
-  }, [pageCount])
+  }
+  const pageCount = Math.max(1, Math.ceil(pullRequests.length / PR_PAGE_SIZE))
+  const page = Math.min(requestedPage, pageCount)
   const pagedPullRequests = orderedPullRequests.slice((page - 1) * PR_PAGE_SIZE, page * PR_PAGE_SIZE)
 
   const [listWidth, setListWidth] = useState(DEFAULT_LIST_WIDTH)

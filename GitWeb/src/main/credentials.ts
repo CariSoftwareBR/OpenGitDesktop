@@ -83,7 +83,8 @@ export async function getSecret(key: string): Promise<string | null> {
       decrypted = await safeStorage.decryptStringAsync(Buffer.from(blob, 'base64'))
     } catch (err) {
       throw new Error(
-        `Failed to decrypt secret "${key}": ${err instanceof Error ? err.message : String(err)}`
+        `Failed to decrypt secret "${key}": ${err instanceof Error ? err.message : String(err)}`,
+        { cause: err }
       )
     }
     // The OS key rotated (or a stronger one exists): store the secret again

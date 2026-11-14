@@ -20,6 +20,7 @@ function RepoPickerModal({ open, repoPaths, onConfirm, onCancel }: RepoPickerMod
   useFocusTrap(panelRef, open, { onEscape: onCancel })
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- preselects every repository found, each time the picker opens
     if (open) setSelected(new Set(repoPaths))
   }, [open, repoPaths])
 
@@ -37,14 +38,20 @@ function RepoPickerModal({ open, repoPaths, onConfirm, onCancel }: RepoPickerMod
   const allSelected = selected.size === repoPaths.length
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4" role="presentation" onClick={onCancel}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-modal-scrim p-4"
+      role="presentation"
+      onClick={(e) => {
+        e.stopPropagation()
+        if (e.target === e.currentTarget) onCancel()
+      }}
+    >
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         className="flex w-full max-w-md flex-col gap-3 rounded-lg border border-default-border bg-obsidian-panel p-5 shadow-floating"
-        onClick={(e) => e.stopPropagation()}
       >
         <h2 id={titleId} className="text-title font-semibold text-primary-text">
           {t.reposFound(repoPaths.length)}

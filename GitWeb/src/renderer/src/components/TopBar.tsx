@@ -304,7 +304,7 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
                 className="field mt-1.5 w-full py-1.5"
               />
             )}
-            <div className="my-1.5 h-px bg-default-border" role="separator" />
+            <hr className="my-1.5 h-px border-0 bg-default-border" />
             {visibleLocal.length === 0 && visibleRemote.length === 0 && (
               <p className="px-2.5 py-1.5 text-caption text-tertiary-text">{t.noBranchFound}</p>
             )}
@@ -505,6 +505,7 @@ function SyncCard({ compact }: { compact: boolean }): JSX.Element {
     return found
   }, [currentRepoPath])
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- asks main over IPC whether an origin exists once the branch has no upstream
     if (noUpstream) void checkOrigin()
   }, [noUpstream, checkOrigin])
   const needsRepository = noUpstream && !hasOrigin
@@ -514,6 +515,7 @@ function SyncCard({ compact }: { compact: boolean }): JSX.Element {
   useEffect(() => {
     if (!publishPrompt || !currentRepoPath) return
     clearPublishPrompt()
+    // oxlint-disable-next-line react/set-state-in-effect -- opens the publish dialog the start screen asked for, then clears the request
     setPublishOpen(true)
   }, [publishPrompt, currentRepoPath, clearPublishPrompt])
   // Re-checked on click and when the dialog closes: an origin added outside

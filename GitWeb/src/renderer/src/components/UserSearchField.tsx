@@ -46,6 +46,7 @@ function UserSearchField({ id, host, value, onChange, statusOf, invalid, describ
   const showList = open && searchable
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- resets results as the query changes; the search itself runs over IPC
     setHighlighted(-1)
     if (!open || !searchable) {
       setResults([])

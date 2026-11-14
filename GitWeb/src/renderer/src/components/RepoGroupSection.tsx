@@ -43,6 +43,7 @@ function RepoGroupSection({
   // parent learns its id — so the initial state alone never saw
   // startEditing=true and "Nova pasta" landed silently at the bottom.
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- enters edit mode when the parent marks a folder it just created
     if (startEditing) setEditing(true)
   }, [startEditing])
 
