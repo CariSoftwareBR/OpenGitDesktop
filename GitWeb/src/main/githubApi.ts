@@ -108,13 +108,25 @@ async function send<T>(
   return { data: (await response.json()) as T, next }
 }
 
-/** GraphQL answers 200 even on failure, with the reasons in `errors`. */
-async function graphql<T>(host: string, token: string, query: string, variables: Record<string, unknown>): Promise<T> {
+/**
+ * GraphQL answers 200 even on failure, with the reasons in `errors`.
+ * `partial` keeps a payload that arrived next to those errors. Stars need it:
+ * one repository the token cannot see comes back as a null node plus an error,
+ * and throwing there used to drop every star and fail the whole inbox refresh.
+ * Callers that require a complete answer leave it off.
+ */
+async function graphql<T>(
+  host: string,
+  token: string,
+  query: string,
+  variables: Record<string, unknown>,
+  partial = false
+): Promise<T> {
   const { data } = await send<{ data?: T; errors?: { message: string }[] }>(graphqlUrlForHost(host), token, {
     method: 'POST',
     body: JSON.stringify({ query, variables })
   })
-  if (data.errors?.length || !data.data) {
+  if (!data.data || (data.errors?.length && !partial)) {
     throw new GitHubApiError(data.errors?.map((e) => e.message).join(' — ') || tMain().github.requestRejected(200), 200)
   }
   return data.data
@@ -954,35 +966,44 @@ const RECENT_STARS_LIMIT = 20
  * themselves: the latest few of each is enough to catch up between checks.
  * Costs a single GraphQL request however many repositories there are.
  */
+interface ApiStarRepository {
+  nameWithOwner?: string
+  stargazers?: {
+    edges?: ({ starredAt?: string; node?: { login?: string; avatarUrl?: string; url?: string } | null } | null)[] | null
+  } | null
+}
+
 export function getRecentStars(host: string): Promise<RepositoryStar[] | null> {
   return whenSignedIn(host, async (token) => {
     const { viewer } = await graphql<{
-      viewer: {
-        login: string
-        repositories: {
-          nodes: {
-            nameWithOwner: string
-            stargazers: { edges: { starredAt: string; node: { login: string; avatarUrl: string; url: string } }[] }
-          }[]
-        }
-      }
+      viewer: { login?: string; repositories?: { nodes?: (ApiStarRepository | null)[] | null } | null } | null
     }>(
       host,
       token,
       'query { viewer { login repositories(first: 100, ownerAffiliations: [OWNER, ORGANIZATION_MEMBER], orderBy: { field: PUSHED_AT, direction: DESC }) { nodes { nameWithOwner stargazers(first: 5, orderBy: { field: STARRED_AT, direction: DESC }) { edges { starredAt node { login avatarUrl url } } } } } } }',
-      {}
+      {},
+      true
     )
+    if (!viewer?.login) throw new GitHubApiError(tMain().github.requestRejected(200), 200)
     const since = Date.now() - RECENT_STARS_DAYS * 24 * 60 * 60 * 1000
-    return viewer.repositories.nodes
-      .flatMap((repository) =>
-        repository.stargazers.edges.map((edge) => ({
-          repoFullName: repository.nameWithOwner,
-          login: edge.node.login,
-          avatarUrl: edge.node.avatarUrl,
-          profileUrl: edge.node.url,
-          starredAt: edge.starredAt
-        }))
-      )
+    return (viewer.repositories?.nodes ?? [])
+      .flatMap((repository) => {
+        const repoFullName = repository?.nameWithOwner
+        if (!repoFullName) return []
+        return (repository.stargazers?.edges ?? []).flatMap((edge) => {
+          const login = edge?.node?.login
+          if (!edge?.starredAt || !login) return []
+          return [
+            {
+              repoFullName,
+              login,
+              avatarUrl: edge.node?.avatarUrl ?? '',
+              profileUrl: edge.node?.url ?? '',
+              starredAt: edge.starredAt
+            }
+          ]
+        })
+      })
       .filter((star) => star.login !== viewer.login && Date.parse(star.starredAt) >= since)
       .sort((a, b) => Date.parse(b.starredAt) - Date.parse(a.starredAt))
       .slice(0, RECENT_STARS_LIMIT)

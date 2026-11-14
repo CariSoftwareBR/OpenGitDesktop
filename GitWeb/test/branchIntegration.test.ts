@@ -135,3 +135,31 @@ describe('deleteCheckedBranch', () => {
     expect(git(repo, 'branch', '--list', 'pending')).toBe('')
   })
 })
+
+describe('a second remote', () => {
+  it('omits origin/pending and an upstream tip that matches, and reports one that diverged', async () => {
+    git(repo, 'remote', 'add', 'origin', repo)
+    git(repo, 'remote', 'add', 'upstream', repo)
+    git(repo, 'update-ref', 'refs/remotes/origin/pending', 'pending')
+    git(repo, 'branch', '-q', '--set-upstream-to', 'origin/pending', 'pending')
+    git(repo, 'update-ref', 'refs/remotes/upstream/pending', 'pending')
+
+    const same = (await getBranchIntegration(repo, 'main')).branches.map((b) => b.name)
+    expect(same).not.toContain('origin/pending')
+    expect(same).not.toContain('upstream/pending')
+    expect(same).toContain('pending')
+
+    git(repo, 'checkout', '-q', '--detach', 'pending')
+    commitFile(repo, 'remote-only.txt', 'remote\n', 'only on upstream')
+    const diverged = git(repo, 'rev-parse', 'HEAD')
+    git(repo, 'update-ref', 'refs/remotes/upstream/pending', diverged)
+    git(repo, 'checkout', '-q', 'main')
+
+    const report = await getBranchIntegration(repo, 'main')
+    expect(report.branches.map((b) => b.name)).not.toContain('origin/pending')
+    expect(report.branches.find((b) => b.name === 'upstream/pending')).toMatchObject({
+      remoteOnly: true,
+      state: 'unmerged'
+    })
+  })
+})

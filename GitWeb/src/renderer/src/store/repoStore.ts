@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { PublishRepositoryInput, PublishRepositoryResult } from '../../../shared/github'
 import type { ReorganizeResult, RepoMove } from '../../../shared/repoOrganize'
-import { isConflicted, isHistoryRewrittenMessage, sameRepoStatus, stashBranchName } from '../../../shared/git'
+import { isConflicted, isHistoryRewrittenMessage, remoteBranchesToOffer, sameRepoStatus, stashBranchName } from '../../../shared/git'
 import type {
   BranchInfo,
   CommitFile,
@@ -249,6 +249,11 @@ let repoOpenGeneration = 0
 // last one applied may land.
 let statusRequestSeq = 0
 let statusAppliedSeq = 0
+// A diff or commit-file read started for an earlier click can resolve after
+// the next one. Only the latest click may write the pane.
+let selectFileSeq = 0
+let selectCommitSeq = 0
+let selectCommitFileSeq = 0
 
 export const useRepoStore = create<RepoState>((set, get) => ({
   currentRepoPath: null,
@@ -608,7 +613,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       ])
       if (generation !== repoOpenGeneration || get().currentRepoPath !== path) return
       const local = new Set(branches.map((b) => b.name))
-      set({ branches, remoteBranches: remote.filter((r) => !local.has(r.slice(r.indexOf('/') + 1))) })
+      set({ branches, remoteBranches: remoteBranchesToOffer(remote, branches.map((b) => b.name)) })
     } catch (err) {
       if (generation !== repoOpenGeneration || get().currentRepoPath !== path) return
       set({ error: describeError(err) })
@@ -660,15 +665,27 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     if (!currentRepoPath) return
     const repoPath = currentRepoPath
     const generation = repoOpenGeneration
+    const request = ++selectFileSeq
 
     const entry = status?.entries.find((e) => e.path === path)
     const conflicted = entry ? isConflicted(entry) : false
     set({ selectedFile: { path, staged, conflicted }, diffText: '', conflictContent: null })
 
+    const stillCurrent = (): boolean => {
+      const selected = get().selectedFile
+      return (
+        request === selectFileSeq &&
+        generation === repoOpenGeneration &&
+        get().currentRepoPath === repoPath &&
+        selected?.path === path &&
+        selected.staged === staged
+      )
+    }
+
     try {
       if (conflicted) {
         const content = await window.api.fs.readRepoFile(repoPath, path)
-        if (generation !== repoOpenGeneration || get().currentRepoPath !== repoPath) return
+        if (!stillCurrent()) return
         set({ conflictContent: content })
         return
       }
@@ -677,6 +694,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       // "/" (it doesn't recurse into it) — that's not a file, so reading it
       // would throw EISDIR.
       if (path.endsWith('/')) {
+        if (!stillCurrent()) return
         set({ diffText: getT().stores.untrackedFolder })
         return
       }
@@ -685,16 +703,16 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       if (isNewUntracked) {
         // `git diff` shows nothing for untracked files; read the raw content instead.
         const content = await window.api.fs.readRepoFile(repoPath, path)
-        if (generation !== repoOpenGeneration || get().currentRepoPath !== repoPath) return
+        if (!stillCurrent()) return
         const preview = content.length > 200_000 ? `${content.slice(0, 200_000)}\n${getT().stores.fileTruncated}` : content
         set({ diffText: preview || getT().stores.emptyNewFile })
       } else {
         const diffText = await window.api.git.diff(path, repoPath, staged)
-        if (generation !== repoOpenGeneration || get().currentRepoPath !== repoPath) return
+        if (!stillCurrent()) return
         set({ diffText })
       }
     } catch (err) {
-      if (generation !== repoOpenGeneration || get().currentRepoPath !== repoPath) return
+      if (!stillCurrent()) return
       set({ error: describeError(err) })
     }
   },
@@ -1346,9 +1364,10 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     if (!currentRepoPath) return
     const path = currentRepoPath
     const generation = repoOpenGeneration
+    const request = ++selectCommitSeq
     try {
       const files = await window.api.git.commitFiles(hash, path)
-      if (generation !== repoOpenGeneration || get().currentRepoPath !== path) return
+      if (request !== selectCommitSeq || generation !== repoOpenGeneration || get().currentRepoPath !== path) return
       set({ selectedCommit: { hash, files, selectedPath: null }, commitDiffText: '' })
       // Open straight on the first file, as a PR does, instead of an empty
       // pane asking for a click. With a file filter active, that file.
@@ -1356,7 +1375,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       const first = files.find((f) => logPath && f.path.split('\t').pop() === logPath) ?? files[0]
       if (first) void get().selectCommitFile(first.path)
     } catch (err) {
-      if (generation !== repoOpenGeneration || get().currentRepoPath !== path) return
+      if (request !== selectCommitSeq || generation !== repoOpenGeneration || get().currentRepoPath !== path) return
       set({ error: describeError(err) })
     }
   },
@@ -1371,14 +1390,16 @@ export const useRepoStore = create<RepoState>((set, get) => ({
     const repoPath = currentRepoPath
     const generation = repoOpenGeneration
     const commitHash = selectedCommit.hash
+    const request = ++selectCommitFileSeq
+    set({ selectedCommit: { ...selectedCommit, selectedPath: path }, commitDiffText: '' })
     try {
       const commitDiffText = await window.api.git.commitDiff(commitHash, path, repoPath)
-      if (generation !== repoOpenGeneration || get().currentRepoPath !== repoPath) return
+      if (request !== selectCommitFileSeq || generation !== repoOpenGeneration || get().currentRepoPath !== repoPath) return
       const current = get().selectedCommit
       if (!current || current.hash !== commitHash) return
       set({ selectedCommit: { ...current, selectedPath: path }, commitDiffText })
     } catch (err) {
-      if (generation !== repoOpenGeneration || get().currentRepoPath !== repoPath) return
+      if (request !== selectCommitFileSeq || generation !== repoOpenGeneration || get().currentRepoPath !== repoPath) return
       set({ error: describeError(err) })
     }
   },
