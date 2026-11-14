@@ -96,7 +96,9 @@ function RepoGroupSection({
           : 'rounded-lg border border-dashed border-transparent p-2 transition-colors duration-100'
       }
     >
-      <div className="group/header mb-1.5 flex items-center gap-1.5">
+      {/* Sticks while its rows scroll under it, so a long folder never loses
+          its name; the solid canvas fill keeps the rows from showing through. */}
+      <div className="group/header sticky top-0 z-10 -mx-2 mb-1 flex items-center gap-1.5 bg-midnight-base px-2 py-1.5">
         <button
           type="button"
           onClick={onToggleCollapsed}
@@ -111,8 +113,10 @@ function RepoGroupSection({
           <Folder size={13} className="shrink-0 text-tertiary-text" aria-hidden />
           {!editing && (
             <>
-              <span className="truncate text-label uppercase tracking-wide text-tertiary-text">{name}</span>
-              <span className="shrink-0 text-caption tabular-nums text-tertiary-text">({count})</span>
+              <span className="truncate text-label uppercase tracking-wide text-secondary-text">{name}</span>
+              <span className="shrink-0 rounded-pill border border-default-border bg-coal-raised px-1.5 text-meta leading-4 tabular-nums text-tertiary-text">
+                {count}
+              </span>
             </>
           )}
         </button>
@@ -138,7 +142,7 @@ function RepoGroupSection({
         )}
 
         {id !== null && !editing && (
-          <span className="flex items-center gap-0.5 opacity-0 transition-opacity duration-100 focus-within:opacity-100 group-hover/header:opacity-100">
+          <span className="order-last flex items-center gap-0.5 opacity-0 transition-opacity duration-100 focus-within:opacity-100 group-hover/header:opacity-100">
             <button
               type="button"
               onClick={() => setEditing(true)}
@@ -159,6 +163,7 @@ function RepoGroupSection({
             </button>
           </span>
         )}
+        <span className="ml-1 h-px min-w-6 flex-1 bg-default-border" aria-hidden />
       </div>
 
       {!collapsed &&

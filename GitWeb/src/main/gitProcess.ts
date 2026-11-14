@@ -1064,13 +1064,26 @@ async function compareWithDefault(
   return { vsHead, hasLocalDefault, vsLocalDefault: hasLocalDefault ? vsLocalDefaultRaw : null }
 }
 
+/** HEAD's subject and committer date, or null on an unborn branch. */
+async function readLastCommit(cwd: string): Promise<{ subject: string; date: string } | null> {
+  const result = await readGit(['log', '-1', '--format=%cI%x00%s', 'HEAD', '--'], cwd)
+  if (result.exitCode !== 0) return null
+  const [date, subject] = result.stdout.trim().split('\0')
+  return date ? { date, subject: subject ?? '' } : null
+}
+
 export async function getRepoUpdateStatus(
   cwd: string,
   options?: { fetch?: boolean }
 ): Promise<RepoUpdateStatus> {
   // Both are read-only and skip the repo queue, so they can overlap.
-  const [status, remoteUrl] = await Promise.all([getStatus(cwd), getRemoteUrlForPolling(cwd)])
+  const [status, remoteUrl, lastCommit] = await Promise.all([
+    getStatus(cwd),
+    getRemoteUrlForPolling(cwd),
+    readLastCommit(cwd)
+  ])
   const common = {
+    lastCommit,
     branch: status.branch,
     defaultBranch: null as string | null,
     behindDefault: 0,

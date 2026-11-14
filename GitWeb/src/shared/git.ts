@@ -158,6 +158,8 @@ export interface RepoUpdateStatus {
    * fresh fetch is still running — shown right away, but not acted upon.
    */
   refreshing?: boolean
+  /** HEAD's subject and committer date (ISO) — the row's "last activity". */
+  lastCommit?: { subject: string; date: string } | null
 }
 
 export type RepoUpdateOutcome =

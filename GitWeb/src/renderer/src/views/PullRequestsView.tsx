@@ -41,6 +41,7 @@ import type { PullRequest, PullRequestFile, PullRequestState } from '../lib/gith
 import { relativeTime } from '../lib/relativeTime'
 import type { Formatters, Messages } from '../../../shared/i18n'
 import { useFormatters, useLocale, useT } from '../lib/i18n'
+import SegmentThumb from '../components/SegmentThumb'
 
 type PrMessages = Messages['pullRequests']
 
@@ -389,7 +390,13 @@ function PrFileRow({ file, selected, onSelect }: { file: PullRequestFile; select
   )
 }
 
-function WizardSteps({ step }: { step: 1 | 2 | 3 | 4 }): JSX.Element {
+/**
+ * The wizard's trail: one column per step, a node and a rail that fills toward
+ * the next as each step is done. Done steps keep what was decided in them
+ * (origin branch, title, destination) right under their name, so the whole
+ * PR can be read off the trail without stepping back.
+ */
+function WizardSteps({ step, summaries }: { step: 1 | 2 | 3 | 4; summaries: string[] }): JSX.Element {
   const t = useT().pullRequests
   const last = PR_WIZARD_STEPS.length - 1
   return (
@@ -397,40 +404,51 @@ function WizardSteps({ step }: { step: 1 | 2 | 3 | 4 }): JSX.Element {
       <p className="sr-only" aria-live="polite">
         {t.stepOf(step, PR_WIZARD_STEPS.length, t.wizardSteps[step - 1])}
       </p>
-      <ol className="flex items-center" aria-hidden>
+      <ol className="grid grid-cols-[1fr_1fr_1fr_auto]" aria-hidden>
         {PR_WIZARD_STEPS.map((n, i) => {
           const done = step > n
           const active = step === n
+          const summary = done ? summaries[i] : ''
           return (
-            <li key={n} className={`flex items-center ${i < last ? 'flex-1' : ''}`}>
-              <span className="flex items-center gap-2">
+            <li key={n} className="flex min-w-0 flex-col gap-2">
+              <span className="flex items-center">
                 <span
-                  className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-caption font-semibold tabular-nums transition-[background-color,border-color,color,box-shadow] duration-300 ${
+                  className={`flex size-8 shrink-0 items-center justify-center rounded-full border text-caption font-semibold tabular-nums transition-[background-color,border-color,color,box-shadow] duration-300 ${
                     active
-                      ? 'border-command-blue bg-command-blue text-on-command shadow-[0_0_0_4px_var(--color-command-blue-soft)]'
+                      ? 'wizard-node-active border-command-blue bg-command-blue text-on-command shadow-[0_0_0_4px_var(--color-command-blue-soft)]'
                       : done
-                        ? 'border-command-blue/50 bg-command-blue-soft text-command-blue'
-                        : 'border-default-border bg-coal-raised text-secondary-text'
+                        ? 'border-command-blue/40 bg-command-blue-soft text-command-blue'
+                        : 'border-default-border bg-coal-raised text-tertiary-text'
                   }`}
                 >
-                  {done ? <Check size={13} strokeWidth={2.5} aria-hidden /> : n}
+                  {done ? <Check size={14} strokeWidth={2.5} className="animate-[pop_0.35s_ease-out]" aria-hidden /> : n}
                 </span>
+                {i < last && (
+                  <span className="mx-3 h-0.5 flex-1 overflow-hidden rounded-full bg-default-border">
+                    <span
+                      className="wizard-rail-fill block h-full origin-left rounded-full bg-command-blue transition-transform duration-500 ease-[var(--ease-out-expo)]"
+                      style={{ transform: `scaleX(${done ? 1 : 0})` }}
+                    />
+                  </span>
+                )}
+              </span>
+              <span className={`hidden min-w-0 flex-col gap-0.5 @[520px]:flex ${i < last ? 'pr-4' : ''}`}>
                 <span
-                  className={`text-caption font-medium transition-colors duration-300 ${
-                    active ? 'text-primary-text' : done ? 'hidden text-secondary-text @[520px]:inline' : 'hidden text-tertiary-text @[520px]:inline'
+                  className={`truncate text-caption font-medium transition-colors duration-300 ${
+                    active ? 'text-primary-text' : done ? 'text-secondary-text' : 'text-tertiary-text'
                   }`}
                 >
                   {t.wizardSteps[n - 1]}
                 </span>
-              </span>
-              {i < last && (
-                <span className="mx-3 h-px flex-1 overflow-hidden rounded-full bg-default-border">
-                  <span
-                    className="block h-full origin-left bg-command-blue transition-transform duration-500 ease-[var(--ease-out-expo)]"
-                    style={{ transform: `scaleX(${done ? 1 : 0})` }}
-                  />
+                <span
+                  className={`min-h-4 truncate text-meta leading-4 text-tertiary-text ${i === 1 ? '' : 'font-mono'} ${
+                    summary ? 'animate-[wizard-panel-in_0.25s_ease-out]' : ''
+                  }`}
+                  title={summary || undefined}
+                >
+                  {summary}
                 </span>
-              )}
+              </span>
             </li>
           )
         })}
@@ -438,6 +456,15 @@ function WizardSteps({ step }: { step: 1 | 2 | 3 | 4 }): JSX.Element {
     </>
   )
 }
+
+/** The "Redigir pelo diff" glyph: additions and deletions as a git stat bar. */
+const DIFF_GLYPH: { add: boolean; h: number }[] = [
+  { add: true, h: 9 },
+  { add: true, h: 13 },
+  { add: false, h: 7 },
+  { add: true, h: 11 },
+  { add: false, h: 10 }
+]
 
 const UNTRACKED_PREVIEW_CHARS = 20_000
 const MAX_UNTRACKED_FILES = 50
@@ -718,7 +745,7 @@ function NewPullRequestWizard({
   useEffect(() => () => onBusyChange(false), [onBusyChange])
 
   const optionCard = (selected: boolean, disabled = false): string =>
-    `rounded-md border p-3.5 transition-[background-color,border-color] duration-150 ${
+    `wizard-card rounded-md border p-3.5 ${
       selected
         ? 'border-command-blue/60 bg-active-overlay'
         : disabled
@@ -728,9 +755,9 @@ function NewPullRequestWizard({
   const fieldLabel = 'text-caption font-medium text-secondary-text'
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="@container/wizard flex h-full min-h-0 flex-col overflow-hidden">
       <header className="@container shrink-0 border-b border-default-border px-5 pb-4 pt-4">
-        <div className="mx-auto flex w-full max-w-[640px] flex-col gap-4">
+        <div className="mx-auto w-full max-w-[clamp(640px,76cqw,1080px)] flex flex-col gap-4">
           <div className="flex items-center gap-3">
             <span className="empty-medallion size-9 text-command-blue">
               <GitPullRequest size={17} aria-hidden />
@@ -755,22 +782,26 @@ function NewPullRequestWizard({
               <X size={16} aria-hidden />
             </button>
           </div>
-          <WizardSteps step={step} />
+          <WizardSteps step={step} summaries={[head, title.trim(), base]} />
         </div>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         <div
           key={step}
-          className={`mx-auto w-full max-w-[640px] px-5 py-6 ${
+          className={`mx-auto w-full max-w-[clamp(640px,76cqw,1080px)] px-5 py-[clamp(24px,4vh,48px)] ${
             direction === 'forward' ? 'animate-[wizard-step-in-forward_0.28s_ease-out]' : 'animate-[wizard-step-in-back_0.28s_ease-out]'
           }`}
         >
           {step === 1 && (
-            <fieldset className="flex flex-col gap-2.5">
+            <fieldset className="grid items-start gap-3 @[880px]/wizard:grid-cols-2">
               <legend className="mb-3 text-body text-secondary-text">{t.originQuestion}</legend>
 
-              <div className={optionCard(branchMode === 'current', !currentBranch)}>
+              <div
+                className={optionCard(branchMode === 'current', !currentBranch)}
+                data-selected={branchMode === 'current'}
+                data-disabled={!currentBranch}
+              >
                 <label className={`flex items-start gap-3 ${currentBranch ? 'cursor-pointer' : 'cursor-not-allowed'}`}>
                   <input
                     type="radio"
@@ -794,7 +825,7 @@ function NewPullRequestWizard({
                 </label>
               </div>
 
-              <div className={optionCard(branchMode === 'new')}>
+              <div className={optionCard(branchMode === 'new')} data-selected={branchMode === 'new'} style={{ animationDelay: '70ms' }}>
                 <label className="flex cursor-pointer items-start gap-3">
                   <input
                     type="radio"
@@ -854,7 +885,7 @@ function NewPullRequestWizard({
               </div>
 
               {branchError && (
-                <p role="alert" className="flex items-start gap-1.5 text-caption text-danger-red">
+                <p role="alert" className="flex items-start gap-1.5 text-caption text-danger-red @[880px]/wizard:col-span-2">
                   <AlertTriangle size={12} className="mt-0.5 shrink-0" aria-hidden />
                   {branchError}
                 </p>
@@ -876,15 +907,19 @@ function NewPullRequestWizard({
                       disabled={generating}
                       title={t.generateTitle}
                       aria-label={t.generateAria}
-                      className="btn-agent"
+                      className={`agent-draft${generating ? ' is-reading' : ''}`}
                     >
-                      {generating ? (
-                        <Loader2 size={13} className="animate-spin" aria-hidden />
-                      ) : justGenerated ? (
-                        <Check size={13} className="animate-[pop_0.3s_ease-out] text-success-green" aria-hidden />
-                      ) : (
-                        <Sparkles size={13} aria-hidden />
-                      )}
+                      {/* What the agent works from, drawn: a tiny diff meter whose
+                          bars ripple on hover and keep rippling while it reads. */}
+                      <span className="agent-draft-glyph" aria-hidden>
+                        {justGenerated && !generating ? (
+                          <Check size={12} strokeWidth={2.75} className="animate-[pop_0.3s_ease-out] text-success-green" />
+                        ) : (
+                          DIFF_GLYPH.map((bar, i) => (
+                            <i key={i} className={bar.add ? 'is-add' : 'is-del'} style={{ height: bar.h, animationDelay: `${i * 90}ms` }} />
+                          ))
+                        )}
+                      </span>
                       <span className={generating ? 'agent-busy-shimmer' : undefined}>
                         {generating ? t.generating : t.generateWithAgent}
                       </span>
@@ -962,10 +997,10 @@ function NewPullRequestWizard({
                         value={body}
                         onChange={(e) => setBody(e.target.value)}
                         rows={10}
-                        className={`field resize-y leading-relaxed ${flashKey > 0 ? 'animate-[wizard-field-flash_1s_ease-out]' : ''}`}
+                        className={`field min-h-[clamp(236px,38vh,560px)] resize-y leading-relaxed ${flashKey > 0 ? 'animate-[wizard-field-flash_1s_ease-out]' : ''}`}
                       />
                     ) : (
-                      <div className="min-h-[236px] rounded-sm border border-default-border bg-obsidian-panel px-3 py-2.5 text-body text-secondary-text">
+                      <div className="min-h-[clamp(236px,38vh,560px)] rounded-sm border border-default-border bg-obsidian-panel px-3 py-2.5 text-body text-secondary-text">
                         {body.trim() ? (
                           <Markdown text={body} />
                         ) : (
@@ -1156,7 +1191,7 @@ function NewPullRequestWizard({
       </div>
 
       <footer className="shrink-0 border-t border-default-border px-5 py-3">
-        <div className="mx-auto flex w-full max-w-[640px] items-center justify-between gap-2">
+        <div className="mx-auto w-full max-w-[clamp(640px,76cqw,1080px)] flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={() => (step === 1 ? onClose() : goToStep((step - 1) as 1 | 2 | 3))}
@@ -1909,6 +1944,7 @@ function PullRequestsView(): JSX.Element {
           </div>
         </div>
         <div className="clone-segmented w-full" role="radiogroup" aria-label={t.filterAria}>
+          <SegmentThumb activeKey={stateFilter} />
           {STATE_FILTERS.map((value) => (
             <button
               key={value}
