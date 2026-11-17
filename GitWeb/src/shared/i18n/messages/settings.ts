@@ -56,7 +56,7 @@ const ptBR = {
     },
     skippedHeading: (n: number) => (n === 1 ? '1 não será movido' : `${n} não serão movidos`),
     reason: {
-      noRemote: 'Sem remote origin',
+      noRemote: 'Sem remoto origin',
       unknownOwner: 'Não deu para identificar a conta pelo remoto',
       targetExists: 'Já existe uma pasta com esse nome no destino',
       ownerFolderIsRepo: 'A pasta da conta é outro repositório',
@@ -303,7 +303,7 @@ const es: M = {
     },
     skippedHeading: (n) => (n === 1 ? '1 no se moverá' : `${n} no se moverán`),
     reason: {
-      noRemote: 'Sin remote origin',
+      noRemote: 'Sin remoto origin',
       unknownOwner: 'No se pudo identificar la cuenta por el remoto',
       targetExists: 'Ya existe una carpeta con ese nombre en el destino',
       ownerFolderIsRepo: 'La carpeta de la cuenta es otro repositorio',

@@ -14,7 +14,7 @@ const ptBR = {
       sourceBranch: 'Branch de origem',
       remoteBranch: 'Branch remota',
       branchName: 'Nome de branch',
-      remoteName: 'Nome de remote',
+      remoteName: 'Nome do remoto',
       newBranchName: 'Novo nome de branch'
     },
     optionLikeValue: (label: string) => `${label} inválido: não pode começar com "-".`,
@@ -30,7 +30,7 @@ const ptBR = {
     },
     undoParentUnavailable:
       'Não foi possível desfazer o commit: o commit anterior não está disponível neste repositório (clone raso ou histórico truncado).',
-    noRemote: 'Repositório sem remote configurado.',
+    noRemote: 'Repositório sem remoto configurado.',
     fetchFailed: 'Falha ao buscar do remoto.',
     noDefaultBranchDetected: 'Não foi possível determinar a branch padrão do remoto.',
     baseBranchNotFound: (branch: string) => `Branch base "${branch}" não encontrada (nem local, nem em origin).`,
@@ -344,7 +344,7 @@ const es: MainMessages = {
       sourceBranch: 'Rama de origen',
       remoteBranch: 'Rama remota',
       branchName: 'Nombre de rama',
-      remoteName: 'Nombre de remote',
+      remoteName: 'Nombre del remoto',
       newBranchName: 'Nuevo nombre de rama'
     },
     optionLikeValue: (label) => `${label} no válido: no puede empezar con "-".`,

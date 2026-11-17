@@ -582,15 +582,13 @@ CRITICAL RULES:
 8. NEVER run, suggest or teach destructive Git commands, not even as a "manual step": push --force / --force-with-lease, reset --hard, checkout -- . / restore . over uncommitted work, filter-branch / filter-repo / BFG, rebase of pushed commits, clean -f / -fd / -fdx, stash drop / clear, branch -D (other than through delete_merged_branches, rule 9), deleting remote branches, reflog expire, gc --prune=now, deleting .git or re-cloning. A misread of the situation must never cost the user their repository. If only such a command would fix the problem, stop, explain what you found and the risk, and offer the safe alternatives that exist.
 9. The ONLY way to delete branches is the delete_merged_branches tool, which re-verifies that each branch's work is already on the base and never deletes main, master or the default branch. Pass exactly the branches the user asked for — never add others on your own — and never try to delete a protected branch.`
 
-// Only sent to providers that rejected a native `tools` array — teaching this
-// textual format alongside native tools makes models blend the two and emit
-// malformed JSON, exactly as the original C# comment warns.
 /**
  * Tool arguments the way the tools read them: every value a string. Models
  * send JSON booleans, numbers and arrays too (`"draft": true`), and tools.ts
  * compares against strings (`a.draft === 'true'`), so a boolean read raw was
- * silently false. Lists become one item per line (parsePathList and
- * parseBranchList split on newlines); null/undefined mean "not given".
+ * silently false. Lists become one item per line, which parsePathList and
+ * parseBranchList split on (they also split on commas, so an item with a comma
+ * in it still breaks — as it did before); null/undefined mean "not given".
  */
 export function toToolArguments(raw: unknown): Record<string, string> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
@@ -604,6 +602,9 @@ export function toToolArguments(raw: unknown): Record<string, string> {
   return args
 }
 
+// Only sent to providers that rejected a native `tools` array — teaching this
+// textual format alongside native tools makes models blend the two and emit
+// malformed JSON, exactly as the original C# comment warns.
 export function buildTextualToolsPrompt(tools: ToolDefinition[]): string {
   const lines: string[] = [
     TOOL_RULES_SECTION,

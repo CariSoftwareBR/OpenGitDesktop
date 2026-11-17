@@ -24,7 +24,7 @@ describe('toToolArguments', () => {
   })
 
   it('puts list items one per line and drops null/undefined', () => {
-    expect(toToolArguments({ paths: ['a.ts', 'b, c.ts'], base: null, head: undefined })).toEqual({ paths: 'a.ts\nb, c.ts' })
+    expect(toToolArguments({ paths: ['a.ts', 'b.ts'], base: null, head: undefined })).toEqual({ paths: 'a.ts\nb.ts' })
   })
 
   it('keeps strings and serializes nested objects', () => {

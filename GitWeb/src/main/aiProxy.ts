@@ -161,7 +161,9 @@ async function sendOpenAiCompatible(
     (tc: { id: string; function: { name: string; arguments: string } }) => {
       let args: Record<string, string> = {}
       try {
-        args = toToolArguments(JSON.parse(tc.function.arguments || '{}'))
+        // Some OpenAI-compatible servers send an object instead of a JSON string.
+        const raw: unknown = tc.function.arguments
+        args = toToolArguments(typeof raw === 'string' ? JSON.parse(raw || '{}') : raw)
       } catch {
         // malformed tool arguments JSON; treat as no-arg call
       }

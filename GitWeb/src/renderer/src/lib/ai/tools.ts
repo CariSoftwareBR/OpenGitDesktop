@@ -114,7 +114,8 @@ function parsePathList(raw: string): string[] {
 
 /** The list_pull_requests state, defaulting to "open" as the catalog says; anything else is ignored. */
 function prStateArg(raw: string | undefined): 'open' | 'closed' | 'all' {
-  return raw === 'closed' || raw === 'all' ? raw : 'open'
+  const state = raw?.trim().toLowerCase()
+  return state === 'closed' || state === 'all' ? state : 'open'
 }
 
 function parseBranchList(raw: string): string[] {
@@ -1097,9 +1098,10 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       // Without a ref, the newest stash — read from git: the store's list is
       // only loaded once the Stash view or the Dashboard has been opened.
       const ref = a.stash_ref || (await window.api.git.stashList(await requireCurrentRepo()))[0]?.ref
+      if (!ref) throw new Error(t.noStash)
       return {
-        preview: { headline: t.stashPopHeadline, fields: ref ? [{ label: 'Ref', value: ref }] : [] },
-        resolvedArgs: ref ? { ...a, stash_ref: ref } : a
+        preview: { headline: t.stashPopHeadline, fields: [{ label: 'Ref', value: ref }] },
+        resolvedArgs: { ...a, stash_ref: ref }
       }
     }
 

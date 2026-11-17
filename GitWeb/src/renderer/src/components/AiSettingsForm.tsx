@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Bot, Check, Lock, RotateCcw } from 'lucide-react'
 import {
   DEFAULT_MAX_DIFF_CHARS,
+  normalizeMaxDiffChars,
   REASONING_EFFORT_LEVELS,
   SYSTEM_SAMPLING,
   type AiProvider,
@@ -296,6 +297,8 @@ function AiSettingsForm(): JSX.Element | null {
     if (!draft) return
     await window.api.secrets.save(credentialKey(draft.activeProvider), apiKeyDraft)
     await saveSettings(draft)
+    // saveSettings applies the floor; show the value that was really saved.
+    setDraft((d) => (d ? { ...d, maxDiffChars: normalizeMaxDiffChars(d.maxDiffChars) } : d))
     setSavedFlash(true)
     setTimeout(() => setSavedFlash(false), 1500)
   }
