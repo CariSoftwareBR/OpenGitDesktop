@@ -1636,9 +1636,17 @@ export async function getConflictDiff3(cwd: string, relativePath: string): Promi
   try {
     const [base, ours, theirs] = ['base', 'ours', 'theirs'].map((name) => join(dir, name))
     await Promise.all([writeFile(base, stages[0].stdout), writeFile(ours, stages[1].stdout), writeFile(theirs, stages[2].stdout)])
-    const merged = await readGit(['merge-file', '-p', '--diff3', '-L', 'ours', '-L', 'base', '-L', 'theirs', ours, base, theirs], cwd)
-    // The exit code is the number of conflicts; a negative one is an error.
-    if (merged.exitCode === null || merged.exitCode < 0) return null
+    // zdiff3 moves the lines both sides share out of the conflict, as the
+    // default style git merge wrote into the working file does; plain diff3
+    // keeps them in, and the blocks would no longer match (attachBaseLines).
+    // zdiff3 needs git 2.35+; older ones fall back to diff3.
+    const mergeFile = (style: string): ReturnType<typeof readGit> =>
+      readGit(['merge-file', '-p', style, '-L', 'ours', '-L', 'base', '-L', 'theirs', ours, base, theirs], cwd)
+    let merged = await mergeFile('--zdiff3')
+    if (merged.exitCode === null || merged.exitCode > 127) merged = await mergeFile('--diff3')
+    // The exit code is the number of conflicts (capped at 127); above that,
+    // git failed (bad option 129, error 255).
+    if (merged.exitCode === null || merged.exitCode > 127) return null
     return merged.stdout
   } finally {
     await rm(dir, { recursive: true, force: true })

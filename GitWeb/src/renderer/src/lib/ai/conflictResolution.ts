@@ -4,6 +4,7 @@ import { sendChatRequest, type ChatMessage } from './providers'
 import {
   findDuplicateKeys,
   findLostChanges,
+  keyStyleFor,
   keysDuplicatedByBoth,
   renderResolvedWithChoices,
   type ConflictBlock,
@@ -34,7 +35,9 @@ export interface GeneratedConflictResolution {
 }
 
 const CONTEXT_LINES = 3
-const MARKER_LINE = /^(<{7}|={7}$|>{7})/
+// The diff3 base marker too: the prompt now shows the base, and a model may echo it.
+const MARKER_LINE = /^(<{7}|={7}\r?$|>{7}|\|{7})/
+const CHOICES = new Set(['ours', 'theirs', 'both', 'custom'])
 
 function stripCodeFence(text: string): string {
   if (!text.startsWith('```')) return text
@@ -80,6 +83,12 @@ function tryParseMalformedJson(content: string): { decisions: ConflictBlockDecis
 
 type ParsedAnswer = Omit<GeneratedConflictResolution, 'problems'>
 
+/** One decision per block, the first one given — the checks and the render must judge the same one. */
+function firstPerBlock(decisions: ConflictBlockDecision[]): ConflictBlockDecision[] {
+  const seen = new Set<number>()
+  return decisions.filter((d) => !seen.has(d.id) && seen.add(d.id))
+}
+
 function parseResponse(text: string): ParsedAnswer {
   const content = stripCodeFence(text.trim())
   const jsonText = extractJsonObject(content)
@@ -87,16 +96,20 @@ function parseResponse(text: string): ParsedAnswer {
   try {
     const parsed = JSON.parse(jsonText)
     const decisions: ConflictBlockDecision[] = Array.isArray(parsed.decisions)
-      ? parsed.decisions.map((d: { id: unknown; choice: unknown; text?: unknown }) => ({
-          id: Number(d.id),
-          choice: d.choice,
-          text: Array.isArray(d.text) ? d.text.map(String) : undefined
-        }))
+      ? parsed.decisions
+          .map((d: { id: unknown; choice: unknown; text?: unknown }) => ({
+            id: Number(d.id),
+            choice: d.choice,
+            text: Array.isArray(d.text) ? d.text.map(String) : undefined
+          }))
+          // An unknown choice ("merge") would crash rendering; such a block
+          // counts as missing, which readAnswer reports.
+          .filter((d: { choice: unknown }) => typeof d.choice === 'string' && CHOICES.has(d.choice))
       : []
-    return { decisions, summary: String(parsed.summary ?? '').trim() }
+    return { decisions: firstPerBlock(decisions), summary: String(parsed.summary ?? '').trim() }
   } catch {
     const malformed = tryParseMalformedJson(content)
-    if (malformed) return malformed
+    if (malformed) return { ...malformed, decisions: firstPerBlock(malformed.decisions) }
     return { decisions: [], summary: '' }
   }
 }
@@ -179,20 +192,23 @@ function resolvedLines(block: ConflictBlock, decision: ConflictBlockDecision): s
  */
 export function findResolutionProblems(path: string, blocks: FileBlock[], decisions: ConflictBlockDecision[]): ConflictProblem[] {
   const problems: ConflictProblem[] = []
+  // Key checks only for files whose key syntax they know (JSON, YAML, JS/TS,
+  // .env/.ini): in code, repeated names are normal and would be false alarms.
+  const style = keyStyleFor(path)
   for (const block of blocks) {
     if (block.type !== 'conflict') continue
     const decision = decisions.find((d) => d.id === block.id)
     let keys: string[] = []
     if (decision?.choice === 'both') {
-      keys = keysDuplicatedByBoth(block)
+      keys = keysDuplicatedByBoth(block, style)
     } else if (decision?.choice === 'custom' && decision.text) {
-      const already = new Set([...findDuplicateKeys(block.ours), ...findDuplicateKeys(block.theirs)])
-      keys = findDuplicateKeys(decision.text).filter((key) => !already.has(key))
+      const already = new Set([...findDuplicateKeys(block.ours, style), ...findDuplicateKeys(block.theirs, style)])
+      keys = findDuplicateKeys(decision.text, style).filter((key) => !already.has(key))
     }
     if (keys.length > 0) problems.push({ kind: 'duplicateKeys', blockId: block.id, keys })
 
     if (decision) {
-      for (const lost of findLostChanges(block, resolvedLines(block, decision))) {
+      for (const lost of findLostChanges(block, resolvedLines(block, decision), style)) {
         const sideLabel = lost.side === 'ours' ? block.oursLabel : block.theirsLabel
         problems.push({ kind: 'lostChange', blockId: block.id, sideLabel, lines: lost.lines })
       }
@@ -216,7 +232,7 @@ function describeProblemsForModel(problems: ConflictProblem[]): string {
       return `- Block #${p.blockId}: your resolution writes these keys twice in the same object: ${p.keys.join(', ')}. Merge the two sides with "custom", writing each key once and keeping the change each side made.`
     }
     if (p.kind === 'lostChange') {
-      return `- Block #${p.blockId}: only the "${p.sideLabel}" side changed these, the other side left them as in the original, so they must appear exactly like this in the result: ${p.lines.join(' | ')}`
+      return `- Block #${p.blockId}: your resolution puts these back to the original, but only the "${p.sideLabel}" side changed them (the other side kept the original), so keep that side's version: ${p.lines.join(' | ')}`
     }
     return '- The resolved file is not valid JSON.'
   })
@@ -251,9 +267,10 @@ function readAnswer(content: string, conflictBlocks: ConflictBlock[]): ParsedAns
 /**
  * `config` carries the reasoning effort: the chat tool passes the chat's own
  * selector, so the proposal gets the effort the user sees in the panel.
- * A proposal that fails findResolutionProblems gets one corrective round; if
- * the model still gets it wrong, the problems travel with the result so the
- * approval card can show them.
+ * A proposal that fails findResolutionProblems gets one corrective round. The
+ * second answer replaces the first only with strictly fewer problems: on a tie
+ * it may have "fixed" one thing by breaking another. Whatever is left travels
+ * with the result so the approval card can show it.
  */
 export async function generateConflictResolution(
   config: ResolvedAiConfig,
@@ -281,7 +298,7 @@ export async function generateConflictResolution(
     try {
       const second = readAnswer(await ask(), conflictBlocks)
       const problems = findResolutionProblems(path, blocks, second.decisions)
-      if (problems.length <= best.problems.length) best = { ...second, problems }
+      if (problems.length < best.problems.length) best = { ...second, problems }
     } catch {
       // The corrective round is a bonus: an unusable second answer leaves the
       // first one standing, with its problems still flagged on the card.

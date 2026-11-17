@@ -28,7 +28,9 @@ export type FileBlock = ConflictBlock | TextBlock
 // itself (ours/theirs/text) is still stored and reconstructed byte-for-byte
 // as split, so this only changes marker *recognition*, not output fidelity.
 const CONFLICT_START = /^<{7}\s?(.*?)\r?$/
-const CONFLICT_BASE = /^\|{7}(?:\s.*?)?\r?$/
+// git always labels the base marker ("||||||| base", "||||||| 1a2b3c4"); a
+// bare run of 7 pipes is content (a Markdown table row), not a marker.
+const CONFLICT_BASE = /^\|{7} \S.*?\r?$/
 const CONFLICT_MID = /^={7}\r?$/
 const CONFLICT_END = /^>{7}\s?(.*?)\r?$/
 
@@ -105,12 +107,17 @@ export function attachBaseLines(blocks: FileBlock[], diff3Content: string): File
   const withBase = parseConflictBlocks(diff3Content).filter(
     (b): b is ConflictBlock => b.type === 'conflict' && b.base !== undefined
   )
+  // In order, each diff3 block used once: two blocks with the same sides but
+  // different bases must not both get the first one's base.
+  let next = 0
   return blocks.map((block) => {
     if (block.type !== 'conflict' || block.base) return block
-    const match = withBase.find(
-      (b) => withoutCr(b.ours) === withoutCr(block.ours) && withoutCr(b.theirs) === withoutCr(block.theirs)
+    const index = withBase.findIndex(
+      (b, i) => i >= next && withoutCr(b.ours) === withoutCr(block.ours) && withoutCr(b.theirs) === withoutCr(block.theirs)
     )
-    return match ? { ...block, base: match.base } : block
+    if (index < 0) return block
+    next = index + 1
+    return { ...block, base: withBase[index].base }
   })
 }
 
@@ -143,38 +150,87 @@ export function renderResolved(blocks: FileBlock[], resolutions: Map<number, Res
 // instead of just picking a side.
 export type ConflictResolutionChoice = 'ours' | 'theirs' | 'both' | { text: string[] }
 
-// "key: value", "key = value", '"key": value', "KEY=value", "const key = ..."
-// — the shapes config files and object literals share. `=>`, `==` and `::`
-// are not assignments.
-const KEY_LINE = /^\s*(?:export\s+)?(?:(?:const|let|var)\s+)?["'`]?([A-Za-z_$][\w$.-]*)["'`]?\s*[:=](?![=>:])/
-// Labels and keywords that legitimately repeat at one indentation (Python
-// `else:`, `case:` in a switch).
-const NOT_KEYS = new Set(['else', 'elif', 'try', 'except', 'finally', 'do', 'default', 'case', 'then', 'http', 'https'])
-// A bracket or a YAML list item starts a new object, where the same key is
-// expected again: `{ name }, { name }` and `- name: a / - name: b` are fine.
-const SCOPE_BREAK = /[{}[\]]|^\s*- /
+/**
+ * The key syntax of a file the key checks below understand, by extension; null
+ * for everything else. Code (Python, shell, Go, JSX…) is left out on purpose:
+ * reassignments, keyword arguments and repeated fields are normal there, and a
+ * line-based check would flag correct merges.
+ */
+export type KeyStyle = 'json' | 'yaml' | 'js' | 'env'
+
+export function keyStyleFor(path: string): KeyStyle | null {
+  const name = path.split(/[\\/]/).pop()?.toLowerCase() ?? ''
+  if (name.endsWith('.json')) return 'json'
+  if (/\.ya?ml$/.test(name)) return 'yaml'
+  if (/\.(?:[cm]?js|jsx|[cm]?ts|tsx)$/.test(name)) return 'js'
+  if (/^\.env(?:\..+)?$|\.env$|\.ini$|\.properties$/.test(name)) return 'env'
+  return null
+}
+
+// One key per line, in each style. `:` must not be followed by `/` (URLs) or
+// another `:`; `=` not by `=` or `>`.
+const KEY_PATTERNS: Record<KeyStyle, RegExp> = {
+  json: /^\s*"([^"]+)"\s*:/,
+  yaml: /^\s*(?:-\s+)?["']?([A-Za-z0-9_$][\w$./-]*)["']?\s*:(?:\s|$)/,
+  js: /^\s*["'`]?([A-Za-z_$][\w$-]*)["'`]?\s*:(?![:/])/,
+  env: /^\s*(?:export\s+)?([A-Za-z_][\w.-]*)\s*=(?![=>])/
+}
+// `default:` / `case x:` in a switch are labels, not keys.
+const NOT_KEYS = new Set(['default', 'case'])
+
+interface KeyedLine {
+  key: string
+  /** Column of the key — after a YAML "- ", so list items nest under it. */
+  column: number
+  /** The line as compared: trimmed, without \r and a trailing comma/semicolon. */
+  text: string
+}
 
 /**
- * Keys written twice in the same object — same indentation, no bracket or list
- * item between them. Language-agnostic on purpose: it reads lines, not syntax,
- * so it only catches the pattern a blind merge leaves behind.
+ * Each line's key, or null. Comment lines have none. The key's scope comes
+ * from indentation: see scopedKeys.
  */
-export function findDuplicateKeys(lines: string[]): string[] {
-  const seen = new Set<string>()
-  const duplicated = new Set<string>()
-  let scope = 0
+function readKey(line: string, style: KeyStyle): KeyedLine | null {
+  const trimmed = line.trim()
+  if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//') || trimmed.startsWith(';')) return null
+  const key = line.match(KEY_PATTERNS[style])?.[1]
+  if (!key || NOT_KEYS.has(key)) return null
+  const column = line.length - line.replace(/^\s*(?:-\s+)?/, '').length
+  return { key, column, text: line.replace(/\r$/, '').trim().replace(/[,;]$/, '') }
+}
+
+/**
+ * Walks the lines keeping the keys of the objects still open. A line that
+ * starts left of a key closes that key's object: `worker:` after
+ * `web: / image:` starts a new parent, `},` and `- ` start a new object or
+ * list item. So the same key under different parents is never "the same".
+ */
+function scopedKeys(lines: string[], style: KeyStyle, onKey: (keyed: KeyedLine, repeated: boolean) => void): void {
+  const open = new Map<string, number>() // `${column}|${key}` -> column
   for (const line of lines) {
-    if (SCOPE_BREAK.test(line)) {
-      scope++
-      continue
-    }
-    const key = line.match(KEY_LINE)?.[1]
-    if (!key || NOT_KEYS.has(key)) continue
-    const indent = line.length - line.trimStart().length
-    const id = `${scope}|${indent}|${key}`
-    if (seen.has(id)) duplicated.add(key)
-    else seen.add(id)
+    if (!line.trim()) continue
+    const start = line.length - line.trimStart().length
+    // An INI-style [section] starts over even at the same indentation.
+    if (style === 'env' && line.trimStart().startsWith('[')) open.clear()
+    for (const [id, column] of open) if (column > start) open.delete(id)
+    const keyed = readKey(line, style)
+    if (!keyed) continue
+    const id = `${keyed.column}|${keyed.key}`
+    onKey(keyed, open.has(id))
+    open.set(id, keyed.column)
   }
+}
+
+/**
+ * Keys written twice in the same object — the pattern a blind "keep both"
+ * leaves behind. Only for the styles keyStyleFor knows; empty otherwise.
+ */
+export function findDuplicateKeys(lines: string[], style: KeyStyle | null): string[] {
+  if (!style) return []
+  const duplicated = new Set<string>()
+  scopedKeys(lines, style, (keyed, repeated) => {
+    if (repeated) duplicated.add(keyed.key)
+  })
   return [...duplicated]
 }
 
@@ -183,39 +239,43 @@ export function findDuplicateKeys(lines: string[]): string[] {
  * other's for the same key. Duplicates already inside one side are not the
  * merge's fault and are left out.
  */
-export function keysDuplicatedByBoth(block: ConflictBlock): string[] {
-  const already = new Set([...findDuplicateKeys(block.ours), ...findDuplicateKeys(block.theirs)])
-  return findDuplicateKeys([...block.ours, ...block.theirs]).filter((key) => !already.has(key))
+export function keysDuplicatedByBoth(block: ConflictBlock, style: KeyStyle | null): string[] {
+  const already = new Set([...findDuplicateKeys(block.ours, style), ...findDuplicateKeys(block.theirs, style)])
+  return findDuplicateKeys([...block.ours, ...block.theirs], style).filter((key) => !already.has(key))
 }
 
-/** Each key's line, as written (trimmed, trailing comma/semicolon and \r dropped); the first one wins. */
-function keyedLines(lines: string[]): Map<string, string> {
+/** Each key's line; a key that appears more than once is ambiguous and left out. */
+function uniqueKeyedLines(lines: string[], style: KeyStyle): Map<string, string> {
   const map = new Map<string, string>()
+  const repeated = new Set<string>()
   for (const line of lines) {
-    const key = line.match(KEY_LINE)?.[1]
-    if (!key || NOT_KEYS.has(key) || map.has(key)) continue
-    map.set(key, line.replace(/\r$/, '').trim().replace(/[,;]$/, ''))
+    const keyed = readKey(line, style)
+    if (!keyed) continue
+    if (map.has(keyed.key)) repeated.add(keyed.key)
+    map.set(keyed.key, keyed.text)
   }
+  for (const key of repeated) map.delete(key)
   return map
 }
 
 export interface LostChange {
   side: 'ours' | 'theirs'
-  /** The side's line for each key it changed that the resolution lost. */
+  /** The side's line for each key whose change the resolution undid. */
   lines: string[]
 }
 
 /**
- * Changes only one side made that the resolved lines throw away: a key that
- * side changed (the other kept the base value) now back to something else, or
- * a key only that side added now missing. Needs the block's merge base; keys
- * both sides changed are a real choice and are not judged.
+ * Changes only one side made that the resolution puts back to the original:
+ * the side changed a key, the other side kept the base line, and the result
+ * has the base line again. Deliberately narrow — a renamed key, a reworded
+ * value or a key both sides changed is the model's call and is not judged.
+ * Needs the block's merge base and a style keyStyleFor knows.
  */
-export function findLostChanges(block: ConflictBlock, resolved: string[]): LostChange[] {
-  if (!block.base) return []
-  const base = keyedLines(block.base)
-  const result = keyedLines(resolved)
-  const sides = { ours: keyedLines(block.ours), theirs: keyedLines(block.theirs) }
+export function findLostChanges(block: ConflictBlock, resolved: string[], style: KeyStyle | null): LostChange[] {
+  if (!block.base || !style) return []
+  const base = uniqueKeyedLines(block.base, style)
+  const result = uniqueKeyedLines(resolved, style)
+  const sides = { ours: uniqueKeyedLines(block.ours, style), theirs: uniqueKeyedLines(block.theirs, style) }
 
   const lost: LostChange[] = []
   for (const side of ['ours', 'theirs'] as const) {
@@ -223,9 +283,10 @@ export function findLostChanges(block: ConflictBlock, resolved: string[]): LostC
     const other = sides[side === 'ours' ? 'theirs' : 'ours']
     const lines: string[] = []
     for (const [key, line] of mine) {
-      const changedHere = base.get(key) !== line
-      const otherKeptBase = other.get(key) === base.get(key)
-      if (changedHere && otherKeptBase && result.get(key) !== line) lines.push(line)
+      const original = base.get(key)
+      if (original === undefined || original === line) continue // added here, or unchanged
+      if (other.get(key) !== original) continue // the other side changed it too
+      if (result.get(key) === original) lines.push(line)
     }
     if (lines.length > 0) lost.push({ side, lines })
   }
@@ -236,8 +297,26 @@ export function findLostChanges(block: ConflictBlock, resolved: string[]): LostC
 // dropping the block: by the time this runs, the AI's response has already
 // been validated as covering every block, so a missing id means a bug, not
 // a legitimate in-progress state.
+/**
+ * Whether most of the file's lines end in CRLF. Decided over the whole file:
+ * a block whose sides are empty has no line of its own to go by.
+ */
+function usesCrlf(blocks: FileBlock[]): boolean {
+  let crlf = 0
+  let total = 0
+  for (const block of blocks) {
+    const lines = block.type === 'text' ? block.lines : [...block.ours, ...block.theirs]
+    for (const line of lines) {
+      total++
+      if (line.endsWith('\r')) crlf++
+    }
+  }
+  return crlf * 2 > total
+}
+
 export function renderResolvedWithChoices(blocks: FileBlock[], choices: Map<number, ConflictResolutionChoice>): string {
   const outputLines: string[] = []
+  const crlf = usesCrlf(blocks)
 
   for (const block of blocks) {
     if (block.type === 'text') {
@@ -252,7 +331,6 @@ export function renderResolvedWithChoices(blocks: FileBlock[], choices: Map<numb
     else {
       // Model-written lines come without \r; in a CRLF file they would leave
       // the resolved block with mixed line endings.
-      const crlf = [...block.ours, ...block.theirs].some((line) => line.endsWith('\r'))
       outputLines.push(...choice.text.map((line) => (crlf && !line.endsWith('\r') ? `${line}\r` : line)))
     }
   }

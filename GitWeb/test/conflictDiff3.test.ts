@@ -59,6 +59,34 @@ describe('getConflictDiff3', () => {
     expect(block?.type === 'conflict' && block.base).toEqual(['  porta: 3000,', '  timeout: 5000,', "  log: 'info'"])
   })
 
+  it('matches the working file when both sides add the same lines (zdiff3)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'ogd-zdiff3-'))
+    try {
+      git(dir, 'init', '-q', '-b', 'main')
+      const write = (body: string, msg: string): void => {
+        writeFileSync(join(dir, 'f.txt'), body)
+        git(dir, 'add', 'f.txt')
+        git(dir, 'commit', '-q', '-m', msg)
+      }
+      write('k1\na\nk2\n', 'base')
+      git(dir, 'checkout', '-q', '-b', 'other')
+      write('k1\nx\nz\nk2\n', 'other')
+      git(dir, 'checkout', '-q', 'main')
+      write('k1\nx\ny\nk2\n', 'main')
+      try {
+        git(dir, 'merge', 'other')
+      } catch {
+        // expected conflict
+      }
+      const working = readFileSync(join(dir, 'f.txt'), 'utf8')
+      const diff3 = await getConflictDiff3(dir, 'f.txt')
+      const block = attachBaseLines(parseConflictBlocks(working), diff3!).find((b) => b.type === 'conflict')
+      expect(block?.type === 'conflict' && block.base).toEqual(['a'])
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
   it('returns null for a file that is not in conflict', async () => {
     writeFileSync(join(repo, 'other.txt'), 'x\n')
     expect(await getConflictDiff3(repo, 'other.txt')).toBeNull()

@@ -4,7 +4,8 @@ const sendChatRequest = vi.fn()
 vi.stubGlobal('window', { api: { ai: { sendChatRequest } } })
 vi.stubGlobal('navigator', { languages: ['pt-BR'] })
 
-const { attachBaseLines, findDuplicateKeys, findLostChanges, keysDuplicatedByBoth, parseConflictBlocks, renderResolvedWithChoices } = await import(
+const { attachBaseLines, findDuplicateKeys, findLostChanges, keyStyleFor, keysDuplicatedByBoth, parseConflictBlocks, renderResolvedWithChoices } =
+  await import(
   '../src/renderer/src/lib/conflicts'
 )
 const { findResolutionProblems, generateConflictResolution } = await import('../src/renderer/src/lib/ai/conflictResolution')
@@ -100,63 +101,129 @@ describe('findLostChanges', () => {
 
   it('flags the values a merge put back to the original', () => {
     const proposal = ['  porta: 3000,', "  host: 'localhost',", '  timeout: 10000,', "  log: 'info',", '  cors: true,', '  tentativas: 3']
-    expect(findLostChanges(block, proposal)).toEqual([{ side: 'ours', lines: ['porta: 8080', "host: '127.0.0.1'", "log: 'warn'"] }])
+    expect(findLostChanges(block, proposal, 'js')).toEqual([{ side: 'ours', lines: ['porta: 8080', "host: '127.0.0.1'", "log: 'warn'"] }])
   })
 
   it('accepts the merge that keeps every one-sided change', () => {
     const right = ['  porta: 8080,', "  host: '127.0.0.1',", '  timeout: 10000,', '  cors: true,', '  tentativas: 3,', "  log: 'warn'"]
-    expect(findLostChanges(block, right)).toEqual([])
+    expect(findLostChanges(block, right, 'js')).toEqual([])
   })
 
-  it('flags a key only one side added that went missing', () => {
+  it('does not judge a dropped addition: it may be a rename', () => {
     const noTentativas = ['  porta: 8080,', "  host: '127.0.0.1',", '  timeout: 10000,', '  cors: true,', "  log: 'warn'"]
-    expect(findLostChanges(block, noTentativas)).toEqual([{ side: 'theirs', lines: ['tentativas: 3'] }])
+    expect(findLostChanges(block, noTentativas, 'js')).toEqual([])
+  })
+
+  it('accepts a renamed key that combines both changes', () => {
+    // base timeout: 5, ours bumps it, theirs renames it to timeoutMs.
+    const renamed = {
+      ...conflictBlock(['<<<<<<< a', '  timeout: 10,', '=======', '  timeoutMs: 5000,', '>>>>>>> b'].join('\n')),
+      base: ['  timeout: 5,']
+    }
+    expect(findLostChanges(renamed, ['  timeoutMs: 10000,'], 'js')).toEqual([])
   })
 
   it('leaves a key both sides changed to the model', () => {
     const both = { ...conflictBlock(['<<<<<<< a', 'x: 2', '=======', 'x: 3', '>>>>>>> b'].join('\n')), base: ['x: 1'] }
-    expect(findLostChanges(both, ['x: 3'])).toEqual([])
+    expect(findLostChanges(both, ['x: 3'], 'yaml')).toEqual([])
   })
 
-  it('needs the merge base', () => {
-    expect(findLostChanges(conflictBlock(CONFIG_CONFLICT), ['  porta: 1'])).toEqual([])
+  it('needs the merge base and a known file type', () => {
+    expect(findLostChanges(conflictBlock(CONFIG_CONFLICT), ['  porta: 1'], 'js')).toEqual([])
+    expect(findLostChanges(block, ['  porta: 3000,'], null)).toEqual([])
+  })
+})
+
+describe('keyStyleFor', () => {
+  it('knows config and object-literal files, and nothing else', () => {
+    expect(keyStyleFor('package.json')).toBe('json')
+    expect(keyStyleFor('.github/workflows/ci.yml')).toBe('yaml')
+    expect(keyStyleFor('src/config.ts')).toBe('js')
+    expect(keyStyleFor('.env')).toBe('env')
+    expect(keyStyleFor('.env.local')).toBe('env')
+    expect(keyStyleFor('settings.ini')).toBe('env')
+    expect(keyStyleFor('app.py')).toBeNull()
+    expect(keyStyleFor('README.md')).toBeNull()
+    expect(keyStyleFor('run.sh')).toBeNull()
   })
 })
 
 describe('findDuplicateKeys', () => {
   it('flags a key written twice in one object', () => {
-    expect(findDuplicateKeys(['  a: 1,', '  b: 2,', '  a: 3'])).toEqual(['a'])
+    expect(findDuplicateKeys(['  a: 1,', '  b: 2,', '  a: 3'], 'js')).toEqual(['a'])
+    expect(findDuplicateKeys(['  "name": "x",', '  "name": "y"'], 'json')).toEqual(['name'])
+    expect(findDuplicateKeys(['API_URL=a', 'API_URL=b'], 'env')).toEqual(['API_URL'])
   })
 
-  it('reads JSON, assignments and .env lines', () => {
-    expect(findDuplicateKeys(['  "name": "x",', '  "name": "y"'])).toEqual(['name'])
-    expect(findDuplicateKeys(['const port = 1', 'const port = 2'])).toEqual(['port'])
-    expect(findDuplicateKeys(['API_URL=a', 'API_URL=b'])).toEqual(['API_URL'])
+  it('accepts the same key under different parents', () => {
+    // docker-compose services
+    expect(findDuplicateKeys(['  web:', '    image: a', '    restart: always', '  worker:', '    image: b', '    restart: always'], 'yaml')).toEqual([])
+    // GitHub Actions jobs
+    expect(findDuplicateKeys(['  build:', '    runs-on: ubuntu', '    steps: []', '  test:', '    runs-on: ubuntu', '    steps: []'], 'yaml')).toEqual([])
+    // nested i18n keys
+    expect(findDuplicateKeys(['save:', '  title: Salvar', 'open:', '  title: Abrir'], 'yaml')).toEqual([])
   })
 
   it('accepts the same key in separate objects or list items', () => {
-    expect(findDuplicateKeys(['  {', '    name: "a",', '  },', '  {', '    name: "b",', '  }'])).toEqual([])
-    expect(findDuplicateKeys(['- name: a', '  version: 1', '- name: b', '  version: 2'])).toEqual([])
+    expect(findDuplicateKeys(['  {', '    name: "a",', '  },', '  {', '    name: "b",', '  }'], 'js')).toEqual([])
+    expect(findDuplicateKeys(['- name: a', '  version: 1', '- name: b', '  version: 2'], 'yaml')).toEqual([])
+    expect(findDuplicateKeys(['  - uses: x', '    with: 1', '  - uses: y', '    with: 2'], 'yaml')).toEqual([])
+    expect(findDuplicateKeys(['[a]', 'port=1', '[b]', 'port=2'], 'env')).toEqual([])
   })
 
-  it('ignores different indentation, comparisons and arrows', () => {
-    expect(findDuplicateKeys(['a: 1', '  a: 2'])).toEqual([])
-    expect(findDuplicateKeys(['x == y', 'x == z', 'f => 1', 'f => 2'])).toEqual([])
+  it('ignores different indentation, URLs, comments and switch labels', () => {
+    expect(findDuplicateKeys(['a: 1', '  a: 2'], 'yaml')).toEqual([])
+    expect(findDuplicateKeys(['  url: https://a', '  # url: old', '  other: 1'], 'yaml')).toEqual([])
+    expect(findDuplicateKeys(['    default:', '      return 1', '    default:'], 'js')).toEqual([])
   })
 
-  it('ignores keywords that repeat legitimately', () => {
-    expect(findDuplicateKeys(['else:', '    pass', 'else:'])).toEqual([])
+  it('checks nothing for unknown file types', () => {
+    expect(findDuplicateKeys(['df = df.dropna()', 'df = df.rename()'], null)).toEqual([])
   })
 })
 
 describe('keysDuplicatedByBoth', () => {
   it('lists the keys that keeping both sides would repeat', () => {
-    expect(keysDuplicatedByBoth(conflictBlock(CONFIG_CONFLICT)).sort()).toEqual(['log', 'porta'])
+    expect(keysDuplicatedByBoth(conflictBlock(CONFIG_CONFLICT), 'js').sort()).toEqual(['log', 'porta'])
   })
 
-  it('is empty when the sides add different keys', () => {
+  it('is empty when the sides add different keys or whole sibling objects', () => {
     const content = ['{', '<<<<<<< HEAD', '  a: 1,', '=======', '  b: 2,', '>>>>>>> other', '}'].join('\n')
-    expect(keysDuplicatedByBoth(conflictBlock(content))).toEqual([])
+    expect(keysDuplicatedByBoth(conflictBlock(content), 'js')).toEqual([])
+    const services = ['services:', '<<<<<<< HEAD', '  web:', '    image: a', '=======', '  worker:', '    image: b', '>>>>>>> other'].join('\n')
+    expect(keysDuplicatedByBoth(conflictBlock(services), 'yaml')).toEqual([])
+  })
+})
+
+describe('parseConflictBlocks and 7 pipes', () => {
+  it('keeps an unlabeled line of 7 pipes as content', () => {
+    const content = ['<<<<<<< HEAD', '| a | b |', '|||||||', '| 1 | 2 |', '=======', 'x', '>>>>>>> other'].join('\n')
+    const block = conflictBlock(content)
+    expect(block.ours).toEqual(['| a | b |', '|||||||', '| 1 | 2 |'])
+    expect(block.base).toBeUndefined()
+  })
+})
+
+describe('attachBaseLines with repeated blocks', () => {
+  it('gives each block its own base, in order', () => {
+    const diff3 = [
+      '<<<<<<< ours', 'v: 2', '||||||| base', 'v: 1', '=======', 'v: 3', '>>>>>>> theirs',
+      'mid',
+      '<<<<<<< ours', 'v: 2', '||||||| base', 'v: 0', '=======', 'v: 3', '>>>>>>> theirs'
+    ].join('\n')
+    const working = ['<<<<<<< HEAD', 'v: 2', '=======', 'v: 3', '>>>>>>> b', 'mid', '<<<<<<< HEAD', 'v: 2', '=======', 'v: 3', '>>>>>>> b'].join('\n')
+    const bases = attachBaseLines(parseConflictBlocks(working), diff3)
+      .filter((b) => b.type === 'conflict')
+      .map((b) => (b.type === 'conflict' ? b.base : undefined))
+    expect(bases).toEqual([['v: 1'], ['v: 0']])
+  })
+})
+
+describe('renderResolvedWithChoices line endings, whole file', () => {
+  it('uses CRLF for a block whose sides are empty', () => {
+    const crlf = ['a\r', '<<<<<<< HEAD\r', '=======\r', '>>>>>>> other\r', 'z\r', ''].join('\n')
+    const out = renderResolvedWithChoices(parseConflictBlocks(crlf), new Map([[0, { text: ['x', 'y'] }]]))
+    expect(out).toBe('a\r\nx\r\ny\r\nz\r\n')
   })
 })
 
@@ -169,6 +236,10 @@ describe('findResolutionProblems', () => {
     ])
   })
 
+  it('does not check key repetition in code files it does not know', () => {
+    expect(findResolutionProblems('config.py', blocks, [{ id: 0, choice: 'both' }])).toEqual([])
+  })
+
   it('accepts a custom merge that writes each key once', () => {
     const text = ['  porta: 8080,', "  host: '127.0.0.1',", '  cors: true,', '  timeout: 10000,', '  tentativas: 3,', "  log: 'warn'"]
     expect(findResolutionProblems('config.js', blocks, [{ id: 0, choice: 'custom', text }])).toEqual([])
@@ -179,6 +250,11 @@ describe('findResolutionProblems', () => {
     expect(findResolutionProblems('config.js', blocks, [{ id: 0, choice: 'custom', text }])).toEqual([
       { kind: 'duplicateKeys', blockId: 0, keys: ['porta'] }
     ])
+  })
+
+  it('accepts keeping both docker-compose services', () => {
+    const compose = ['services:', '<<<<<<< HEAD', '  web:', '    image: a', '=======', '  worker:', '    image: b', '>>>>>>> other'].join('\n')
+    expect(findResolutionProblems('docker-compose.yml', parseConflictBlocks(compose), [{ id: 0, choice: 'both' }])).toEqual([])
   })
 
   it('flags a JSON file that stops parsing', () => {
@@ -248,7 +324,7 @@ describe('generateConflictResolution', () => {
       .mockResolvedValueOnce({ content: lossy, toolCalls: [] })
     const result = await generateConflictResolution(config, '', 'config.js', withBase)
 
-    expect(sendChatRequest.mock.calls[1][2].at(-1).content).toContain('only the "HEAD" side changed these')
+    expect(sendChatRequest.mock.calls[1][2].at(-1).content).toContain('only the "HEAD" side changed them')
     expect(result.problems).toEqual([{ kind: 'lostChange', blockId: 0, sideLabel: 'HEAD', lines: ['porta: 8080'] }])
   })
 
@@ -261,6 +337,35 @@ describe('generateConflictResolution', () => {
     sendChatRequest.mockClear()
     await generateConflictResolution(config, '', 'config.js', blocks)
     expect(sendChatRequest.mock.calls[0][2][1].content).not.toContain('Original (merge base')
+  })
+
+  it('keeps the first answer when the retry only trades one problem for another', async () => {
+    const otherDuplicate = JSON.stringify({
+      decisions: [{ id: 0, choice: 'custom', text: ['  porta: 8080,', '  tentativas: 3,', '  tentativas: 3,', "  log: 'warn'"] }],
+      summary: 'y'
+    })
+    const onlyPorta = JSON.stringify({
+      decisions: [{ id: 0, choice: 'custom', text: ['  porta: 8080,', '  porta: 3000,', "  log: 'warn'"] }],
+      summary: 'x'
+    })
+    sendChatRequest
+      .mockResolvedValueOnce({ content: onlyPorta, toolCalls: [] })
+      .mockResolvedValueOnce({ content: otherDuplicate, toolCalls: [] })
+    const result = await generateConflictResolution(config, '', 'config.js', blocks)
+    expect(result.summary).toBe('x')
+    expect(result.problems).toEqual([{ kind: 'duplicateKeys', blockId: 0, keys: ['porta'] }])
+  })
+
+  it('treats an unknown choice as a missing block instead of crashing', async () => {
+    sendChatRequest.mockResolvedValueOnce({ content: JSON.stringify({ decisions: [{ id: 0, choice: 'merge' }], summary: 'z' }), toolCalls: [] })
+    await expect(generateConflictResolution(config, '', 'config.js', blocks)).rejects.toThrow()
+  })
+
+  it('uses the first decision when a block is answered twice', async () => {
+    const twice = JSON.stringify({ decisions: [{ id: 0, choice: 'ours' }, { id: 0, choice: 'both' }], summary: 'w' })
+    sendChatRequest.mockResolvedValueOnce({ content: twice, toolCalls: [] })
+    const result = await generateConflictResolution(config, '', 'config.js', blocks)
+    expect(result.decisions).toEqual([{ id: 0, choice: 'ours', text: undefined }])
   })
 
   it('does not retry a clean proposal', async () => {
