@@ -5,9 +5,6 @@
   "main": "./out/main/index.js",
   "desktopName": "opengitdesktop.desktop",
   "author": "CariSoftwareBR <63272749+paulocarinhena@users.noreply.github.com>",
-  "contributors": [
-    "Grok <grok@example.com>"
-  ],
   "homepage": "https://github.com/CariSoftwareBR/OpenGitDesktop",
   "license": "GPL-2.0-only",
   "engines": {
