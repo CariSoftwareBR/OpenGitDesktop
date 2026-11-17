@@ -24,7 +24,7 @@ const ptBR = {
   restartAndInstall: 'Reiniciar e instalar',
   downloadingButton: 'Baixando…',
   checkForUpdates: 'Verificar atualizações',
-  graphLabel: 'O OpenGitDesktop desenhado como um repositório: a versão instalada é o HEAD, e as atualizações chegam pelo ramo remoto.',
+  graphLabel: 'O OpenGitDesktop desenhado como um repositório: a versão instalada é o HEAD, e as atualizações chegam pela branch remota.',
   author: 'Autor',
   builtAt: 'Build',
   license: 'Licença',

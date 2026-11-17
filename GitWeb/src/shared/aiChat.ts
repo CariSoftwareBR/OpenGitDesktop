@@ -178,11 +178,11 @@ export const TOOL_CATALOG: ToolDefinition[] = [
   {
     name: 'review_pull_request',
     description:
-      'Envia uma review em um pull request: aprovar, pedir mudanças ou apenas comentar. O GitHub não permite aprovar o próprio PR — nesse caso use COMMENT ou REQUEST_CHANGES.',
+      'Envia uma review em um pull request: aprovar, pedir mudanças ou apenas comentar. O GitHub não permite aprovar nem pedir mudanças no próprio PR — nesse caso use COMMENT.',
     parameters: {
       type: 'object',
       properties: {
-        pull_request_number: { type: 'string', description: 'Número do pull request.' },
+        pull_request_number: { type: 'number', description: 'Número do pull request.' },
         event: {
           type: 'string',
           description: 'Tipo de review: APPROVE (aprovar), REQUEST_CHANGES (pedir mudanças) ou COMMENT (só comentar).',
@@ -199,7 +199,7 @@ export const TOOL_CATALOG: ToolDefinition[] = [
     parameters: {
       type: 'object',
       properties: {
-        pull_request_number: { type: 'string', description: 'Número do pull request.' },
+        pull_request_number: { type: 'number', description: 'Número do pull request.' },
         body: { type: 'string', description: 'Texto do comentário.' }
       },
       required: ['pull_request_number', 'body']
@@ -211,7 +211,7 @@ export const TOOL_CATALOG: ToolDefinition[] = [
     parameters: {
       type: 'object',
       properties: {
-        pull_request_number: { type: 'string', description: 'Número do pull request.' },
+        pull_request_number: { type: 'number', description: 'Número do pull request.' },
         state: { type: 'string', description: 'Novo estado do PR.', enum: ['open', 'closed'] }
       },
       required: ['pull_request_number', 'state']
@@ -237,7 +237,7 @@ export const TOOL_CATALOG: ToolDefinition[] = [
   {
     name: 'commit',
     description:
-      "Faz commit das mudanças staged usando uma mensagem gerada por IA (mesmo prompt do botão 'Compor com IA'). Se nada estiver staged, todas as mudanças pendentes são staged automaticamente antes do commit.",
+      "Faz commit das mudanças staged usando uma mensagem gerada por IA (mesmo prompt do botão 'Gerar com Agente'). Se nada estiver staged, todas as mudanças pendentes são staged automaticamente antes do commit.",
     parameters: { type: 'object', properties: {}, required: [] }
   },
   {
@@ -572,7 +572,7 @@ export const TOOL_CATALOG: ToolDefinition[] = [
 export const TOOL_RULES_SECTION = `You have access to tools that can perform actions on the user's Git repository.
 
 CRITICAL RULES:
-1. NEVER fabricate or report a tool result. A tool only runs AFTER the user explicitly approves it.
+1. NEVER fabricate or report a tool result. Read-only tools run right away; any tool that changes the repository, a remote or GitHub only runs AFTER the user explicitly approves it.
 2. Before each tool call, explain in plain text what you intend to do and why.
 3. Call at most ONE tool per response. Wait for the result before chaining another tool.
 4. If the user only asked a question, answer it — do NOT call a tool.
@@ -581,6 +581,26 @@ CRITICAL RULES:
 7. The approval card the app shows for each tool call IS the yes/no question. Never ask for permission in text ("Do you want me to run...?", "Should I...?") — call the tool and let the user approve or cancel it. You have no terminal: never offer to run commands in one, and never hand the user commands or buttons for something one of your tools does.
 8. NEVER run, suggest or teach destructive Git commands, not even as a "manual step": push --force / --force-with-lease, reset --hard, checkout -- . / restore . over uncommitted work, filter-branch / filter-repo / BFG, rebase of pushed commits, clean -f / -fd / -fdx, stash drop / clear, branch -D (other than through delete_merged_branches, rule 9), deleting remote branches, reflog expire, gc --prune=now, deleting .git or re-cloning. A misread of the situation must never cost the user their repository. If only such a command would fix the problem, stop, explain what you found and the risk, and offer the safe alternatives that exist.
 9. The ONLY way to delete branches is the delete_merged_branches tool, which re-verifies that each branch's work is already on the base and never deletes main, master or the default branch. Pass exactly the branches the user asked for — never add others on your own — and never try to delete a protected branch.`
+
+/**
+ * Tool arguments the way the tools read them: every value a string. Models
+ * send JSON booleans, numbers and arrays too (`"draft": true`), and tools.ts
+ * compares against strings (`a.draft === 'true'`), so a boolean read raw was
+ * silently false. Lists become one item per line, which parsePathList and
+ * parseBranchList split on (they also split on commas, so an item with a comma
+ * in it still breaks — as it did before); null/undefined mean "not given".
+ */
+export function toToolArguments(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const args: Record<string, string> = {}
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (value === null || value === undefined) continue
+    if (Array.isArray(value)) args[key] = value.map((v) => (typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v))).join('\n')
+    else if (typeof value === 'object') args[key] = JSON.stringify(value)
+    else args[key] = String(value)
+  }
+  return args
+}
 
 // Only sent to providers that rejected a native `tools` array — teaching this
 // textual format alongside native tools makes models blend the two and emit
@@ -678,15 +698,14 @@ function readToolCallObject(obj: Record<string, unknown>): ToolCallRequest | nul
     const name = findKey(current, TOOL_NAME_KEYS)
     if (typeof name === 'string' && name.trim()) {
       const argsRaw = findKey(current, TOOL_ARGS_KEYS)
-      const args: Record<string, string> = {}
+      let args: Record<string, string> = {}
 
       if (argsRaw && typeof argsRaw === 'object') {
-        for (const [k, v] of Object.entries(argsRaw as Record<string, unknown>)) args[k] = String(v)
+        args = toToolArguments(argsRaw)
       } else if (typeof argsRaw === 'string') {
         // OpenAI-compatible servers deliver arguments as a JSON string.
         try {
-          const inner = JSON.parse(sanitizeToolJson(argsRaw))
-          for (const [k, v] of Object.entries(inner)) args[k] = String(v)
+          args = toToolArguments(JSON.parse(sanitizeToolJson(argsRaw)))
         } catch {
           // malformed nested args — proceed with an empty args object
         }

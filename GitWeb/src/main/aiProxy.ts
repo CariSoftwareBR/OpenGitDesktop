@@ -1,5 +1,6 @@
 import type { ResolvedAiConfig, SamplingParams } from '../shared/ai'
 import type { ChatMessage, ChatRequestOutcome, ChatResponse, ToolCallRequest, ToolDefinition } from '../shared/aiChat'
+import { toToolArguments } from '../shared/aiChat'
 import { httpFetch } from './httpFetch'
 import { tMain } from './i18n'
 
@@ -160,7 +161,9 @@ async function sendOpenAiCompatible(
     (tc: { id: string; function: { name: string; arguments: string } }) => {
       let args: Record<string, string> = {}
       try {
-        args = JSON.parse(tc.function.arguments || '{}')
+        // Some OpenAI-compatible servers send an object instead of a JSON string.
+        const raw: unknown = tc.function.arguments
+        args = toToolArguments(typeof raw === 'string' ? JSON.parse(raw || '{}') : raw)
       } catch {
         // malformed tool arguments JSON; treat as no-arg call
       }
@@ -260,7 +263,7 @@ async function sendClaude(
     .map((b) => ({
       id: b.id ?? '',
       name: b.name ?? '',
-      arguments: Object.fromEntries(Object.entries(b.input ?? {}).map(([k, v]) => [k, String(v)]))
+      arguments: toToolArguments(b.input)
     }))
 
   return { content: stripThinkTags(content), toolCalls }

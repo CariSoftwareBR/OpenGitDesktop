@@ -72,6 +72,8 @@ const MAX_COMMIT_PANEL_HEIGHT = 520
 const DEFAULT_COMMIT_PANEL_HEIGHT = 280
 /** Git's own convention: a summary that fits 72 columns stays whole in `log --oneline` and on GitHub. */
 const SUMMARY_SOFT_LIMIT = 72
+// The shortcuts accept Ctrl or Cmd (ctrlKey || metaKey); the help shows the one this keyboard has.
+const MOD_KEY = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform) ? '⌘' : 'Ctrl'
 
 /** Compact section help — hidden until hover or click (pinned). */
 function SectionHint({ text, children, align = 'left' }: { text?: string; children?: ReactNode; align?: 'left' | 'right' }): JSX.Element {
@@ -1152,11 +1154,11 @@ function ChangesView(): JSX.Element {
                   <dd className="text-right">{t.shortcutToggle}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="kbd">Ctrl + Enter</dt>
+                  <dt className="kbd">{MOD_KEY} + Enter</dt>
                   <dd className="text-right">{t.shortcutCommit}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
-                  <dt className="kbd">Ctrl + Shift + S</dt>
+                  <dt className="kbd">{MOD_KEY} + Shift + S</dt>
                   <dd className="text-right">{t.shortcutStageAll}</dd>
                 </div>
               </dl>

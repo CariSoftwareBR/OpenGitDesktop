@@ -59,8 +59,8 @@ const ptBR = {
   commitsInPeriod: (n: string) => `${n} commits no período`,
   languages: 'Linguagens',
   languagesHint: (n: string) => `${n} arquivos no repositório, por extensão`,
-  basedOnRecent: (n: string) => `Baseado nos ${n} commits mais recentes do branch atual.`,
-  basedOnBranch: 'Baseado no histórico do branch atual.',
+  basedOnRecent: (n: string) => `Baseado nos ${n} commits mais recentes da branch atual.`,
+  basedOnBranch: 'Baseado no histórico da branch atual.',
   churnTitle: 'Linhas alteradas',
   churnHint: 'Linhas adicionadas e removidas por período, sem contar merges',
   linesAdded: 'adicionadas',
@@ -84,7 +84,7 @@ const ptBR = {
   recentTitle: 'Commits recentes',
   recentHint: 'Clique para abrir no histórico',
   releaseChip: (tag: string, n: number) => (n === 0 ? `${tag} · versão atual` : n === 1 ? `${tag} · 1 commit depois` : `${tag} · ${n} commits depois`),
-  releaseTitle: 'Última tag alcançável a partir do branch atual',
+  releaseTitle: 'Última tag alcançável a partir da branch atual',
   churnTruncated: (n: string) => `Volume calculado sobre os ${n} commits mais recentes.`
 }
 

@@ -76,6 +76,13 @@ export interface AiProviderConfig {
 // commit-message/tool-call turnaround) — editable, with a "restore default"
 // affordance in the settings panel.
 export const DEFAULT_MAX_DIFF_CHARS = 6000
+/** Below this a diff is cut to nothing useful (an empty field once saved 0, sending empty diffs). */
+export const MIN_MAX_DIFF_CHARS = 1000
+
+export function normalizeMaxDiffChars(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return DEFAULT_MAX_DIFF_CHARS
+  return Math.max(MIN_MAX_DIFF_CHARS, Math.round(value))
+}
 /** Default worker budget for the commit bug investigation. */
 export const DEFAULT_INVESTIGATION_CONCURRENCY = 1
 export const DEFAULT_INVESTIGATION_CONTEXT_TOKENS = 32_768

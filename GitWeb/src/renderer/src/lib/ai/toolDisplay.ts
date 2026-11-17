@@ -4,6 +4,11 @@ import {
   Check,
   CloudUpload,
   CircleFadingArrowUp,
+  CircleX,
+  ClipboardCheck,
+  FileCode,
+  FolderTree,
+  MessageSquare,
   EyeOff,
   FileClock,
   FileText,
@@ -80,7 +85,14 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   push_tag: Upload,
   publish_repository: CloudUpload,
   prepare_release_notes: FileText,
-  reorganize_local_commits: ListOrdered
+  reorganize_local_commits: ListOrdered,
+  review_pull_request: ClipboardCheck,
+  comment_pull_request: MessageSquare,
+  set_pull_request_state: GitPullRequestClosed,
+  merge_abort: CircleX,
+  list_files: FolderTree,
+  read_file: FileCode,
+  read_changes: FileDiff
 }
 
 /** Labels come from the current locale, so callers re-render on a language switch. */

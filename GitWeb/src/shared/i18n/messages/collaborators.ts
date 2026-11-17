@@ -1,7 +1,7 @@
 const ptBR = {
   title: 'Colaboradores',
   loginHint: 'Entre com o GitHub para ver e gerenciar quem tem acesso a este repositório.',
-  noRemote: 'Este repositório não tem um remote do GitHub configurado (origin).',
+  noRemote: 'Este repositório não tem um remoto do GitHub configurado (origin).',
   refresh: 'Atualizar',
   refreshAria: 'Atualizar colaboradores',
   retry: 'Tentar de novo',
@@ -149,7 +149,7 @@ const en: M = {
 const es: M = {
   title: 'Colaboradores',
   loginHint: 'Inicia sesión con GitHub para ver y gestionar quién tiene acceso a este repositorio.',
-  noRemote: 'Este repositorio no tiene un remote de GitHub configurado (origin).',
+  noRemote: 'Este repositorio no tiene un remoto de GitHub configurado (origin).',
   refresh: 'Actualizar',
   refreshAria: 'Actualizar colaboradores',
   retry: 'Intentar de nuevo',

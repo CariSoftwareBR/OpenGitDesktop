@@ -120,7 +120,7 @@ export function runGit(
       let spawnFailed = false
       const timer = setTimeout(() => {
         child.kill()
-        reject(new Error(`git ${args.join(' ')} timed out after ${timeoutMs}ms`))
+        reject(new Error(tMain().paths.gitTimedOut(args.join(' '), Math.round(timeoutMs / 1000))))
       }, timeoutMs)
 
       child.stdout.setEncoding('utf-8')
@@ -1677,10 +1677,10 @@ function resolveWithinRepo(cwd: string, relativePath: string): string {
     const rootLower = root.toLowerCase()
     const targetLower = target.toLowerCase()
     if (targetLower !== rootLower && !targetLower.startsWith(rootLower + sep.toLowerCase())) {
-      throw new Error(`Path "${relativePath}" escapes the repository root.`)
+      throw new Error(tMain().paths.outsideRepo(relativePath))
     }
   } else if (target !== root && !target.startsWith(root + sep)) {
-    throw new Error(`Path "${relativePath}" escapes the repository root.`)
+    throw new Error(tMain().paths.outsideRepo(relativePath))
   }
   return target
 }
@@ -1710,7 +1710,7 @@ async function resolveRealWithinRepo(cwd: string, relativePath: string): Promise
       const real = await realpath(existing)
       const target = suffix ? join(real, suffix) : real
       if (!isSameOrInside(realRoot, target)) {
-        throw new Error(`Path "${relativePath}" escapes the repository root.`)
+        throw new Error(tMain().paths.outsideRepo(relativePath))
       }
       return target
     } catch (err) {

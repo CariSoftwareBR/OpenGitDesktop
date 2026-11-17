@@ -130,7 +130,7 @@ const ptBR = {
   lineCommentPlaceholder: 'O que precisa mudar nesta linha?',
   publishOnGithub: 'Publicar no GitHub',
 
-  noRemote: 'Este repositório não tem um remote do GitHub configurado (origin).',
+  noRemote: 'Este repositório não tem um remoto do GitHub configurado (origin).',
   filterAria: 'Filtrar pull requests por estado',
   refreshAria: 'Atualizar pull requests',
   refresh: 'Atualizar',
@@ -292,7 +292,7 @@ const en: M = {
   lineCommentTitle: (line) => `Comment on line ${line}`,
   commentLabel: 'Comment',
   lineCommentPlaceholder: 'What needs to change on this line?',
-  publishOnGithub: 'Publish on GitHub',
+  publishOnGithub: 'Publish to GitHub',
 
   noRemote: 'This repository has no GitHub remote configured (origin).',
   filterAria: 'Filter pull requests by state',
@@ -458,7 +458,7 @@ const es: M = {
   lineCommentPlaceholder: '¿Qué hay que cambiar en esta línea?',
   publishOnGithub: 'Publicar en GitHub',
 
-  noRemote: 'Este repositorio no tiene un remote de GitHub configurado (origin).',
+  noRemote: 'Este repositorio no tiene un remoto de GitHub configurado (origin).',
   filterAria: 'Filtrar pull requests por estado',
   refreshAria: 'Actualizar pull requests',
   refresh: 'Actualizar',

@@ -44,7 +44,7 @@ const AI_DEFAULTS: AiSettings = {
     openai: { model: '', apiBaseUrl: '' },
     claude: { model: '', apiBaseUrl: '' },
     openrouter: { model: '', apiBaseUrl: '' },
-    ollama: { model: 'llama3.2', apiBaseUrl: 'http://localhost:11434' },
+    ollama: { model: 'llama3.2', apiBaseUrl: 'http://localhost:11434/v1' },
     local: { model: '', apiBaseUrl: '' }
   }
 }

@@ -109,9 +109,9 @@ export function formatRepoContext(language: AiLanguage, repo: RepoContextInput):
 
 export function aiNotConfiguredMessage(language: AiLanguage): string {
   return pick(language, {
-    'pt-BR': 'Configure um provedor de IA na aba "IA" antes de usar este recurso.',
-    en: 'Configure an AI provider in the "AI" tab before using this feature.',
-    es: 'Configura un proveedor de IA en la pestaña "IA" antes de usar esta función.'
+    'pt-BR': 'Configure um provedor de IA na aba "Assistente IA" das Configurações antes de usar este recurso.',
+    en: 'Configure an AI provider in the "AI assistant" tab of Settings before using this feature.',
+    es: 'Configura un proveedor de IA en la pestaña "Asistente IA" de Configuración antes de usar esta función.'
   })
 }
 
@@ -1226,13 +1226,13 @@ export function aiUiStrings(language: AiLanguage): AiUiStrings {
       chatStopAria: 'Stop generation',
       chatEmptyTitle: 'Supervised assistant',
       chatEmptyBody:
-        'The AI proposes repo actions — nothing runs without your approval. Keep browsing Changes/History while you chat.',
+        'The AI proposes repo actions — reading is automatic, changes only run with your approval. Keep browsing Changes/History while you chat.',
       chatConfigure: 'Configure AI',
       chatComposerNotConfigured: 'Configure a model and API key in Settings to send messages.',
       chatComposerBusy: 'Wait for the current response or use Stop.',
       chatClearTitle: 'Clear conversation?',
       chatClearPendingMessage: (count) =>
-        `${count} action(s) awaiting approval. Clearing the conversation cancels those gates and cannot be undone.`,
+        `${count} action(s) awaiting approval. Clearing the conversation cancels those approvals and cannot be undone.`,
       chatClearMessage: 'The entire conversation will be deleted. This cannot be undone.',
       chatClearConfirm: 'Clear conversation',
       patchPreviewTitle: 'Apply proposed fix',
@@ -1307,7 +1307,7 @@ export function aiUiStrings(language: AiLanguage): AiUiStrings {
       chatStopAria: 'Detener generación',
       chatEmptyTitle: 'Asistente supervisado',
       chatEmptyBody:
-        'La IA propone acciones en el repo — nada se ejecuta sin tu aprobación. Sigue navegando por Cambios/Historial mientras conversas.',
+        'La IA propone acciones en el repo — leer es automático; los cambios solo se ejecutan con tu aprobación. Sigue navegando por Cambios/Historial mientras conversas.',
       chatConfigure: 'Configurar IA',
       chatComposerNotConfigured: 'Configura un modelo y una clave de API en Configuración para enviar mensajes.',
       chatComposerBusy: 'Espera la respuesta actual o usa Detener.',
@@ -1344,8 +1344,8 @@ export function aiUiStrings(language: AiLanguage): AiUiStrings {
     investigationCancelled: 'Exploração interrompida',
     investigationFilesAnalyzed: (total, failed) =>
       `${total} arquivo(s) analisado(s)${failed > 0 ? ` · ${failed} com erro` : ''}`,
-    investigationConsolidating: 'Consolidando dados',
-    investigationConsolidatingAria: 'Consolidando dados',
+    investigationConsolidating: 'Consolidando resultados',
+    investigationConsolidatingAria: 'Consolidando resultados',
     investigationSubagents: (count) => ` · ${count} subagentes`,
     investigationInterrupted: 'A exploração foi interrompida.',
     investigationPartialFailure: 'A investigação terminou com arquivos que não puderam ser analisados.',
@@ -1387,13 +1387,13 @@ export function aiUiStrings(language: AiLanguage): AiUiStrings {
     chatStopAria: 'Parar geração',
     chatEmptyTitle: 'Assistente supervisionado',
     chatEmptyBody:
-      'A IA propõe ações no repo — nada roda sem a sua aprovação. Continue navegando em Alterações/Histórico enquanto conversa.',
+      'A IA propõe ações no repo — ler é automático; mudanças só rodam com a sua aprovação. Continue navegando em Alterações/Histórico enquanto conversa.',
     chatConfigure: 'Configurar IA',
     chatComposerNotConfigured: 'Configure um modelo e uma chave de API em Configurações para enviar mensagens.',
     chatComposerBusy: 'Aguarde a resposta atual ou use Parar.',
     chatClearTitle: 'Limpar conversa?',
     chatClearPendingMessage: (count) =>
-      `Há ${count} ação(ões) aguardando aprovação. Limpar a conversa cancela esses gates e não pode ser desfeito.`,
+      `Há ${count} ação(ões) aguardando aprovação. Limpar a conversa cancela essas aprovações e não pode ser desfeito.`,
     chatClearMessage: 'Toda a conversa será apagada. Isso não pode ser desfeito.',
     chatClearConfirm: 'Limpar conversa',
     patchPreviewTitle: 'Aplicar correção proposta',

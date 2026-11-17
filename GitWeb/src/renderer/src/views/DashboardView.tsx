@@ -812,6 +812,8 @@ const CACHE_TTL = 60_000
 let cache: { path: string; data: RepoData; at: number } | null = null
 
 function DashboardView(): JSX.Element {
+  // Same name as the tab that opens this view ("Panel" in Spanish).
+  const tabLabel = useT().topBar.tabs.dashboard
   const currentRepoPath = useRepoStore((s) => s.currentRepoPath)
   const branches = useRepoStore((s) => s.branches)
   const status = useRepoStore((s) => s.status)
@@ -913,7 +915,7 @@ function DashboardView(): JSX.Element {
       <div className="@container mx-auto flex w-full max-w-6xl flex-col gap-5 px-6 py-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-headline font-semibold text-primary-text">Dashboard</h1>
+            <h1 className="text-headline font-semibold text-primary-text">{tabLabel}</h1>
             <p className="mt-0.5 truncate text-body text-secondary-text">
               {t.howIsRepo} <span className="font-medium text-primary-text">{repoName}</span>
             </p>
