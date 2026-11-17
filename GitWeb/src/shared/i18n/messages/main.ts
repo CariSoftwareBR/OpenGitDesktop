@@ -149,7 +149,10 @@ const ptBR = {
     deviceFlowPollFailed: (status: number, detail: string) =>
       `GitHub respondeu ${status} ao consultar o token${detail ? `: ${detail}` : ''}.`,
     loginExpired: 'Login expirado. Comece de novo.',
-    unknownError: 'Erro desconhecido do GitHub.'
+    unknownError: 'Erro desconhecido do GitHub.',
+    forkSourceNotFound: (name: string) => `O GitHub não encontrou ${name}, ou sua conta não tem acesso a ele.`,
+    forkNotReady: (url: string) =>
+      `O fork foi criado (${url}), mas o GitHub ainda está copiando o repositório. Espere um pouco e clone pela aba GitHub.`
   },
   updater: {
     releasesUnavailable: (repo: string) =>
@@ -306,7 +309,10 @@ const en: MainMessages = {
     deviceFlowPollFailed: (status, detail) =>
       `GitHub responded ${status} when checking the token${detail ? `: ${detail}` : ''}.`,
     loginExpired: 'Sign-in expired. Start again.',
-    unknownError: 'Unknown GitHub error.'
+    unknownError: 'Unknown GitHub error.',
+    forkSourceNotFound: (name) => `GitHub couldn't find ${name}, or your account can't see it.`,
+    forkNotReady: (url) =>
+      `The fork was created (${url}), but GitHub is still copying the repository. Wait a moment and clone it from the GitHub tab.`
   },
   updater: {
     releasesUnavailable: (repo) =>
@@ -462,7 +468,10 @@ const es: MainMessages = {
     deviceFlowPollFailed: (status, detail) =>
       `GitHub respondió ${status} al consultar el token${detail ? `: ${detail}` : ''}.`,
     loginExpired: 'El inicio de sesión expiró. Empieza de nuevo.',
-    unknownError: 'Error desconocido de GitHub.'
+    unknownError: 'Error desconocido de GitHub.',
+    forkSourceNotFound: (name) => `GitHub no encontró ${name}, o tu cuenta no tiene acceso.`,
+    forkNotReady: (url) =>
+      `El fork se creó (${url}), pero GitHub todavía está copiando el repositorio. Espera un poco y clónalo desde la pestaña GitHub.`
   },
   updater: {
     releasesUnavailable: (repo) =>

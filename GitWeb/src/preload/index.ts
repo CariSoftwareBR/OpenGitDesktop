@@ -43,6 +43,9 @@ import type { DeviceFlowPollResult, DeviceFlowStart, OAuthAppInfo } from '../sha
 import type {
   BranchRules,
   CreatePullRequestInput,
+  ForkInput,
+  ForkResult,
+  ForkSource,
   GitHubRepoSummary,
   GitHubUser,
   MergeMethod,
@@ -113,6 +116,7 @@ const api = {
       invoke('git:clone', url, destination),
     cancelClone: (destination: string): Promise<void> =>
       invoke('git:cancelClone', destination),
+    addUpstreamRemote: (cwd: string, url: string): Promise<void> => invoke('git:addUpstreamRemote', cwd, url),
     onCloneProgress: (callback: (progress: CloneProgress) => void): (() => void) => {
       const listener = (_event: IpcRendererEvent, progress: CloneProgress): void => {
         callback(progress)
@@ -286,6 +290,10 @@ const api = {
     listUserRepos: (host: string): Promise<GitHubRepoSummary[]> =>
       invoke('github:listUserRepos', host),
     listRepositoryOwners: (host: string): Promise<RepositoryOwner[]> => invoke('github:listRepositoryOwners', host),
+    getForkSource: (host: string, owner: string, repo: string): Promise<ForkSource> =>
+      invoke('github:getForkSource', host, owner, repo),
+    forkRepository: (host: string, owner: string, repo: string, input: ForkInput): Promise<ForkResult> =>
+      invoke('github:forkRepository', host, owner, repo, input),
     publishRepository: (cwd: string, input: PublishRepositoryInput): Promise<PublishRepositoryResult> =>
       invoke('github:publishRepository', cwd, input),
     listUserReposWithToken: (host: string, token: string): Promise<GitHubRepoSummary[]> =>

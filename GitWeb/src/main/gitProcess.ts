@@ -402,6 +402,20 @@ export async function cancelClone(destination: string): Promise<void> {
   if (child) killProcessTree(child)
 }
 
+/**
+ * Links a fork's clone to the repository it came from: `upstream`, the name
+ * GitHub's own docs and most tools expect, then fetches it so its branches
+ * show up. An `upstream` the clone already has is the user's and is kept.
+ */
+export async function addUpstreamRemote(cwd: string, url: string): Promise<void> {
+  const trimmed = url.trim()
+  assertSafeCloneUrl(trimmed)
+  if (await getRemoteUrl(cwd, 'upstream')) return
+  throwOnFailure(await runGit(['remote', 'add', 'upstream', trimmed], cwd), ['remote', 'add', 'upstream'])
+  const extraEnv = await buildAuthEnv(trimmed)
+  throwOnFailure(await runGit(['fetch', 'upstream'], cwd, { extraEnv }), ['fetch', 'upstream'])
+}
+
 // Parses `git status --porcelain=v1 -z` (NUL-delimited, no quoting/escaping
 // surprises), matching the approach in GitService.cs.
 export function parseStatusEntries(raw: string): StatusEntry[] {

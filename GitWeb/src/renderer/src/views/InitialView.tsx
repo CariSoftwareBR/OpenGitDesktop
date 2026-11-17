@@ -924,8 +924,10 @@ function InitialView(): JSX.Element {
         open={showClone}
         onClose={() => {
           setShowClone(false)
-          // The error belonged to the attempt shown inside the modal.
-          useRepoStore.getState().clearError()
+          // The error belonged to the attempt shown inside the modal — unless
+          // the clone opened a repository, whose warning (a fork's upstream
+          // that failed to link) is for the repository view.
+          if (!useRepoStore.getState().currentRepoPath) useRepoStore.getState().clearError()
         }}
       />
 

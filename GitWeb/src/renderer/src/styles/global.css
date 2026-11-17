@@ -1729,6 +1729,66 @@
     background: var(--color-command-blue-soft);
     border-color: color-mix(in oklab, var(--color-command-blue) 35%, transparent);
   }
+  .clone-owner-chip:disabled {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  /* Fork tab: what the button will do, drawn as a short lane — GitHub (the
+     remote's orange), this machine (the local blue), then back to the original. */
+  .fork-steps {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 2px 0 2px 2px;
+    font-size: var(--text-caption);
+    color: var(--color-secondary-text);
+  }
+  .fork-steps::before {
+    content: '';
+    position: absolute;
+    top: 12px;
+    bottom: 12px;
+    left: 11px;
+    width: 2px;
+    border-radius: 1px;
+    background: linear-gradient(
+      var(--color-attention-orange),
+      var(--color-command-blue) 50%,
+      color-mix(in oklab, var(--color-tertiary-text) 70%, transparent)
+    );
+    opacity: 0.45;
+  }
+  .fork-steps li {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 20px;
+  }
+  .fork-step-dot {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    background: var(--color-obsidian-panel);
+    box-shadow: inset 0 0 0 1.5px currentColor;
+  }
+  .fork-steps li:nth-child(1) .fork-step-dot {
+    color: var(--color-attention-orange);
+  }
+  .fork-steps li:nth-child(2) .fork-step-dot {
+    color: var(--color-command-blue);
+  }
+  .fork-steps li:nth-child(3) .fork-step-dot {
+    color: var(--color-tertiary-text);
+  }
 
   .clone-row-enter {
     animation: clone-row-in 380ms var(--ease-out-expo) backwards;
