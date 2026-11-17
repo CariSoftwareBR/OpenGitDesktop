@@ -359,4 +359,31 @@ export interface ForkedRepository {
 export interface ForkResult extends ForkedRepository {
   /** Clone URL of the original, to add as the `upstream` remote. */
   upstreamCloneUrl: string
+  /** The original's default branch, the one `upstream` follows. */
+  upstreamDefaultBranch: string
+}
+
+/** Where a fork's clone stands against its original (the `upstream` remote). */
+export interface UpstreamStatus {
+  url: string
+  /** "owner/repo" when the URL is a GitHub one. */
+  fullName: string | null
+  /** The original's main branch, and the local branch kept in step with it. */
+  branch: string
+  /** Commits on the original's branch that the local one does not have yet. */
+  behind: number
+  /** Commits on the local branch that the original does not have. */
+  ahead: number
+  /** The local branch exists (a fork's clone has it; a stray remote may not). */
+  hasLocalBranch: boolean
+}
+
+export interface UpstreamSyncResult {
+  branch: string
+  /** How many of the original's commits came in. */
+  brought: number
+  /** The fork on GitHub (origin) got them too. */
+  pushed: boolean
+  /** Why sending them to origin failed; the local branch is updated anyway. */
+  pushError?: string
 }

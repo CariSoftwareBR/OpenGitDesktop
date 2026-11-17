@@ -46,6 +46,8 @@ import type {
   ForkInput,
   ForkResult,
   ForkSource,
+  UpstreamStatus,
+  UpstreamSyncResult,
   GitHubRepoSummary,
   GitHubUser,
   MergeMethod,
@@ -116,7 +118,10 @@ const api = {
       invoke('git:clone', url, destination),
     cancelClone: (destination: string): Promise<void> =>
       invoke('git:cancelClone', destination),
-    addUpstreamRemote: (cwd: string, url: string): Promise<void> => invoke('git:addUpstreamRemote', cwd, url),
+    addUpstreamRemote: (cwd: string, url: string, branch?: string): Promise<void> => invoke('git:addUpstreamRemote', cwd, url, branch),
+    upstreamStatus: (cwd: string): Promise<UpstreamStatus | null> => invoke('git:upstreamStatus', cwd),
+    fetchUpstream: (cwd: string): Promise<void> => invoke('git:fetchUpstream', cwd),
+    syncWithUpstream: (cwd: string): Promise<UpstreamSyncResult> => invoke('git:syncWithUpstream', cwd),
     onCloneProgress: (callback: (progress: CloneProgress) => void): (() => void) => {
       const listener = (_event: IpcRendererEvent, progress: CloneProgress): void => {
         callback(progress)

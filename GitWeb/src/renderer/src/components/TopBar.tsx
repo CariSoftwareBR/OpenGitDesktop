@@ -39,6 +39,7 @@ import { openSettings } from '../lib/openAiSettings'
 import { useT } from '../lib/i18n'
 import type { Messages } from '../../../shared/i18n'
 import PublishRepositoryDialog from './PublishRepositoryDialog'
+import UpstreamSyncCard from './UpstreamSyncCard'
 
 function timeAgo(t: Messages['topBar'], timestamp: number | null): string {
   if (!timestamp) return t.neverFetched
@@ -784,6 +785,7 @@ function TopBar(): JSX.Element {
           <BranchCard compact={narrow} />
           <span className="w-px self-stretch bg-default-border" aria-hidden />
           <SyncCard compact={narrow} />
+          <UpstreamSyncCard compact={narrow} />
         </div>
         <span className="min-w-2 flex-1" />
         <GithubUserCard compact={narrow} />

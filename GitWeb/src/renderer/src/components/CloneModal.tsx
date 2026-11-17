@@ -544,7 +544,7 @@ function ForkPanel({
                   <span className="fork-step-dot" aria-hidden>
                     3
                   </span>
-                  <span>{t.forkStepUpstream(source.fullName)}</span>
+                  <span>{t.forkStepUpstream(source.fullName, source.defaultBranch)}</span>
                 </li>
               </ol>
             </>
@@ -875,6 +875,7 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
 
     let cloneFrom = forkReuse?.cloneUrl ?? ''
     let upstreamUrl = forkSource.cloneUrl
+    let upstreamBranch = forkSource.defaultBranch
     if (!forkReuse) {
       setForking(true)
       try {
@@ -885,6 +886,7 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
         })
         cloneFrom = fork.cloneUrl
         upstreamUrl = fork.upstreamCloneUrl
+        upstreamBranch = fork.upstreamDefaultBranch
         // From here the fork exists: a clone that fails or is cancelled is
         // retried as "clone my fork", never as a second fork.
         if (fork.owner.toLowerCase() === forkSource.viewerLogin.toLowerCase()) {
@@ -900,7 +902,7 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
 
     setCloningPath(destination)
     try {
-      const outcome = await cloneRepository(cloneFrom, destination, { upstreamUrl })
+      const outcome = await cloneRepository(cloneFrom, destination, { upstreamUrl, upstreamBranch })
       if (outcome === 'ok') onClose()
     } finally {
       setCloningPath(null)

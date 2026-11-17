@@ -11,7 +11,7 @@ vi.mock('../src/main/httpFetch', () => ({ httpFetch: vi.fn() }))
 
 const { httpFetch } = await import('../src/main/httpFetch')
 const { forkRepository, getForkSource } = await import('../src/main/githubApi')
-const { addUpstreamRemote } = await import('../src/main/gitProcess')
+const { addUpstreamRemote, fetchUpstream, getUpstreamStatus, syncWithUpstream } = await import('../src/main/gitProcess')
 
 describe('parseForkTarget', () => {
   it('reads owner/repo, clone URLs and page URLs', () => {
@@ -136,7 +136,8 @@ describe('forkRepository', () => {
       fullName: 'paulo/kan',
       cloneUrl: 'https://github.com/paulo/kan.git',
       htmlUrl: 'https://github.com/paulo/kan',
-      upstreamCloneUrl: 'https://github.com/kanbn/kan.git'
+      upstreamCloneUrl: 'https://github.com/kanbn/kan.git',
+      upstreamDefaultBranch: 'main'
     })
     expect(forkPost()).toEqual({ url: 'https://api.github.com/repos/kanbn/kan/forks', method: 'POST', body: { default_branch_only: true } })
     expect(vi.mocked(httpFetch).mock.calls.filter(([url]) => String(url).includes('/branches'))).toHaveLength(3)
@@ -218,5 +219,100 @@ describe('addUpstreamRemote', () => {
   it('refuses a URL git would read as an option', async () => {
     await expect(addUpstreamRemote(join(dir, 'fork'), '--upload-pack=evil')).rejects.toThrow()
     expect(() => git(join(dir, 'fork'), 'remote', 'get-url', 'upstream')).toThrow()
+  })
+
+  it('follows only the given branch, so the branch menu is not flooded', async () => {
+    const fork = join(dir, 'fork')
+    await addUpstreamRemote(fork, join(dir, 'original'), 'main')
+    const remotes = git(fork, 'branch', '-r').split('\n').map((b) => b.trim())
+    expect(remotes).toContain('upstream/main')
+    expect(remotes.some((b) => b.startsWith('upstream/feature'))).toBe(false)
+    expect(git(fork, 'symbolic-ref', '--short', 'refs/remotes/upstream/HEAD')).toBe('upstream/main')
+  })
+})
+
+describe('syncing a fork with its original', () => {
+  let dir: string
+  let original: string
+  let forkOnGithub: string
+  let local: string
+
+  function git(cwd: string, ...args: string[]): string {
+    return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
+  }
+
+  function commit(repo: string, file: string, message: string): void {
+    writeFileSync(join(repo, file), `${message}\n`)
+    git(repo, 'add', file)
+    git(repo, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '-m', message)
+  }
+
+  beforeEach(async () => {
+    dir = mkdtempSync(join(tmpdir(), 'ogd-sync-'))
+    original = join(dir, 'original')
+    forkOnGithub = join(dir, 'fork.git')
+    local = join(dir, 'local')
+    git(dir, 'init', '-q', '-b', 'main', original)
+    commit(original, 'a.txt', 'a')
+    git(dir, 'clone', '-q', '--bare', original, forkOnGithub)
+    git(dir, 'clone', '-q', forkOnGithub, local)
+    await addUpstreamRemote(local, original, 'main')
+  })
+
+  afterEach(() => rmSync(dir, { recursive: true, force: true }))
+
+  it('has no status without an upstream remote', async () => {
+    git(local, 'remote', 'remove', 'upstream')
+    await expect(getUpstreamStatus(local)).resolves.toBeNull()
+  })
+
+  it('counts the original commits the local main does not have, after a fetch', async () => {
+    commit(original, 'b.txt', 'b')
+    commit(original, 'c.txt', 'c')
+    expect(await getUpstreamStatus(local)).toMatchObject({ branch: 'main', behind: 0, ahead: 0, hasLocalBranch: true })
+    await fetchUpstream(local)
+    expect(await getUpstreamStatus(local)).toMatchObject({ branch: 'main', behind: 2, ahead: 0 })
+  })
+
+  it('brings them into the checked-out main and pushes it to the fork', async () => {
+    commit(original, 'b.txt', 'b')
+    commit(original, 'c.txt', 'c')
+    await expect(syncWithUpstream(local)).resolves.toEqual({ branch: 'main', brought: 2, pushed: true })
+    const tip = git(original, 'rev-parse', 'main')
+    expect(git(local, 'rev-parse', 'main')).toBe(tip)
+    expect(git(forkOnGithub, 'rev-parse', 'main')).toBe(tip)
+    expect(git(local, 'status', '--porcelain')).toBe('')
+    expect(await getUpstreamStatus(local)).toMatchObject({ behind: 0, ahead: 0 })
+  })
+
+  it('moves main without touching the working tree when another branch is checked out', async () => {
+    git(local, 'switch', '-q', '-c', 'work')
+    writeFileSync(join(local, 'draft.txt'), 'not committed\n')
+    commit(original, 'b.txt', 'b')
+    await expect(syncWithUpstream(local)).resolves.toMatchObject({ brought: 1, pushed: true })
+    expect(git(local, 'rev-parse', 'main')).toBe(git(original, 'rev-parse', 'main'))
+    expect(git(local, 'symbolic-ref', '--short', 'HEAD')).toBe('work')
+    expect(git(local, 'status', '--porcelain')).toBe('?? draft.txt')
+  })
+
+  it('does nothing when the original has nothing new', async () => {
+    await expect(syncWithUpstream(local)).resolves.toEqual({ branch: 'main', brought: 0, pushed: false })
+  })
+
+  it('refuses to mix when the local main has commits of its own', async () => {
+    commit(local, 'mine.txt', 'mine')
+    commit(original, 'b.txt', 'b')
+    const before = git(local, 'rev-parse', 'main')
+    await expect(syncWithUpstream(local)).rejects.toThrow('upstream/main')
+    expect(git(local, 'rev-parse', 'main')).toBe(before)
+  })
+
+  it('keeps the local update when pushing to the fork fails', async () => {
+    git(local, 'remote', 'set-url', 'origin', join(dir, 'gone.git'))
+    commit(original, 'b.txt', 'b')
+    const result = await syncWithUpstream(local)
+    expect(result).toMatchObject({ branch: 'main', brought: 1, pushed: false })
+    expect(result.pushError).toBeTruthy()
+    expect(git(local, 'rev-parse', 'main')).toBe(git(original, 'rev-parse', 'main'))
   })
 })

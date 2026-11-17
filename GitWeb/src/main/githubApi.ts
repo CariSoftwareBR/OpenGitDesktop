@@ -823,7 +823,7 @@ export async function forkRepository(
     method: 'POST',
     body: JSON.stringify({ organization: input.organization || undefined, default_branch_only: input.defaultBranchOnly })
   })
-  const result: ForkResult = { ...toForked(fork, host), upstreamCloneUrl: source.clone_url }
+  const result: ForkResult = { ...toForked(fork, host), upstreamCloneUrl: source.clone_url, upstreamDefaultBranch: source.default_branch }
   if (source.size === 0) return result
 
   const branchesPath = `${repositoryPath(fork.owner.login, fork.name)}/branches?per_page=1`

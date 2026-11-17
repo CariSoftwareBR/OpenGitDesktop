@@ -4,6 +4,9 @@ import {
   applyPatch,
   applyStash,
   addUpstreamRemote,
+  fetchUpstream,
+  getUpstreamStatus,
+  syncWithUpstream,
   cancelClone,
   cloneRepository,
   commit,
@@ -203,7 +206,10 @@ export function registerIpcHandlers(): void {
     })
   )
   handle('git:cancelClone', (_e, destination: string) => cancelClone(destination))
-  handle('git:addUpstreamRemote', (_e, cwd: string, url: string) => addUpstreamRemote(cwd, url))
+  handle('git:addUpstreamRemote', (_e, cwd: string, url: string, branch?: string) => addUpstreamRemote(cwd, url, branch))
+  handle('git:upstreamStatus', (_e, cwd: string) => getUpstreamStatus(cwd))
+  handle('git:fetchUpstream', (_e, cwd: string) => fetchUpstream(cwd))
+  handle('git:syncWithUpstream', (_e, cwd: string) => syncWithUpstream(cwd))
   handle('git:status', (_e, cwd: string) => getStatus(cwd))
   handle('git:stage', (_e, paths: string[], cwd: string) => stageFiles(paths, cwd))
   handle('git:unstage', (_e, paths: string[], cwd: string) => unstageFiles(paths, cwd))

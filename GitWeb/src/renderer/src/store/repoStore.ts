@@ -115,7 +115,7 @@ interface RepoState {
   publishPrompt: boolean
   clearPublishPrompt: () => void
   /** With `upstreamUrl` (a fork's original), adds it as the `upstream` remote before opening. */
-  cloneRepository: (url: string, destination: string, options?: { upstreamUrl?: string }) => Promise<'ok' | 'cancelled' | 'failed'>
+  cloneRepository: (url: string, destination: string, options?: { upstreamUrl?: string; upstreamBranch?: string }) => Promise<'ok' | 'cancelled' | 'failed'>
   cancelClone: (destination: string) => Promise<void>
   reorganizeRepositories: (rootPath: string, confirmedMoves: RepoMove[]) => Promise<ReorganizeResult>
   closeRepository: () => void
@@ -497,7 +497,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
   publishPrompt: false,
   clearPublishPrompt: () => set({ publishPrompt: false }),
 
-  cloneRepository: async (url: string, destination: string, options?: { upstreamUrl?: string }) => {
+  cloneRepository: async (url: string, destination: string, options?: { upstreamUrl?: string; upstreamBranch?: string }) => {
     set({ isBusy: true, error: null })
     try {
       const outcome = await window.api.git.clone(url, destination)
@@ -513,7 +513,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       // failure here opens the repository and says what is missing.
       let upstreamError: string | null = null
       if (options?.upstreamUrl) {
-        await window.api.git.addUpstreamRemote(destination, options.upstreamUrl).catch((err: unknown) => {
+        await window.api.git.addUpstreamRemote(destination, options.upstreamUrl, options.upstreamBranch).catch((err: unknown) => {
           upstreamError = describeError(err)
         })
       }

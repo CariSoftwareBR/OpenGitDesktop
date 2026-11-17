@@ -18,6 +18,10 @@ const ptBR = {
       newBranchName: 'Novo nome de branch'
     },
     optionLikeValue: (label: string) => `${label} inválido: não pode começar com "-".`,
+    upstreamMissing: 'Este repositório não tem o remoto upstream (o original de um fork), ou ele ainda não foi buscado.',
+    upstreamNoLocalBranch: (branch: string) => `Não há um branch ${branch} local para receber as novidades do original. Crie-o a partir de upstream/${branch}.`,
+    upstreamDiverged: (branch: string, ahead: number, behind: number) =>
+      `O seu ${branch} tem ${ahead} commit(s) que o original não tem, e o original tem ${behind} novo(s). Para não misturar sem você ver, o app não juntou os dois: faça o merge de upstream/${branch} no seu ${branch} pelo Histórico ou pelo menu de branches.`,
     gitNotFound: 'Não encontrei o Git. Verifique se ele está instalado e reabra o programa.',
     folderMissing: (path: string) =>
       `A pasta "${path}" não existe mais. Ela pode ter sido movida, renomeada ou apagada.`,
@@ -180,6 +184,10 @@ const en: MainMessages = {
       newBranchName: 'New branch name'
     },
     optionLikeValue: (label) => `Invalid ${label.toLowerCase()}: it cannot start with "-".`,
+    upstreamMissing: "This repository has no upstream remote (a fork's original), or it hasn't been fetched yet.",
+    upstreamNoLocalBranch: (branch) => `There is no local ${branch} branch to receive the original's updates. Create it from upstream/${branch}.`,
+    upstreamDiverged: (branch, ahead, behind) =>
+      `Your ${branch} has ${ahead} commit(s) the original doesn't, and the original has ${behind} new one(s). So nothing gets mixed without you seeing it, the app didn't combine them: merge upstream/${branch} into your ${branch} from History or the branch menu.`,
     gitNotFound: "Couldn't find Git. Make sure it is installed and reopen the app.",
     folderMissing: (path) => `The folder "${path}" no longer exists. It may have been moved, renamed or deleted.`,
     labels: {
@@ -338,6 +346,10 @@ const es: MainMessages = {
       newBranchName: 'Nuevo nombre de rama'
     },
     optionLikeValue: (label) => `${label} no válido: no puede empezar con "-".`,
+    upstreamMissing: 'Este repositorio no tiene el remoto upstream (el original de un fork), o todavía no se descargó.',
+    upstreamNoLocalBranch: (branch) => `No hay una rama ${branch} local para recibir las novedades del original. Créala a partir de upstream/${branch}.`,
+    upstreamDiverged: (branch, ahead, behind) =>
+      `Tu ${branch} tiene ${ahead} commit(s) que el original no tiene, y el original tiene ${behind} nuevo(s). Para no mezclar sin que lo veas, la app no los combinó: haz merge de upstream/${branch} en tu ${branch} desde el Historial o el menú de ramas.`,
     gitNotFound: 'No encontré Git. Comprueba que esté instalado y vuelve a abrir el programa.',
     folderMissing: (path) => `La carpeta "${path}" ya no existe. Puede que se haya movido, renombrado o eliminado.`,
     labels: {
