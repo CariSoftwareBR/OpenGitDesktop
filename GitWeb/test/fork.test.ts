@@ -42,7 +42,7 @@ type Route = { status: number; body?: unknown } | Route[]
 /** Routes by path; an array answers in turn, repeating its last entry. */
 function serve(routes: Record<string, Route>): void {
   const calls = new Map<string, number>()
-  vi.mocked(httpFetch).mockImplementation(async (url: string) => {
+  vi.mocked(httpFetch).mockImplementation(async (url: string | URL) => {
     const { pathname, search } = new URL(String(url), 'https://api.github.com')
     const key = routes[pathname + search] ? pathname + search : pathname
     let route = routes[key] ?? { status: 404, body: { message: 'Not Found' } }
