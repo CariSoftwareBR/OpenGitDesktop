@@ -624,7 +624,13 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
   const forkTargetKey = forkTarget ? `${forkTarget.owner}/${forkTarget.name}`.toLowerCase() : ''
   const isWorking = isCloning || forking
 
-  useFocusTrap(panelRef, open, { onEscape: onClose, initialFocusRef: activeTabRef })
+  // While GitHub creates the fork there is nothing to cancel, and a closed
+  // dialog would hide it until the clone opens a repository out of nowhere.
+  function requestClose(): void {
+    if (!forking) onClose()
+  }
+
+  useFocusTrap(panelRef, open, { onEscape: requestClose, initialFocusRef: activeTabRef })
 
   const baseFolders = useMemo(
     () =>
@@ -664,7 +670,15 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, cloneTab, signedIn])
 
-  // Looks the typed repository up a moment after typing stops.
+  // Another account: its organizations and its login as the fork's owner.
+  const viewerLogin = signedIn ? (user?.login ?? '') : ''
+  useEffect(() => {
+    setForkOwners([])
+    setForkOwner('')
+  }, [viewerLogin])
+
+  // Looks the typed repository up a moment after typing stops — again when
+  // the account changes, since "your fork" and "your repository" depend on it.
   useEffect(() => {
     setForkSource(null)
     setForkLookupError(null)
@@ -694,7 +708,7 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
       clearTimeout(timer)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, cloneTab, signedIn, forkTargetKey])
+  }, [open, cloneTab, signedIn, viewerLogin, forkTargetKey])
 
   // The account and its organizations, the places a fork can go.
   useEffect(() => {
@@ -848,6 +862,12 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
   async function handleFork(): Promise<void> {
     if (!canFork || !forkSource) return
     const destination = resolvedDestination()
+    // A folder that already holds a repository makes the clone fail — find
+    // out before the fork exists on GitHub, not after.
+    if (await window.api.fs.pathExists(joinPath(destination, '.git'))) {
+      setForkError(t.forkDestinationTaken(destination))
+      return
+    }
     const parent = dirname(destination)
     if (parent) await rememberBase(pathsEqual(parent, cloneParentFolder(currentPlacement())) ? baseFolder : parent)
     setForkError(null)
@@ -922,7 +942,7 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
       role="presentation"
       onClick={(e) => {
         e.stopPropagation()
-        if (e.target === e.currentTarget) onClose()
+        if (e.target === e.currentTarget) requestClose()
       }}
     >
       <div
@@ -946,7 +966,8 @@ function CloneModal({ open, onClose }: CloneModalProps): JSX.Element | null {
             </div>
             <button
               type="button"
-              onClick={onClose}
+              onClick={requestClose}
+              disabled={forking}
               className="hit-area -mr-1.5 rounded-sm p-1.5 text-tertiary-text hover:bg-hover-overlay hover:text-primary-text"
               aria-label={messages.common.close}
             >
