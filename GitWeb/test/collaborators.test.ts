@@ -13,7 +13,8 @@ const { addCollaborator, cancelRepositoryInvitation, getRepositoryCollaborators,
 type Route = { status: number; body?: unknown }
 
 function serve(routes: Record<string, Route>): void {
-  vi.mocked(httpFetch).mockImplementation(async (url: string) => {
+  vi.mocked(httpFetch).mockImplementation(async (input: string | URL) => {
+    const url = String(input)
     const { pathname, search } = new URL(url)
     const route = routes[pathname + search] ?? routes[pathname] ?? { status: 404, body: { message: 'Not Found' } }
     return new Response(route.body === undefined ? null : JSON.stringify(route.body), { status: route.status })

@@ -1,4 +1,4 @@
-name: GitWeb Release
+name: OpenGitDesktop Release
 
 on:
   push:
@@ -78,8 +78,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint
+
       - name: Typecheck
         run: npm run typecheck
+
+      - name: Test
+        run: npm test
 
       - name: Build
         run: npm run build
@@ -124,7 +130,9 @@ jobs:
         run: |
           set -euo pipefail
           git fetch --tags origin
-          PREV_TAG="$(git tag -l 'v*.*.*' --sort=-v:refname | sed -n '2p' || true)"
+          # The tag right before this one — not the repo's second-newest tag,
+          # which is wrong when an older tag is re-published by hand.
+          PREV_TAG="$(git tag -l 'v*.*.*' --sort=-v:refname | awk -v t="$TAG" 'found { print; exit } $0 == t { found = 1 }')"
           {
             echo "## O que mudou"
             echo ""

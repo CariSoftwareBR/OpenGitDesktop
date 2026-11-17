@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { extractRejectedLargeFiles, formatFileLocationFacts, formatPublishFacts, selectScmSkills } from '../src/shared/aiPrompts'
+import {
+  extractRejectedLargeFiles,
+  formatFileLocationFacts,
+  formatPublishFacts,
+  selectScmSkills,
+  type PublishFacts
+} from '../src/shared/aiPrompts'
 
 const user = (content: string) => ({ role: 'user' as const, content })
 
@@ -142,8 +148,8 @@ describe('selectScmSkills — publish-repository', () => {
 })
 
 describe('formatPublishFacts', () => {
-  const base = { hasOrigin: false, branch: 'main', commits: 3, uncommitted: 0, githubLogin: 'paulo', folderName: 'loja' }
-  const next = (f: Partial<typeof base>) => formatPublishFacts('pt-BR', { ...base, ...f }).split('\n').pop()
+  const base: PublishFacts = { hasOrigin: false, branch: 'main', commits: 3, uncommitted: 0, githubLogin: 'paulo', folderName: 'loja' }
+  const next = (f: Partial<PublishFacts>) => formatPublishFacts('pt-BR', { ...base, ...f }).split('\n').pop()
 
   it('points at the one next step', () => {
     expect(next({})).toBe('- Próximo passo: publish_repository.')

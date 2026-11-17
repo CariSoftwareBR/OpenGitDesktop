@@ -10,38 +10,27 @@
   ],
   "homepage": "https://github.com/CariSoftwareBR/OpenGitDesktop",
   "license": "GPL-2.0-only",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "private": true,
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "lint": "oxlint",
-    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
     "build:win": "npm run build && electron-builder --win",
     "build:mac": "npm run build && electron-builder --mac",
     "build:linux": "npm run build && electron-builder --linux",
     "release:local": "node scripts/release-local.mjs",
-    "release:patch": "npm version patch && git push --follow-tags",
-    "release:minor": "npm version minor && git push --follow-tags",
-    "release:major": "npm version major && git push --follow-tags"
+    "release:patch": "node scripts/tag-release.mjs patch",
+    "release:minor": "node scripts/tag-release.mjs minor",
+    "release:major": "node scripts/tag-release.mjs major"
   },
   "dependencies": {
-    "@fontsource/inter": "^5.3.0",
-    "@fontsource/jetbrains-mono": "^5.3.0",
-    "@icons-pack/react-simple-icons": "^13.15.1",
-    "@tailwindcss/vite": "^4.3.5",
-    "@tanstack/react-virtual": "^3.14.26",
-    "electron-updater": "^6.8.11",
-    "lucide-react": "^1.73.0",
-    "react": "^19.3.1",
-    "react-dom": "^19.3.1",
-    "react-markdown": "^10.1.0",
-    "rehype-raw": "^7.0.0",
-    "rehype-sanitize": "^6.0.0",
-    "remark-gfm": "^4.0.1",
-    "tailwindcss": "^4.3.5",
-    "zustand": "^5.1.0"
+    "electron-updater": "^6.8.11"
   },
   "overrides": {
     "@electron/get": {
@@ -51,6 +40,11 @@
     "minimatch@^10.0.0": "^11.0.1"
   },
   "devDependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@icons-pack/react-simple-icons": "^13.15.1",
+    "@tailwindcss/vite": "^4.3.5",
+    "@tanstack/react-virtual": "^3.14.26",
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
@@ -58,9 +52,18 @@
     "electron": "^45.3.2",
     "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
+    "lucide-react": "^1.73.0",
     "oxlint": "^1.93.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-markdown": "^10.1.0",
+    "rehype-raw": "^7.0.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "tailwindcss": "^4.3.5",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "zustand": "^5.1.0"
   }
 }

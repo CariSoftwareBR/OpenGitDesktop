@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# cmd.exe mis-handles labels (goto :fim) in LF-only batch files.
+*.bat text eol=crlf
+*.cmd text eol=crlf

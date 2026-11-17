@@ -3,12 +3,12 @@ chcp 65001 >nul
 setlocal
 
 rem Publica uma release do Windows com dois cliques: um aqui, outro para
-rem confirmar. Enquanto a cota mensal de GitHub Actions nao renova, este e o
-rem caminho para quem usa Windows continuar recebendo atualizacao.
+rem confirmar. E o caminho alternativo para quando o CI nao puder empacotar
+rem (Actions fora do ar, cota esgotada).
 rem
 rem O npm no Windows e um .cmd: chamar sem "call" encerraria este .bat no meio.
 
-title Publicar Release do GitWeb (Windows)
+title Publicar Release do OpenGitDesktop (Windows)
 
 cd /d "%~dp0GitWeb"
 if errorlevel 1 (
@@ -20,7 +20,7 @@ if errorlevel 1 (
 
 echo.
 echo ================================================
-echo   GitWeb - publicar release do Windows
+echo   OpenGitDesktop - publicar release do Windows
 echo ================================================
 echo.
 echo Verificando o que seria publicado...
