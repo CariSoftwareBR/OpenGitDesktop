@@ -237,6 +237,11 @@ const ptBR = {
   conflictBlocks: (n: number) => `Blocos de conflito (${n})`,
   aiSummary: 'Resumo da IA',
   proposedContent: 'Conteúdo resolvido proposto',
+  resolveProblemsTitle: 'A proposta parece ter erros. Confira o conteúdo antes de aprovar:',
+  resolveDuplicateKeys: (id: number, keys: string) => `Bloco #${id}: ${keys} aparece duas vezes no mesmo trecho.`,
+  resolveInvalidJson: 'O arquivo resultante não é um JSON válido.',
+  resolveLostChange: (id: number, side: string, lines: string) =>
+    `Bloco #${id}: perde a mudança que só ${side} fez (${lines}).`,
 
   checkIncomingHeadline: 'Verificar commits novos no remoto',
   operation: 'Operação',
@@ -657,6 +662,10 @@ const en: M = {
   conflictBlocks: (n) => `Conflict blocks (${n})`,
   aiSummary: 'AI summary',
   proposedContent: 'Proposed resolved content',
+  resolveProblemsTitle: 'The proposal looks wrong. Check the content before approving:',
+  resolveDuplicateKeys: (id, keys) => `Block #${id}: ${keys} appears twice in the same section.`,
+  resolveInvalidJson: 'The resulting file is not valid JSON.',
+  resolveLostChange: (id, side, lines) => `Block #${id}: drops the change only ${side} made (${lines}).`,
 
   checkIncomingHeadline: 'Check for new commits on the remote',
   operation: 'Operation',
@@ -1071,6 +1080,10 @@ const es: M = {
   conflictBlocks: (n) => `Bloques de conflicto (${n})`,
   aiSummary: 'Resumen de la IA',
   proposedContent: 'Contenido resuelto propuesto',
+  resolveProblemsTitle: 'La propuesta parece tener errores. Revisa el contenido antes de aprobar:',
+  resolveDuplicateKeys: (id, keys) => `Bloque #${id}: ${keys} aparece dos veces en el mismo tramo.`,
+  resolveInvalidJson: 'El archivo resultante no es un JSON válido.',
+  resolveLostChange: (id, side, lines) => `Bloque #${id}: pierde el cambio que solo hizo ${side} (${lines}).`,
 
   checkIncomingHeadline: 'Buscar commits nuevos en el remoto',
   operation: 'Operación',

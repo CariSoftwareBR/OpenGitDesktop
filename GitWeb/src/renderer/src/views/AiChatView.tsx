@@ -121,6 +121,7 @@ function TextResultToggle({ text }: { text: string }): JSX.Element | null {
 
 function ToolCallCard({ messageId, uiCall }: { messageId: string; uiCall: import('../store/aiStore').UiToolCall }): JSX.Element {
   const ui = useAiUi()
+  const toolText = useT().tools
   const approveToolCall = useAiStore((s) => s.approveToolCall)
   const cancelToolCall = useAiStore((s) => s.cancelToolCall)
   const retryToolCall = useAiStore((s) => s.retryToolCall)
@@ -142,6 +143,20 @@ function ToolCallCard({ messageId, uiCall }: { messageId: string; uiCall: import
         )}
         <span className="min-w-0 [overflow-wrap:anywhere]">{uiCall.preview.headline}</span>
       </div>
+      {/* Above the fields: a failed check has to be read before the long content below it. */}
+      {uiCall.preview.problems && uiCall.preview.problems.length > 0 && uiCall.status === 'pending' && (
+        <div className="mt-2.5 rounded-md border border-danger-red/30 bg-danger-red-soft px-2.5 py-2 text-caption text-danger-red" role="alert">
+          <div className="flex items-start gap-1.5 font-medium">
+            <AlertTriangle size={12} className="mt-0.5 shrink-0" aria-hidden />
+            <span>{toolText.resolveProblemsTitle}</span>
+          </div>
+          <ul className="mt-1 list-disc pl-6 [overflow-wrap:anywhere]">
+            {uiCall.preview.problems.map((problem) => (
+              <li key={problem}>{problem}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {/* The approval's picture (what moves where) leads; the fields back it up. */}
       {uiCall.preview.visual && uiCall.status !== 'completed' && (
         <div className="mt-2.5">

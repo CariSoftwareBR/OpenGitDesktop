@@ -1,6 +1,7 @@
 import { ipcMain, app, BrowserWindow, Notification, type WebContents, type WebFrameMain } from 'electron'
 import {
   abortMerge,
+  getConflictDiff3,
   applyPatch,
   applyStash,
   cancelClone,
@@ -314,6 +315,7 @@ export function registerIpcHandlers(): void {
   handle('git:merge', (_e, branchName: string, cwd: string) => mergeBranch(branchName, cwd))
   handle('git:revertCommit', (_e, hash: string, cwd: string) => revertCommit(hash, cwd))
   handle('git:mergeAbort', (_e, cwd: string) => abortMerge(cwd))
+  handle('git:conflictDiff3', (_e, cwd: string, path: string) => getConflictDiff3(cwd, path))
 
   handle('git:stashList', (_e, cwd: string) => listStashes(cwd))
   handle('git:stashPush', (_e, cwd: string, message: string) => pushStash(cwd, message))

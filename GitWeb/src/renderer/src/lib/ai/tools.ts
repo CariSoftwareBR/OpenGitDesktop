@@ -1,9 +1,9 @@
 import { useRepoStore } from '../../store/repoStore'
 import { validateBranchName } from '../branchName'
 import { usePullRequestStore } from '../../store/pullRequestStore'
-import { getActiveAiConfig } from '../../store/aiStore'
+import { chatToolAiConfig, getActiveAiConfig } from '../../store/aiStore'
 import { generateCommitMessage } from './commitMessage'
-import { generateConflictResolution } from './conflictResolution'
+import { decisionsToChoices, generateConflictResolution } from './conflictResolution'
 import { formatPullRequestStatus } from './prStatus'
 import { directPushBlock } from '../branchProtection'
 import { describeFindings, SensitiveBlockedError, withheldForAi } from '../sensitive'
@@ -12,7 +12,7 @@ import { DEFAULT_APP_SETTINGS } from '../../../../shared/settings'
 import { sanitizeRepositoryName } from '../../../../shared/github'
 import { basename } from '../path'
 import { isConflicted, type BranchIntegration, type BranchIntegrationReport, type StatusEntry } from '../../../../shared/git'
-import { parseConflictBlocks, renderResolvedWithChoices, type ConflictBlock, type ConflictResolutionChoice } from '../conflicts'
+import { attachBaseLines, parseConflictBlocks, renderResolvedWithChoices, type ConflictBlock } from '../conflicts'
 import type { ToolCallRequest } from '../../../../shared/aiChat'
 import { getFmt, getT } from '../i18n'
 import { parseRebasePlan, validateRebasePlan, type RebasePlanProblem } from '../../../../shared/gitParsing'
@@ -26,6 +26,8 @@ export interface ToolPreview {
   headline: string
   fields: { label: string; value: string }[]
   warning?: string
+  /** Checks the proposal failed; drawn above the fields so they are read before approving. */
+  problems?: string[]
   severity?: ToolSeverity
   /** Drawn above the fields: what the action will do, as a picture. */
   visual?: ToolVisual
@@ -779,20 +781,20 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
         throw new Error(t.binaryConflict(path))
       }
 
-      const blocks = parseConflictBlocks(content)
-      const conflictBlocks = blocks.filter((b): b is ConflictBlock => b.type === 'conflict')
+      const parsed = parseConflictBlocks(content)
+      const conflictBlocks = parsed.filter((b): b is ConflictBlock => b.type === 'conflict')
       if (conflictBlocks.length === 0) {
         throw new Error(t.noTextMarkers(path))
       }
+      // The merge base tells the model which side actually changed each value.
+      // Optional: without it (add/add, an older git) the proposal still works.
+      const diff3 = await window.api.git.conflictDiff3(repoPath, path).catch(() => null)
+      const blocks = diff3 ? attachBaseLines(parsed, diff3) : parsed
 
       const { settings, apiKey } = await getActiveAiConfig()
-      const suggestion = await generateConflictResolution(settings, apiKey, path, blocks)
+      const suggestion = await generateConflictResolution(chatToolAiConfig(settings), apiKey, path, blocks)
 
-      const choices = new Map<number, ConflictResolutionChoice>(
-        suggestion.decisions
-          .filter((d) => conflictBlocks.some((b) => b.id === d.id))
-          .map((d) => [d.id, d.choice === 'custom' ? { text: d.text! } : d.choice])
-      )
+      const choices = decisionsToChoices(suggestion.decisions.filter((d) => conflictBlocks.some((b) => b.id === d.id)))
       const resolvedContent = renderResolvedWithChoices(blocks, choices)
 
       const decisionLines = conflictBlocks.map((b) => {
@@ -814,7 +816,14 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
             { label: t.aiSummary, value: suggestion.summary },
             { label: t.proposedContent, value: '```\n' + truncate(resolvedContent, settings.maxDiffChars) + '\n```' }
           ],
-          warning
+          warning,
+          problems: suggestion.problems.map((p) =>
+            p.kind === 'duplicateKeys'
+              ? t.resolveDuplicateKeys(p.blockId, p.keys.join(', '))
+              : p.kind === 'lostChange'
+                ? t.resolveLostChange(p.blockId, p.sideLabel, p.lines.join('; '))
+                : t.resolveInvalidJson
+          )
         },
         resolvedArgs: { path, resolved_content: resolvedContent, summary: suggestion.summary }
       }

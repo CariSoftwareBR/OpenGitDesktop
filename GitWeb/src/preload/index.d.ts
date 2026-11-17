@@ -155,6 +155,8 @@ export interface Api {
 
     merge: (branchName: string, cwd: string) => Promise<GitResult>
     mergeAbort: (cwd: string) => Promise<void>
+    /** The conflicted file re-merged with each block's merge-base lines (diff3); null without a base. */
+    conflictDiff3: (cwd: string, path: string) => Promise<string | null>
 
     stashList: (cwd: string) => Promise<StashEntry[]>
     stashPush: (cwd: string, message: string) => Promise<void>

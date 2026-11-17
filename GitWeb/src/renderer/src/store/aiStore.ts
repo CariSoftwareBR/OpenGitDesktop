@@ -230,6 +230,17 @@ function configKey(config: ResolvedAiConfig): string {
   return `${config.provider}|${config.apiBaseUrl}|${config.model}`
 }
 
+/**
+ * Config for a model call a chat tool makes on the chat's behalf (e.g. the
+ * resolve_conflict proposal). It follows the chat's effort selector, the one
+ * the user is looking at, instead of the saved setting, and drops the effort
+ * for a model the chat already found rejects it.
+ */
+export function chatToolAiConfig(settings: AiSettings): ResolvedAiConfig {
+  const config = resolveActiveConfig(settings, useAiStore.getState().chatReasoningEffort)
+  return reasoningEffortUnsupported.has(configKey(config)) ? resolveActiveConfig(settings, 'off') : config
+}
+
 function buildRepoContext(language: AiLanguage): string {
   const repo = useRepoStore.getState()
   const branch = repo.branches.find((b) => b.isCurrent)?.name ?? repo.status?.branch ?? '?'

@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from 'child_process'
 import { shell } from 'electron'
-import { lstat, readFile, rm, rmdir, writeFile, mkdir, access, realpath, stat } from 'fs/promises'
+import { lstat, readFile, rm, rmdir, writeFile, mkdir, mkdtemp, access, realpath, stat } from 'fs/promises'
+import { tmpdir } from 'os'
 import { join, dirname, basename, resolve, sep, normalize, toNamespacedPath } from 'path'
 import type {
   BranchDeleteCheck,
@@ -1618,6 +1619,38 @@ export async function mergeBranch(branchName: string, cwd: string): Promise<GitR
 
 export async function abortMerge(cwd: string): Promise<void> {
   throwOnFailure(await runGit(['merge', '--abort'], cwd), ['merge', '--abort'])
+}
+
+/**
+ * A conflicted file merged again in diff3 style, so each block also carries
+ * the merge-base lines: what the code looked like before either side changed
+ * it. Built from the index stages (1 base, 2 ours, 3 theirs) in a temp folder;
+ * the working copy, which the user may be editing, is never touched. null when
+ * a stage is missing (add/add, modify/delete) or the merge itself fails.
+ */
+export async function getConflictDiff3(cwd: string, relativePath: string): Promise<string | null> {
+  const stages = await Promise.all([1, 2, 3].map((stage) => readGit(['show', `:${stage}:${relativePath}`], cwd)))
+  if (stages.some((s) => s.exitCode !== 0)) return null
+
+  const dir = await mkdtemp(join(tmpdir(), 'opengitdesktop-merge-'))
+  try {
+    const [base, ours, theirs] = ['base', 'ours', 'theirs'].map((name) => join(dir, name))
+    await Promise.all([writeFile(base, stages[0].stdout), writeFile(ours, stages[1].stdout), writeFile(theirs, stages[2].stdout)])
+    // zdiff3 moves the lines both sides share out of the conflict, as the
+    // default style git merge wrote into the working file does; plain diff3
+    // keeps them in, and the blocks would no longer match (attachBaseLines).
+    // zdiff3 needs git 2.35+; older ones fall back to diff3.
+    const mergeFile = (style: string): ReturnType<typeof readGit> =>
+      readGit(['merge-file', '-p', style, '-L', 'ours', '-L', 'base', '-L', 'theirs', ours, base, theirs], cwd)
+    let merged = await mergeFile('--zdiff3')
+    if (merged.exitCode === null || merged.exitCode > 127) merged = await mergeFile('--diff3')
+    // The exit code is the number of conflicts (capped at 127); above that,
+    // git failed (bad option 129, error 255).
+    if (merged.exitCode === null || merged.exitCode > 127) return null
+    return merged.stdout
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
 }
 
 export async function listStashes(cwd: string): Promise<StashEntry[]> {

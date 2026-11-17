@@ -448,6 +448,7 @@ function installBrowserApiStub(): void {
       }),
       merge: async () => okGit(),
       mergeAbort: async () => undefined,
+      conflictDiff3: async () => null,
       stashList: async () => [],
       stashPush: async () => undefined,
       stashApply: async () => undefined,
