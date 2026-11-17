@@ -9,6 +9,10 @@
 // Uso:
 //   npm run release:patch | release:minor | release:major
 //   npm run release:minor -- --dry-run
+//
+// Rode depois que o auto-release do último push terminar (ou faça esse push
+// com [skip release]): os dois calculam a versão a partir da última tag, e um
+// auto-release ainda em andamento publicaria um patch por cima desta versão.
 
 import { execFileSync } from 'node:child_process'
 import { dirname, join } from 'node:path'
@@ -57,5 +61,12 @@ if (dryRun) {
 }
 
 git('tag', '-a', tag, '-m', `Release ${tag}`)
-git('push', 'origin', `refs/tags/${tag}`)
+try {
+  git('push', 'origin', `refs/tags/${tag}`)
+} catch (err) {
+  // Sem isto a tag ficava só aqui: a próxima execução recusaria a mesma
+  // versão ou pularia uma, porque lê as tags locais.
+  git('tag', '-d', tag)
+  fail(`O push da tag ${tag} falhou; a tag local foi apagada. ${err instanceof Error ? err.message.split('\n')[0] : ''}`)
+}
 console.log(`✔ ${tag} enviada. O workflow gitweb-release.yml empacota e publica.`)

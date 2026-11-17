@@ -41,11 +41,13 @@ jobs:
       run:
         working-directory: GitWeb
     steps:
-      # The pushed commit, not the branch tip: runs queue (no cancel), and a
-      # later push must not be released by an earlier run.
+      # The branch tip, not github.sha: re-running an old run must not tag
+      # that old commit as the newest version (auto-update would move every
+      # user back to it). A run that starts after a newer push simply
+      # releases the newer tip, which contains the older commits.
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.ref_name }}
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 

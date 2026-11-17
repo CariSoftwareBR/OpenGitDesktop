@@ -128,7 +128,9 @@ try {
   const exe = `dist/${productName}-Setup-${version}.exe`
   const files = [exe, `${exe}.blockmap`, 'dist/latest.yml']
   for (const f of files) {
-    if (!existsSync(join(projectDir, f))) fail(`Esperado mas não gerado: ${f}`)
+    // throw, not fail(): fail() exits on the spot and would skip the finally
+    // that puts package.json and package-lock.json back.
+    if (!existsSync(join(projectDir, f))) throw new Error(`Esperado mas não gerado: ${f}`)
   }
 
   // --- Notas ---------------------------------------------------------------
@@ -176,6 +178,9 @@ ${compare}
   )
 
   console.log(`\n✔ ${tag} publicada.`)
+} catch (err) {
+  console.error(`\n✖ ${err instanceof Error ? err.message : String(err)}\n`)
+  process.exitCode = 1
 } finally {
   writeFileSync(pkgPath, originalPkg)
   writeFileSync(lockPath, originalLock)

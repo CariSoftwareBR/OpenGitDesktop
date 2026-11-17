@@ -132,7 +132,7 @@ jobs:
           git fetch --tags origin
           # The tag right before this one — not the repo's second-newest tag,
           # which is wrong when an older tag is re-published by hand.
-          PREV_TAG="$(git tag -l 'v*.*.*' --sort=-v:refname | awk -v t="$TAG" 'found { print; exit } $0 == t { found = 1 }')"
+          PREV_TAG="$(git tag -l 'v*.*.*' --sort=-v:refname | awk -v t="$TAG" 'found { print; exit } $0 == t { found = 1 }' || true)"
           {
             echo "## O que mudou"
             echo ""
