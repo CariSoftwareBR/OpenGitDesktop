@@ -10,6 +10,6 @@ Fecha #
 
 ## Checklist
 
-- [ ] `npm run typecheck` e `npm test` passam em `GitWeb/`
+- [ ] `npm run lint`, `npm run typecheck` e `npm test` passam em `GitWeb/`
 - [ ] Ações novas do assistente de IA continuam exigindo aprovação do usuário
 - [ ] Print ou GIF incluído, se a interface mudou

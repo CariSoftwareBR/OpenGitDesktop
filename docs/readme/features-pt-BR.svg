@@ -49,6 +49,6 @@
 <rect x="604.6666666666666" y="184" width="36" height="36" rx="10" fill="#4ebe96" fill-opacity="0.13" stroke="#4ebe96" stroke-opacity="0.35"/>
 <g color="#4ebe96"><rect x="615.6666666666666" y="201" width="14" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M618.6666666666666 201V198a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="622.6666666666666" cy="206" r="1.4" fill="currentColor"/></g>
 <text x="604.6666666666666" y="246" font-size="15" font-weight="700" fill="#fff">Local-first</text>
-<text font-size="12.5" fill="#868f97"><tspan x="604.6666666666666" y="266">Tokens e chaves ficam no cofre</tspan><tspan x="604.6666666666666" y="282">do sistema. Funciona offline.</tspan></text>
+<text font-size="12.5" fill="#868f97"><tspan x="604.6666666666666" y="266">Tokens e chaves cifrados pelo</tspan><tspan x="604.6666666666666" y="282">sistema. Funciona offline.</tspan></text>
 </g>
 </g><rect x="0.5" y="0.5" width="879" height="317" rx="20" fill="none" stroke="#fff" stroke-opacity="0.1"/></svg>

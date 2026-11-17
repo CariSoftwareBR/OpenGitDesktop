@@ -135,17 +135,19 @@ Private-repo fallback for step 2: `gh release download --repo $repo --pattern "*
 
 #### Option B — Build from the source code
 
-Needs **Node.js 20+** and the Xcode Command Line Tools. Takes a few minutes.
+Needs **Node.js 22.12+** and the Xcode Command Line Tools. Takes a few minutes.
 
 ```bash
 set -e
 
-# 1. Git (Command Line Tools) and Node.js 20+
+# 1. Git (Command Line Tools) and Node.js 22.12+
 git --version >/dev/null 2>&1 || xcode-select --install
-if ! node -e 'process.exit(+process.versions.node.split(".")[0] >= 20 ? 0 : 1)' 2>/dev/null; then
+node_ok() { node -e 'const [a, b] = process.versions.node.split(".").map(Number); process.exit(a > 22 || (a === 22 && b >= 12) ? 0 : 1)' 2>/dev/null; }
+if ! node_ok; then
   if command -v brew >/dev/null 2>&1; then brew install node
-  else echo "Install Node.js 20+ from https://nodejs.org and run this again."; exit 1; fi
+  else echo "Install Node.js 22.12+ from https://nodejs.org and run this again."; exit 1; fi
 fi
+node_ok || { echo "Node.js 22.12+ is required (found $(node -v 2>/dev/null || echo none))."; exit 1; }
 
 # 2. Get the code (or update an existing copy)
 src="$HOME/OpenGitDesktop"
