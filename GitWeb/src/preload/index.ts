@@ -223,6 +223,7 @@ const api = {
 
     merge: (branchName: string, cwd: string): Promise<GitResult> => invoke('git:merge', branchName, cwd),
     mergeAbort: (cwd: string): Promise<void> => invoke('git:mergeAbort', cwd),
+    conflictDiff3: (cwd: string, path: string): Promise<string | null> => invoke('git:conflictDiff3', cwd, path),
 
     stashList: (cwd: string): Promise<StashEntry[]> => invoke('git:stashList', cwd),
     stashPush: (cwd: string, message: string): Promise<void> => invoke('git:stashPush', cwd, message),
