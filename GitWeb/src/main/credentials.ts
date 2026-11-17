@@ -1,6 +1,7 @@
 import { app, safeStorage } from 'electron'
 import { join } from 'path'
 import { readFile, writeFile, mkdir, rename } from 'fs/promises'
+import { tMain } from './i18n'
 
 // Single cross-platform secret store: safeStorage uses Credential Manager on
 // Windows, Keychain on macOS and libsecret (Secret Service) on Linux under
@@ -58,7 +59,7 @@ async function writeStore(store: SecretMap): Promise<void> {
 // keys survive the switch without a migration step.
 async function requireEncryption(): Promise<void> {
   if (!(await safeStorage.isAsyncEncryptionAvailable())) {
-    throw new Error('OS-level secret encryption is not available on this machine')
+    throw new Error(tMain().secrets.encryptionUnavailable)
   }
 }
 
@@ -83,7 +84,7 @@ export async function getSecret(key: string): Promise<string | null> {
       decrypted = await safeStorage.decryptStringAsync(Buffer.from(blob, 'base64'))
     } catch (err) {
       throw new Error(
-        `Failed to decrypt secret "${key}": ${err instanceof Error ? err.message : String(err)}`,
+        tMain().secrets.decryptFailed(key, err instanceof Error ? err.message : String(err)),
         { cause: err }
       )
     }

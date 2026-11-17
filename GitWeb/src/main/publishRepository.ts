@@ -8,6 +8,7 @@ import { scanHistory } from './sensitiveScan'
 import { tMain } from './i18n'
 import { findingPaths } from '../shared/sensitiveFiles'
 import { sanitizeRepositoryName, type PublishRepositoryInput, type PublishRepositoryResult } from '../shared/github'
+import { withProjectCoAuthor } from '../shared/settings'
 
 const HOST = 'github.com'
 
@@ -60,5 +61,7 @@ export async function createInitialCommit(cwd: string): Promise<void> {
   if (entries.length === 0) await writeFile(join(cwd, 'README.md'), `# ${basename(cwd)}\n`, 'utf8')
   throwOnFailure(await runGit(['add', '-A'], cwd), ['add', '-A'])
   await assertNoBlockedSensitive(cwd)
-  throwOnFailure(await runGit(['commit', '-m', tMain().publish.initialCommitMessage], cwd), ['commit'])
+  // Same project credit as every other commit path (see git:commit in ipc.ts).
+  const credit = (await getSettings()).coAuthorProject ? ['-m', withProjectCoAuthor('')] : []
+  throwOnFailure(await runGit(['commit', '-m', tMain().publish.initialCommitMessage, ...credit], cwd), ['commit'])
 }

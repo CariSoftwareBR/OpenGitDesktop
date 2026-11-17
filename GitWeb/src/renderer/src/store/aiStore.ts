@@ -5,6 +5,7 @@ import { sanitizeRepositoryName } from '../../../shared/github'
 import type { SensitiveFinding } from '../../../shared/sensitiveFiles'
 import {
   DEFAULT_CHAT_REASONING_EFFORT,
+  normalizeMaxDiffChars,
   resolveActiveConfig,
   type AiProvider,
   type AiSettings,
@@ -392,6 +393,8 @@ export const useAiStore = create<AiState>((set, get) => ({
     const live = get().settings
     const merged = {
       ...settings,
+      // Same floor main applies on read, so this session uses what the next one will.
+      maxDiffChars: normalizeMaxDiffChars(settings.maxDiffChars),
       investigationConcurrency: live?.investigationConcurrency ?? settings.investigationConcurrency,
       investigationContextTokens: live?.investigationContextTokens ?? settings.investigationContextTokens
     }
@@ -474,7 +477,7 @@ export const useAiStore = create<AiState>((set, get) => ({
     get().clearChat()
 
     const turn = ++activeTurn
-    const maxChars = Math.max(1_000, settings.maxDiffChars)
+    const maxChars = normalizeMaxDiffChars(settings.maxDiffChars)
     const wasTruncated = diff.length > maxChars
     // A new file's "diff" is its raw content, with no header for the main
     // process to recognize a .env or a key by — mask it here, by path.
@@ -929,7 +932,7 @@ async function buildUiToolCalls(calls: ToolCallRequest[]): Promise<UiToolCall[]>
       } catch (err) {
         return {
           call,
-          preview: { headline: getT().tools.label[call.name] ?? call.name, fields: [], severity: 'read' },
+          preview: { headline: getT().tools.label[call.name] ?? call.name, fields: [], severity: toolSeverity(call.name) },
           resolvedArgs: call.arguments,
           status: 'failed',
           result: err instanceof Error ? err.message : String(err),

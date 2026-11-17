@@ -226,9 +226,14 @@ export function registerIpcHandlers(): void {
     applyPatch(cwd, patch, { cached, reverse })
   )
   handle('git:resetSoftHead', (_e, cwd: string) => resetSoftHead(cwd))
+  // Amending rewrites the message whenever a summary or a description is given
+  // (see commitAmend), which would drop the project credit; --no-edit keeps the
+  // message, trailer included, so it needs nothing.
   handle('git:commitAmend', async (_e, cwd: string, summary?: string, description?: string) => {
     await assertNoBlockedSensitive(cwd)
-    return commitAmend(cwd, summary, description)
+    const rewrites = Boolean(summary?.trim() || description?.trim())
+    const credit = rewrites && (await getSettings()).coAuthorProject
+    return commitAmend(cwd, summary, credit ? withProjectCoAuthor(description ?? '') : description)
   })
   handle('git:scanSensitiveHistory', (_e, cwd: string) => scanHistory(cwd))
   handle('git:scanSensitive', (_e, cwd: string, scope: SensitiveScanScope) =>

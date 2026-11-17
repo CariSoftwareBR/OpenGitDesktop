@@ -5,12 +5,12 @@ type Outcome = 'updated' | 'alreadyUpToDate' | 'skippedDirty' | 'skippedDiverged
 const ptBR = {
   commits: (n: number) => `${n} commit${n === 1 ? '' : 's'}`,
   chipDiverged: (def: string, ahead: string, behind: string) =>
-    `"${def}" local divergiu de origin/${def}: ${ahead} só seus, ${behind} no remote`,
+    `"${def}" local divergiu de origin/${def}: ${ahead} só seus, ${behind} no remoto`,
   chipBehind: (commits: string, def: string) => `${commits} atrás de origin/${def}`,
   chipLocalDefaultBehind: (def: string, commits: string) => `"${def}" local está ${commits} atrás`,
   chipNoLocalDefault: (def: string) => `sem ${def}`,
   chipNoLocalDefaultTitle: (def: string) =>
-    `Não existe um branch "${def}" local, então a atualização em lote não alcança este repositório — abra-o e faça checkout de "${def}", ou um pull no branch atual`,
+    `Não existe uma branch "${def}" local, então a atualização em lote não alcança este repositório — abra-o e faça checkout de "${def}", ou um pull na branch atual`,
   chipAhead: (commits: string) => `${commits} ainda não enviados`,
   chipLocalChanges: (n: number) => (n === 1 ? '1 arquivo com alteração local' : `${n} arquivos com alterações locais`),
   outcome: {

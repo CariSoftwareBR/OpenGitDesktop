@@ -112,6 +112,11 @@ function parsePathList(raw: string): string[] {
   return [...new Set(paths)]
 }
 
+/** The list_pull_requests state, defaulting to "open" as the catalog says; anything else is ignored. */
+function prStateArg(raw: string | undefined): 'open' | 'closed' | 'all' {
+  return raw === 'closed' || raw === 'all' ? raw : 'open'
+}
+
 function parseBranchList(raw: string): string[] {
   return [...new Set(raw.split(/[\n,]/).map((b) => b.trim()).filter(Boolean))]
 }
@@ -324,7 +329,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
           fields: [
             { label: t.from, value: head },
             { label: t.to, value: baseBranch },
-            { label: 'Remote', value: `${owner}/${repoName}` },
+            { label: t.fieldRemote, value: `${owner}/${repoName}` },
             { label: t.draft, value: yesNo(a.draft === 'true') },
             { label: t.description, value: body || t.emptyValue }
           ]
@@ -334,15 +339,15 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
     }
 
     case 'list_pull_requests': {
-      const state = (a.state as 'open' | 'closed' | 'all' | undefined) ?? 'open'
+      const state = prStateArg(a.state)
       const { owner, repo } = requireGitHubRemote()
       return {
         preview: {
           headline: t.listPrsHeadline,
           fields: [
-            { label: 'Remote', value: `${owner}/${repo}` },
+            { label: t.fieldRemote, value: `${owner}/${repo}` },
             { label: t.state, value: state },
-            { label: 'Head branch', value: a.head_branch || t.allBranches }
+            { label: t.sourceBranch, value: a.head_branch || t.allBranches }
           ]
         },
         resolvedArgs: a
@@ -357,7 +362,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
         preview: {
           headline: t.readPrHeadline(number),
           fields: [
-            { label: 'Remote', value: `${owner}/${repo}` },
+            { label: t.fieldRemote, value: `${owner}/${repo}` },
             { label: t.includeFiles, value: yesNo(a.include_files !== 'false') },
             { label: t.includeDiffs, value: yesNo(a.include_diffs === 'true') },
             { label: t.includeComments, value: yesNo(a.include_comments !== 'false') }
@@ -372,7 +377,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       if (!number) throw new Error(t.paramRequired('pull_request_number'))
       const { owner, repo } = requireGitHubRemote()
       return {
-        preview: { headline: t.prStatusHeadline(number), fields: [{ label: 'Remote', value: `${owner}/${repo}` }] },
+        preview: { headline: t.prStatusHeadline(number), fields: [{ label: t.fieldRemote, value: `${owner}/${repo}` }] },
         resolvedArgs: a
       }
     }
@@ -448,12 +453,12 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
         preview: {
           headline: t.mergePrHeadline(number),
           fields: [
-            { label: 'Remote', value: `${owner}/${repo}` },
+            { label: t.fieldRemote, value: `${owner}/${repo}` },
             { label: 'PR', value: `#${pr.number} [${status}] ${pr.title}` },
             { label: t.sourceTarget, value: `${pr.headRef} -> ${pr.baseRef}` },
             { label: t.mergeable, value: mergeability },
             { label: t.method, value: mergeMethod },
-            { label: 'Commit title', value: a.commit_title || t.githubDefault }
+            { label: t.fieldCommitTitle, value: a.commit_title || t.githubDefault }
           ],
           warning
         },
@@ -489,7 +494,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
         preview: {
           headline: `${eventLabel} — PR #${number}`,
           fields: [
-            { label: 'Remote', value: `${owner}/${repo}` },
+            { label: t.fieldRemote, value: `${owner}/${repo}` },
             { label: 'PR', value: `#${pr.number} ${pr.title}` },
             { label: t.author, value: pr.authorLogin },
             { label: t.reviewType, value: event },
@@ -513,7 +518,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
         preview: {
           headline: t.commentPrHeadline(number),
           fields: [
-            { label: 'Remote', value: `${owner}/${repo}` },
+            { label: t.fieldRemote, value: `${owner}/${repo}` },
             { label: 'PR', value: `#${pr.number} ${pr.title}` },
             { label: t.commentLabel, value: body }
           ],
@@ -540,7 +545,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
         preview: {
           headline: state === 'closed' ? t.closePrHeadline(number) : t.reopenPrHeadline(number),
           fields: [
-            { label: 'Remote', value: `${owner}/${repo}` },
+            { label: t.fieldRemote, value: `${owner}/${repo}` },
             { label: 'PR', value: `#${pr.number} ${pr.title}` },
             { label: t.sourceTarget, value: `${pr.headRef} -> ${pr.baseRef}` }
           ],
@@ -598,7 +603,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
         preview: {
           headline: t.abortHeadline,
           fields: [
-            { label: 'Branch', value: status.branch ?? '?' },
+            { label: t.fieldBranch, value: status.branch ?? '?' },
             { label: t.conflictedFiles(conflicted.length), value: formatFileList(conflicted) }
           ],
           warning: t.abortWarning
@@ -661,7 +666,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
         preview: {
           headline: autoStage ? t.stageCommitHeadline : t.commitStagedHeadline,
           fields: [
-            { label: 'Branch', value: status.branch ?? '?' },
+            { label: t.fieldBranch, value: status.branch ?? '?' },
             { label: filesLabel, value: formatFileList(filesToShow.map((f) => f.path)) },
             { label: t.messageSummary, value: suggestion.summary },
             { label: t.description, value: suggestion.description || t.emptyFeminine }
@@ -692,7 +697,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
         preview: {
           headline: t.undoHeadline(last.shortHash),
           fields: [
-            { label: 'Branch', value: status.branch ?? '?' },
+            { label: t.fieldBranch, value: status.branch ?? '?' },
             { label: 'Commit', value: `${last.shortHash} — ${last.summary}` },
             { label: t.commitFiles(files.length), value: formatFileList(files.map((f) => effectivePath(f.path))) },
             { label: t.command, value: formatCommands(['git reset --soft HEAD~1']) }
@@ -821,7 +826,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
         preview: {
           headline: t.checkIncomingHeadline,
           fields: [
-            { label: 'Branch', value: status.branch ?? '?' },
+            { label: t.fieldBranch, value: status.branch ?? '?' },
             { label: t.operation, value: t.dryRunNote }
           ]
         },
@@ -855,7 +860,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       const current = identity[scope]
       const fields: ToolPreview['fields'] = []
       if (a.name) fields.push({ label: t.name, value: `${current.name ?? t.notConfigured} → ${a.name}` })
-      if (a.email) fields.push({ label: 'Email', value: `${current.email ?? t.notConfigured} → ${a.email}` })
+      if (a.email) fields.push({ label: t.fieldEmail, value: `${current.email ?? t.notConfigured} → ${a.email}` })
       fields.push({ label: t.scope, value: scope === 'local' ? t.scopeLocal : t.scopeGlobal })
       return {
         preview: {
@@ -1011,7 +1016,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
         preview: {
           headline: setUpstream ? t.publishHeadline(branch) : t.pushHeadline(branch),
           fields: [
-            { label: 'Branch', value: branch },
+            { label: t.fieldBranch, value: branch },
             { label: t.status, value: info }
           ],
           warning,
@@ -1066,17 +1071,19 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       const [status, branches] = await Promise.all([window.api.git.status(repoPath), window.api.git.branches(repoPath)])
       const current = status.branch ?? '?'
       if (current.toLowerCase() === target.toLowerCase()) throw new Error(t.alreadyOnBranch(target))
-      if (!branches.some((b) => b.name.toLowerCase() === target.toLowerCase())) {
-        throw new Error(t.branchNotLocal(target))
-      }
+      // The model may get the case wrong ("Main"); switch to the branch's real
+      // name, which is what the user approves on the card.
+      const branch =
+        branches.find((b) => b.name === target) ?? branches.find((b) => b.name.toLowerCase() === target.toLowerCase())
+      if (!branch) throw new Error(t.branchNotLocal(target))
 
       return {
         preview: {
-          headline: t.switchHeadline(target),
+          headline: t.switchHeadline(branch.name),
           fields: [{ label: t.currentBranch, value: current }],
           warning: status.entries.length > 0 ? t.switchDirtyWarning(status.entries.length) : undefined
         },
-        resolvedArgs: a
+        resolvedArgs: { ...a, branch_name: branch.name }
       }
     }
 
@@ -1086,11 +1093,15 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
         resolvedArgs: a
       }
 
-    case 'stash_pop':
+    case 'stash_pop': {
+      // Without a ref, the newest stash — read from git: the store's list is
+      // only loaded once the Stash view or the Dashboard has been opened.
+      const ref = a.stash_ref || (await window.api.git.stashList(await requireCurrentRepo()))[0]?.ref
       return {
-        preview: { headline: t.stashPopHeadline, fields: a.stash_ref ? [{ label: 'Ref', value: a.stash_ref }] : [] },
-        resolvedArgs: a
+        preview: { headline: t.stashPopHeadline, fields: ref ? [{ label: 'Ref', value: ref }] : [] },
+        resolvedArgs: ref ? { ...a, stash_ref: ref } : a
       }
+    }
 
     case 'show_in_history': {
       const g = getT().graphTools
@@ -1215,7 +1226,7 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
           fields: [
             { label: g.tagLabel, value: name },
             { label: 'Commit', value: details ? `${details.shortHash} — ${details.summary}` : tag.shortTarget },
-            { label: 'Remote', value: 'origin' }
+            { label: t.fieldRemote, value: 'origin' }
           ],
           warning: g.pushTagWarning
         },
@@ -1310,9 +1321,12 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string | T
     }
 
     case 'list_pull_requests': {
-      if (a.state) pr.setStateFilter(a.state as 'open' | 'closed' | 'all')
-      await pr.refreshPullRequests()
-      let list = usePullRequestStore.getState().pullRequests
+      // Straight from the API, not through the PR screen's store: that store
+      // uses whatever filter the screen is on (the card promised "open") and
+      // swallows API errors into a stale list. It also must not move the
+      // user's filter.
+      const { host, owner, repo: repoName } = requireGitHubRemote()
+      let list = await window.api.github.listPullRequests(host, owner, repoName, prStateArg(a.state))
       if (a.head_branch) list = list.filter((p) => p.headRef === a.head_branch)
       if (list.length === 0) return t.noPrsFound
       return list.map((p) => `#${p.number} [${p.draft ? 'draft' : p.state}] ${p.title} (${p.headRef} -> ${p.baseRef})`).join('\n')

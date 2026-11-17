@@ -323,7 +323,7 @@ function AiSettingsForm(): JSX.Element | null {
         />
       </Field>
 
-      <Field label="API key" hint={t.apiKeyHint} hintId={apiKeyHintId}>
+      <Field label={t.apiKey} hint={t.apiKeyHint} hintId={apiKeyHintId}>
         <div className="relative">
           <input
             type="password"

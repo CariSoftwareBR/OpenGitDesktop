@@ -26,7 +26,7 @@ const ptBR = {
   commit: {
     heading: 'Commit',
     autoPush: 'Enviar (push) automaticamente após o commit',
-    autoPushHint: 'Ao commitar, envia as alterações para o remoto em seguida, sem precisar clicar em "Push" separadamente.',
+    autoPushHint: 'Ao commitar, envia as alterações para o remoto em seguida, sem precisar clicar em "Enviar origin" separadamente.',
     coAuthor: 'Co-autoria do OpenGitDesktop',
     coAuthorHint:
       'Ativado, cada commit feito pelo app leva o OpenGitDesktop como co-autor. Deixe ligado se quiser apoiar o projeto: é assim que ele aparece no histórico dos repositórios onde é usado.',
@@ -43,7 +43,7 @@ const ptBR = {
     rowHint: 'Move os repositórios que já estão no computador para pasta › conta › repositório. Mostra o que vai mudar antes de mover.',
     open: 'Reorganizar…',
     title: 'Reorganizar repositórios',
-    lead: 'Cada repositório vai para a pasta da conta dona do remote origin. O nome da pasta dele não muda.',
+    lead: 'Cada repositório vai para a pasta da conta dona do remoto origin. O nome da pasta dele não muda.',
     folder: 'Pasta principal',
     noFolder: 'Nenhuma pasta escolhida',
     chooseFolder: 'Escolher pasta…',
@@ -57,7 +57,7 @@ const ptBR = {
     skippedHeading: (n: number) => (n === 1 ? '1 não será movido' : `${n} não serão movidos`),
     reason: {
       noRemote: 'Sem remote origin',
-      unknownOwner: 'Não deu para identificar a conta pelo remote',
+      unknownOwner: 'Não deu para identificar a conta pelo remoto',
       targetExists: 'Já existe uma pasta com esse nome no destino',
       ownerFolderIsRepo: 'A pasta da conta é outro repositório',
       hasWorktrees: 'Tem worktrees ligadas, que parariam de funcionar'
@@ -151,7 +151,7 @@ const en: M = {
   commit: {
     heading: 'Commit',
     autoPush: 'Push automatically after committing',
-    autoPushHint: 'After committing, pushes the changes to the remote right away, without clicking "Push" separately.',
+    autoPushHint: 'After committing, pushes the changes to the remote right away, without clicking "Push origin" separately.',
     coAuthor: 'OpenGitDesktop co-authorship',
     coAuthorHint:
       'When on, every commit made through the app lists OpenGitDesktop as a co-author. Keep it on if you want to support the project: that is how it shows up in the history of the repositories where it is used.',
@@ -273,7 +273,7 @@ const es: M = {
   commit: {
     heading: 'Commit',
     autoPush: 'Enviar (push) automáticamente después del commit',
-    autoPushHint: 'Al hacer commit, envía los cambios al remoto a continuación, sin tener que pulsar "Push" por separado.',
+    autoPushHint: 'Al hacer commit, envía los cambios al remoto a continuación, sin tener que pulsar "Enviar origin" por separado.',
     coAuthor: 'Coautoría de OpenGitDesktop',
     coAuthorHint:
       'Activado, cada commit hecho desde la app incluye a OpenGitDesktop como coautor. Déjalo activado si quieres apoyar el proyecto: así aparece en el historial de los repositorios donde se usa.',
@@ -290,7 +290,7 @@ const es: M = {
     rowHint: 'Mueve los repositorios que ya están en el equipo a carpeta › cuenta › repositorio. Muestra qué cambiará antes de mover.',
     open: 'Reorganizar…',
     title: 'Reorganizar repositorios',
-    lead: 'Cada repositorio va a la carpeta de la cuenta dueña del remote origin. El nombre de su carpeta no cambia.',
+    lead: 'Cada repositorio va a la carpeta de la cuenta dueña del remoto origin. El nombre de su carpeta no cambia.',
     folder: 'Carpeta principal',
     noFolder: 'Ninguna carpeta elegida',
     chooseFolder: 'Elegir carpeta…',
@@ -304,7 +304,7 @@ const es: M = {
     skippedHeading: (n) => (n === 1 ? '1 no se moverá' : `${n} no se moverán`),
     reason: {
       noRemote: 'Sin remote origin',
-      unknownOwner: 'No se pudo identificar la cuenta por el remote',
+      unknownOwner: 'No se pudo identificar la cuenta por el remoto',
       targetExists: 'Ya existe una carpeta con ese nombre en el destino',
       ownerFolderIsRepo: 'La carpeta de la cuenta es otro repositorio',
       hasWorktrees: 'Tiene worktrees vinculados, que dejarían de funcionar'

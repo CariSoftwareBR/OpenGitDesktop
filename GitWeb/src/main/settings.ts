@@ -4,6 +4,7 @@ import {
   DEFAULT_INVESTIGATION_CONTEXT_TOKENS,
   DEFAULT_MAX_DIFF_CHARS,
   SYSTEM_SAMPLING,
+  normalizeMaxDiffChars,
   normalizeReasoningEffort,
   normalizeSampling,
   normalizeSamplingMode,
@@ -139,7 +140,7 @@ export async function getAiSettings(): Promise<AiSettings> {
     // to the system profile instead of breaking.
     samplingMode: normalizeSamplingMode(stored.samplingMode),
     userSampling: normalizeSampling(stored.userSampling),
-    maxDiffChars: typeof stored.maxDiffChars === 'number' ? stored.maxDiffChars : AI_DEFAULTS.maxDiffChars,
+    maxDiffChars: normalizeMaxDiffChars(stored.maxDiffChars),
     investigationConcurrency: clampInteger(stored.investigationConcurrency, 0, 8, AI_DEFAULTS.investigationConcurrency),
     investigationContextTokens: clampInteger(
       stored.investigationContextTokens,
@@ -148,7 +149,12 @@ export async function getAiSettings(): Promise<AiSettings> {
       AI_DEFAULTS.investigationContextTokens
     ),
     reasoningEffort: normalizeReasoningEffort(stored.reasoningEffort),
-    activeProvider: stored.activeProvider ?? AI_DEFAULTS.activeProvider,
+    // An unknown name (hand-edited file, a provider since removed) would make
+    // providers[activeProvider] undefined and break the whole AI area.
+    activeProvider:
+      typeof stored.activeProvider === 'string' && Object.hasOwn(AI_DEFAULTS.providers, stored.activeProvider)
+        ? stored.activeProvider
+        : AI_DEFAULTS.activeProvider,
     providers
   }
 }

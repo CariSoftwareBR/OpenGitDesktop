@@ -376,7 +376,7 @@ describe('detached HEAD and symlink reads', () => {
     try {
       writeFileSync(join(outside, 'secret.txt'), 'secret')
       symlinkSync(outside, join(repo, 'leak'), process.platform === 'win32' ? 'junction' : 'dir')
-      await expect(readRepoFile(repo, 'leak/secret.txt')).rejects.toThrow(/escapes the repository root/)
+      await expect(readRepoFile(repo, 'leak/secret.txt')).rejects.toThrow(/fica fora do repositório/)
     } finally {
       rmSync(outside, { recursive: true, force: true })
     }

@@ -31,8 +31,8 @@ const ptBR = {
     undoParentUnavailable:
       'Não foi possível desfazer o commit: o commit anterior não está disponível neste repositório (clone raso ou histórico truncado).',
     noRemote: 'Repositório sem remote configurado.',
-    fetchFailed: 'Falha ao buscar do remote.',
-    noDefaultBranchDetected: 'Não foi possível determinar o branch padrão do remote.',
+    fetchFailed: 'Falha ao buscar do remoto.',
+    noDefaultBranchDetected: 'Não foi possível determinar a branch padrão do remoto.',
     baseBranchNotFound: (branch: string) => `Branch base "${branch}" não encontrada (nem local, nem em origin).`,
     protectedBranch: (branch: string) => `"${branch}" é uma branch protegida e nunca pode ser apagada pelo assistente.`,
     notALocalBranch: (branch: string) => `"${branch}" não é uma branch local deste repositório.`,
@@ -43,12 +43,12 @@ const ptBR = {
     branchMovedSinceCheck: (branch: string) => `"${branch}" recebeu commits depois da verificação. Tente excluir de novo para ver o estado atual.`,
     behindDefault: (count: number, branch: string) => `${count} commit(s) atrás de origin/${branch}.`,
     noLocalDefaultToAdvance: (branch: string) =>
-      ` Não existe um branch "${branch}" local para avançar — abra o repositório e faça checkout dele, ou um pull no branch atual.`,
+      ` Não existe uma branch "${branch}" local para avançar — abra o repositório e faça checkout dela, ou um pull na branch atual.`,
     localDefaultDivergedDetail: (branch: string, ahead: number, behind: number) =>
-      `"${branch}" local divergiu: ${ahead} commit(s) só seu(s), ${behind} no remote.`,
+      `"${branch}" local divergiu: ${ahead} commit(s) só seu(s), ${behind} no remoto.`,
     upToDateWith: (branch: string) => `Em dia com origin/${branch}.`,
-    noDefaultBranch: 'Sem branch padrão no remote.',
-    noLocalBranch: (branch: string) => `Não existe um branch "${branch}" local.`,
+    noDefaultBranch: 'Sem branch padrão no remoto.',
+    noLocalBranch: (branch: string) => `Não existe uma branch "${branch}" local.`,
     compareFailed: (branch: string) => `Não foi possível comparar com origin/${branch}.`,
     alreadyUpToDate: (branch: string) => `"${branch}" já está em dia.`,
     localDefaultDiverged: (branch: string, ahead: number) => `"${branch}" local divergiu (${ahead} commit(s) só seu(s)).`,
@@ -59,8 +59,8 @@ const ptBR = {
     detachedHead: 'HEAD desanexado',
     advancedWhileOnOther: (branch: string, count: number, current: string) =>
       `"${branch}" avançou ${count} commit(s); você continua em "${current}".`,
-    divergedMergeFailed: 'O branch local divergiu do remoto e o merge falhou. Resolva os conflitos e tente de novo.',
-    divergedRebaseFailed: 'O branch local divergiu do remoto e o rebase falhou. Resolva os conflitos e tente de novo.',
+    divergedMergeFailed: 'A branch local divergiu do remoto e o merge falhou. Resolva os conflitos e tente de novo.',
+    divergedRebaseFailed: 'A branch local divergiu do remoto e o rebase falhou. Resolva os conflitos e tente de novo.',
     historyRewritten:
       'Você reescreveu commits que já estavam no remoto (desfazer ou alterar o último commit). Para publicar, é preciso forçar o push — ele substitui no remoto os commits que você reescreveu.',
     noCommitsYet: 'Este repositório ainda não tem commits.',
@@ -96,6 +96,14 @@ const ptBR = {
       tooMany: 'há commits locais demais (mais de 100).'
     } as Record<string, string>
   },
+  secrets: {
+    encryptionUnavailable: 'A criptografia de segredos do sistema operacional não está disponível neste computador.',
+    decryptFailed: (key: string, reason: string) => `Não foi possível descriptografar o segredo "${key}": ${reason}`
+  },
+  paths: {
+    outsideRepo: (path: string) => `O caminho "${path}" fica fora do repositório.`,
+    gitTimedOut: (command: string, seconds: number) => `O comando git ${command} não respondeu em ${seconds} s e foi interrompido.`
+  },
   shell: {
     fileNotFound: (path: string) => `Arquivo não encontrado: ${path}`
   },
@@ -123,7 +131,7 @@ const ptBR = {
     listModelsFailed: (status: number) => `Não foi possível listar modelos (HTTP ${status}).`
   },
   publish: {
-    hasRemote: 'Este repositório já tem um remote (origin). Use "Publicar branch" para enviá-lo.',
+    hasRemote: 'Este repositório já tem um remoto (origin). Use "Publicar branch" para enviá-lo.',
     initialCommitMessage: 'Commit inicial',
     noCommits: 'Faça o primeiro commit antes de publicar: um repositório sem commits não tem o que enviar.',
     noBranch: 'Não há branch em uso (HEAD destacado). Troque para uma branch antes de publicar.',
@@ -254,6 +262,14 @@ const en: MainMessages = {
       tooFew: 'at least 2 commits that were not pushed yet are needed.',
       tooMany: 'there are too many local commits (more than 100).'
     }
+  },
+  secrets: {
+    encryptionUnavailable: 'OS-level secret encryption is not available on this machine.',
+    decryptFailed: (key, reason) => `Failed to decrypt secret "${key}": ${reason}`
+  },
+  paths: {
+    outsideRepo: (path) => `Path "${path}" escapes the repository root.`,
+    gitTimedOut: (command, seconds) => `git ${command} timed out after ${seconds}s.`
   },
   shell: {
     fileNotFound: (path) => `File not found: ${path}`
@@ -410,6 +426,14 @@ const es: MainMessages = {
       tooFew: 'hacen falta al menos 2 commits que todavía no se enviaron.',
       tooMany: 'hay demasiados commits locales (más de 100).'
     }
+  },
+  secrets: {
+    encryptionUnavailable: 'El cifrado de secretos del sistema operativo no está disponible en este equipo.',
+    decryptFailed: (key, reason) => `No se pudo descifrar el secreto "${key}": ${reason}`
+  },
+  paths: {
+    outsideRepo: (path) => `La ruta "${path}" queda fuera del repositorio.`,
+    gitTimedOut: (command, seconds) => `El comando git ${command} no respondió en ${seconds} s y se interrumpió.`
   },
   shell: {
     fileNotFound: (path) => `Archivo no encontrado: ${path}`

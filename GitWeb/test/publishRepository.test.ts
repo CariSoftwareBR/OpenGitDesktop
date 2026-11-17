@@ -4,10 +4,11 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { sanitizeRepositoryName } from '../src/shared/github'
+import { PROJECT_CO_AUTHOR_TRAILER } from '../src/shared/settings'
 
 vi.mock('electron', () => ({ shell: { trashItem: vi.fn() }, app: { getPath: () => tmpdir() } }))
 vi.mock('../src/main/credentials', () => ({ getSecret: vi.fn(async () => null) }))
-const settings = { sensitiveCheck: true, sensitiveCheckMode: 'block' as 'block' | 'warn' }
+const settings = { sensitiveCheck: true, sensitiveCheckMode: 'block' as 'block' | 'warn', coAuthorProject: false }
 vi.mock('../src/main/settings', () => ({ getSettings: vi.fn(async () => settings) }))
 
 // The GitHub side: "creates" the repository as a local bare repo, so the
@@ -104,6 +105,27 @@ describe('publishRepository', () => {
 describe('createInitialCommit', () => {
   beforeEach(() => {
     settings.sensitiveCheckMode = 'block'
+    settings.coAuthorProject = false
+  })
+
+  it('credits the project like every other commit when the setting is on', async () => {
+    const repo = makeRepo()
+    try {
+      await createInitialCommit(repo.dir)
+      expect(repo.git('log', '-1', '--format=%B')).not.toContain(PROJECT_CO_AUTHOR_TRAILER)
+    } finally {
+      rmSync(repo.dir, { recursive: true, force: true })
+    }
+
+    settings.coAuthorProject = true
+    const credited = makeRepo()
+    try {
+      await createInitialCommit(credited.dir)
+      expect(credited.git('log', '-1', '--format=%s')).toBe('Commit inicial')
+      expect(credited.git('log', '-1', '--format=%B')).toContain(PROJECT_CO_AUTHOR_TRAILER)
+    } finally {
+      rmSync(credited.dir, { recursive: true, force: true })
+    }
   })
 
   it('adds a README to an empty folder, commits the files of a non-empty one, and leaves an existing history alone', async () => {
