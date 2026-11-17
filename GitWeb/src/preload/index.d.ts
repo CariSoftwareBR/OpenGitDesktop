@@ -42,6 +42,11 @@ import type { DeviceFlowPollResult, DeviceFlowStart, OAuthAppInfo } from '../sha
 import type {
   BranchRules,
   CreatePullRequestInput,
+  ForkInput,
+  ForkResult,
+  ForkSource,
+  UpstreamStatus,
+  UpstreamSyncResult,
   GitHubRepoSummary,
   GitHubUser,
   MergeMethod,
@@ -83,6 +88,13 @@ export interface Api {
     initialCommit: (cwd: string) => Promise<void>
     clone: (url: string, destination: string) => Promise<CloneOutcome>
     cancelClone: (destination: string) => Promise<void>
+    /** Adds the original of a fork as the `upstream` remote and fetches it; an existing `upstream` is left alone. */
+    addUpstreamRemote: (cwd: string, url: string, branch?: string) => Promise<void>
+    /** A fork's clone against its original, from the last fetch; null without an `upstream` remote. */
+    upstreamStatus: (cwd: string) => Promise<UpstreamStatus | null>
+    fetchUpstream: (cwd: string) => Promise<void>
+    /** Brings the original's new commits into the local main branch (fast-forward only) and pushes it to origin. */
+    syncWithUpstream: (cwd: string) => Promise<UpstreamSyncResult>
     onCloneProgress: (callback: (progress: CloneProgress) => void) => () => void
     status: (cwd: string) => Promise<RepoStatus>
     stage: (paths: string[], cwd: string) => Promise<void>
@@ -202,6 +214,10 @@ export interface Api {
 
     listUserRepos: (host: string) => Promise<GitHubRepoSummary[]>
     listRepositoryOwners: (host: string) => Promise<RepositoryOwner[]>
+    /** The repository to fork, with a fork the account already has (if any). */
+    getForkSource: (host: string, owner: string, repo: string) => Promise<ForkSource>
+    /** Creates the fork and resolves once GitHub has copied it, so it can be cloned. */
+    forkRepository: (host: string, owner: string, repo: string, input: ForkInput) => Promise<ForkResult>
     /** Creates the repo on github.com, adds it as origin and pushes the current branch. */
     publishRepository: (cwd: string, input: PublishRepositoryInput) => Promise<PublishRepositoryResult>
     listUserReposWithToken: (host: string, token: string) => Promise<GitHubRepoSummary[]>

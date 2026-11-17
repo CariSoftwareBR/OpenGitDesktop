@@ -4,6 +4,10 @@ import {
   getConflictDiff3,
   applyPatch,
   applyStash,
+  addUpstreamRemote,
+  fetchUpstream,
+  getUpstreamStatus,
+  syncWithUpstream,
   cancelClone,
   cloneRepository,
   commit,
@@ -86,7 +90,7 @@ import { saveSecret, getSecret, deleteSecret } from './credentials'
 import { startDeviceFlow, pollDeviceFlow, cancelDeviceFlow, getOAuthAppInfo } from './githubDeviceFlow'
 import * as githubApi from './githubApi'
 import { isAppOrigin } from './security'
-import type { CreatePullRequestInput, MergeMethod, PublishRepositoryInput, PullRequestState, RepositoryRole } from '../shared/github'
+import type { CreatePullRequestInput, ForkInput, MergeMethod, PublishRepositoryInput, PullRequestState, RepositoryRole } from '../shared/github'
 import { openDirectoryDialog } from './dialogs'
 import {
   addRecentRepositories,
@@ -203,6 +207,10 @@ export function registerIpcHandlers(): void {
     })
   )
   handle('git:cancelClone', (_e, destination: string) => cancelClone(destination))
+  handle('git:addUpstreamRemote', (_e, cwd: string, url: string, branch?: string) => addUpstreamRemote(cwd, url, branch))
+  handle('git:upstreamStatus', (_e, cwd: string) => getUpstreamStatus(cwd))
+  handle('git:fetchUpstream', (_e, cwd: string) => fetchUpstream(cwd))
+  handle('git:syncWithUpstream', (_e, cwd: string) => syncWithUpstream(cwd))
   handle('git:status', (_e, cwd: string) => getStatus(cwd))
   handle('git:stage', (_e, paths: string[], cwd: string) => stageFiles(paths, cwd))
   handle('git:unstage', (_e, paths: string[], cwd: string) => unstageFiles(paths, cwd))
@@ -378,6 +386,10 @@ export function registerIpcHandlers(): void {
 
   handle('github:listUserRepos', (_e, host: string) => githubApi.listUserRepos(host))
   handle('github:listRepositoryOwners', (_e, host: string) => githubApi.listRepositoryOwners(host))
+  handle('github:getForkSource', (_e, host: string, owner: string, repo: string) => githubApi.getForkSource(host, owner, repo))
+  handle('github:forkRepository', (_e, host: string, owner: string, repo: string, input: ForkInput) =>
+    githubApi.forkRepository(host, owner, repo, input)
+  )
   handle('github:publishRepository', (_e, cwd: string, input: PublishRepositoryInput) => publishRepository(cwd, input))
   handle('github:listUserReposWithToken', (_e, host: string, token: string) =>
     githubApi.listUserReposWithToken(host, token)

@@ -6,6 +6,10 @@ import type {
   AddCollaboratorResult,
   BranchRules,
   CreatePullRequestInput,
+  ForkedRepository,
+  ForkInput,
+  ForkResult,
+  ForkSource,
   GitHubRepoSummary,
   GitHubNotification,
   GitHubUser,
@@ -730,6 +734,111 @@ export async function createRepository(
     })
   })
   return { fullName: repo.full_name, htmlUrl: repo.html_url ?? `https://${host}/${repo.full_name}`, cloneUrl: repo.clone_url }
+}
+
+// --- Forks --------------------------------------------------------------------
+
+interface ApiForkableRepo extends ApiRepo {
+  html_url: string
+  default_branch: string
+  stargazers_count?: number
+  forks_count?: number
+  /** In KB; 0 for a repository with no commits. */
+  size?: number
+  permissions?: { push?: boolean }
+  parent?: { full_name: string }
+}
+
+function toForked(repo: ApiRepo, host: string): ForkedRepository {
+  return {
+    owner: repo.owner.login,
+    name: repo.name,
+    fullName: repo.full_name,
+    cloneUrl: repo.clone_url,
+    htmlUrl: repo.html_url ?? `https://${host}/${repo.full_name}`
+  }
+}
+
+/**
+ * The repository to fork, plus what the dialog needs to say about it: whether
+ * the account owns it or can already push, and a fork the account already has
+ * under its login (GitHub would hand that one back instead of a new copy).
+ */
+export async function getForkSource(host: string, owner: string, repo: string): Promise<ForkSource> {
+  const token = await requireToken(host)
+  const [source, me] = await Promise.all([
+    request<ApiForkableRepo>(host, repositoryPath(owner, repo), token).catch((err: unknown) => {
+      if (err instanceof GitHubApiError && err.status === 404) throw new Error(tMain().github.forkSourceNotFound(`${owner}/${repo}`))
+      throw err
+    }),
+    request<ApiUser>(host, '/user', token)
+  ])
+  const ownedByViewer = source.owner.login.toLowerCase() === me.login.toLowerCase()
+
+  let existingFork: ForkedRepository | null = null
+  if (!ownedByViewer) {
+    const mine = await request<ApiForkableRepo>(host, repositoryPath(me.login, source.name), token).catch(() => null)
+    if (mine?.fork && mine.parent?.full_name.toLowerCase() === source.full_name.toLowerCase()) existingFork = toForked(mine, host)
+  }
+
+  return {
+    owner: source.owner.login,
+    name: source.name,
+    fullName: source.full_name,
+    description: source.description ?? null,
+    htmlUrl: source.html_url,
+    cloneUrl: source.clone_url,
+    defaultBranch: source.default_branch,
+    stars: source.stargazers_count ?? 0,
+    forks: source.forks_count ?? 0,
+    private: source.private,
+    archived: Boolean(source.archived),
+    parentFullName: source.parent?.full_name ?? null,
+    canPush: Boolean(source.permissions?.push),
+    ownedByViewer,
+    viewerLogin: me.login,
+    existingFork
+  }
+}
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * POST /repos/{owner}/{repo}/forks, then waits for the copy. GitHub answers
+ * 202 at once and copies the git data in the background; cloning before it
+ * finishes gets an empty repository. The fork is ready once it has a branch
+ * — skipped for a source with no commits, which never gets one.
+ */
+export async function forkRepository(
+  host: string,
+  owner: string,
+  repo: string,
+  input: ForkInput,
+  timing: { pollMs?: number; timeoutMs?: number } = {}
+): Promise<ForkResult> {
+  const { pollMs = 2000, timeoutMs = 120_000 } = timing
+  const token = await requireToken(host)
+  const source = await request<ApiForkableRepo>(host, repositoryPath(owner, repo), token)
+  const fork = await request<ApiForkableRepo>(host, `${repositoryPath(owner, repo)}/forks`, token, {
+    method: 'POST',
+    body: JSON.stringify({ organization: input.organization || undefined, default_branch_only: input.defaultBranchOnly })
+  })
+  const result: ForkResult = { ...toForked(fork, host), upstreamCloneUrl: source.clone_url, upstreamDefaultBranch: source.default_branch }
+  if (source.size === 0) return result
+
+  const branchesPath = `${repositoryPath(fork.owner.login, fork.name)}/branches?per_page=1`
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    // 404 (not there yet) or 409 (still empty) while GitHub copies it: keep
+    // waiting. Anything else — a dead token, no network — is a real failure.
+    const branches = await request<unknown[]>(host, branchesPath, token).catch((err: unknown) => {
+      if (err instanceof GitHubApiError && (err.status === 404 || err.status === 409)) return []
+      throw err
+    })
+    if (branches.length > 0) return result
+    if (Date.now() >= deadline) throw new Error(tMain().github.forkNotReady(result.htmlUrl))
+    await sleep(pollMs)
+  }
 }
 
 // --- Collaborators ------------------------------------------------------------

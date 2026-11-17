@@ -114,7 +114,8 @@ interface RepoState {
   /** Set by "create and publish": the top bar opens the publish dialog once the repo is open. */
   publishPrompt: boolean
   clearPublishPrompt: () => void
-  cloneRepository: (url: string, destination: string) => Promise<'ok' | 'cancelled' | 'failed'>
+  /** With `upstreamUrl` (a fork's original), adds it as the `upstream` remote before opening. */
+  cloneRepository: (url: string, destination: string, options?: { upstreamUrl?: string; upstreamBranch?: string }) => Promise<'ok' | 'cancelled' | 'failed'>
   cancelClone: (destination: string) => Promise<void>
   reorganizeRepositories: (rootPath: string, confirmedMoves: RepoMove[]) => Promise<ReorganizeResult>
   closeRepository: () => void
@@ -496,7 +497,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
   publishPrompt: false,
   clearPublishPrompt: () => set({ publishPrompt: false }),
 
-  cloneRepository: async (url: string, destination: string) => {
+  cloneRepository: async (url: string, destination: string, options?: { upstreamUrl?: string; upstreamBranch?: string }) => {
     set({ isBusy: true, error: null })
     try {
       const outcome = await window.api.git.clone(url, destination)
@@ -507,9 +508,21 @@ export const useRepoStore = create<RepoState>((set, get) => ({
         set({ isBusy: false })
         return 'cancelled'
       }
+      // A fork's clone: link the original before opening, so its branches are
+      // in the first branch list. The clone itself worked either way, so a
+      // failure here opens the repository and says what is missing.
+      let upstreamError: string | null = null
+      if (options?.upstreamUrl) {
+        await window.api.git.addUpstreamRemote(destination, options.upstreamUrl, options.upstreamBranch).catch((err: unknown) => {
+          upstreamError = describeError(err)
+        })
+      }
       await get().openRepository(destination)
       // A clone is a full fetch — "never fetched" would be wrong right after it.
-      if (get().currentRepoPath === destination) set({ lastFetchedAt: Date.now() })
+      if (get().currentRepoPath === destination) {
+        set({ lastFetchedAt: Date.now() })
+        if (upstreamError) set({ error: getT().clone.upstreamFailed(upstreamError) })
+      }
       return 'ok'
     } catch (err) {
       set({ error: describeError(err), isBusy: false })

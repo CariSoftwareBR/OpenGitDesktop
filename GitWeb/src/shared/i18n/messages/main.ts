@@ -18,6 +18,10 @@ const ptBR = {
       newBranchName: 'Novo nome de branch'
     },
     optionLikeValue: (label: string) => `${label} inválido: não pode começar com "-".`,
+    upstreamMissing: 'Este repositório não tem o remoto upstream (o original de um fork), ou ele ainda não foi buscado.',
+    upstreamNoLocalBranch: (branch: string) => `Não há um branch ${branch} local para receber as novidades do original. Crie-o a partir de upstream/${branch}.`,
+    upstreamDiverged: (branch: string, ahead: number, behind: number) =>
+      `O seu ${branch} tem ${ahead} commit(s) que o original não tem, e o original tem ${behind} novo(s). Para não misturar sem você ver, o app não juntou os dois: faça o merge de upstream/${branch} no seu ${branch} pelo Histórico ou pelo menu de branches.`,
     gitNotFound: 'Não encontrei o Git. Verifique se ele está instalado e reabra o programa.',
     folderMissing: (path: string) =>
       `A pasta "${path}" não existe mais. Ela pode ter sido movida, renomeada ou apagada.`,
@@ -157,7 +161,10 @@ const ptBR = {
     deviceFlowPollFailed: (status: number, detail: string) =>
       `GitHub respondeu ${status} ao consultar o token${detail ? `: ${detail}` : ''}.`,
     loginExpired: 'Login expirado. Comece de novo.',
-    unknownError: 'Erro desconhecido do GitHub.'
+    unknownError: 'Erro desconhecido do GitHub.',
+    forkSourceNotFound: (name: string) => `O GitHub não encontrou ${name}, ou sua conta não tem acesso a ele.`,
+    forkNotReady: (url: string) =>
+      `O fork foi criado (${url}), mas o GitHub ainda está copiando o repositório. Espere um pouco e clone pela aba GitHub.`
   },
   updater: {
     releasesUnavailable: (repo: string) =>
@@ -185,6 +192,10 @@ const en: MainMessages = {
       newBranchName: 'New branch name'
     },
     optionLikeValue: (label) => `Invalid ${label.toLowerCase()}: it cannot start with "-".`,
+    upstreamMissing: "This repository has no upstream remote (a fork's original), or it hasn't been fetched yet.",
+    upstreamNoLocalBranch: (branch) => `There is no local ${branch} branch to receive the original's updates. Create it from upstream/${branch}.`,
+    upstreamDiverged: (branch, ahead, behind) =>
+      `Your ${branch} has ${ahead} commit(s) the original doesn't, and the original has ${behind} new one(s). So nothing gets mixed without you seeing it, the app didn't combine them: merge upstream/${branch} into your ${branch} from History or the branch menu.`,
     gitNotFound: "Couldn't find Git. Make sure it is installed and reopen the app.",
     folderMissing: (path) => `The folder "${path}" no longer exists. It may have been moved, renamed or deleted.`,
     labels: {
@@ -322,7 +333,10 @@ const en: MainMessages = {
     deviceFlowPollFailed: (status, detail) =>
       `GitHub responded ${status} when checking the token${detail ? `: ${detail}` : ''}.`,
     loginExpired: 'Sign-in expired. Start again.',
-    unknownError: 'Unknown GitHub error.'
+    unknownError: 'Unknown GitHub error.',
+    forkSourceNotFound: (name) => `GitHub couldn't find ${name}, or your account can't see it.`,
+    forkNotReady: (url) =>
+      `The fork was created (${url}), but GitHub is still copying the repository. Wait a moment and clone it from the GitHub tab.`
   },
   updater: {
     releasesUnavailable: (repo) =>
@@ -348,6 +362,10 @@ const es: MainMessages = {
       newBranchName: 'Nuevo nombre de rama'
     },
     optionLikeValue: (label) => `${label} no válido: no puede empezar con "-".`,
+    upstreamMissing: 'Este repositorio no tiene el remoto upstream (el original de un fork), o todavía no se descargó.',
+    upstreamNoLocalBranch: (branch) => `No hay una rama ${branch} local para recibir las novedades del original. Créala a partir de upstream/${branch}.`,
+    upstreamDiverged: (branch, ahead, behind) =>
+      `Tu ${branch} tiene ${ahead} commit(s) que el original no tiene, y el original tiene ${behind} nuevo(s). Para no mezclar sin que lo veas, la app no los combinó: haz merge de upstream/${branch} en tu ${branch} desde el Historial o el menú de ramas.`,
     gitNotFound: 'No encontré Git. Comprueba que esté instalado y vuelve a abrir el programa.',
     folderMissing: (path) => `La carpeta "${path}" ya no existe. Puede que se haya movido, renombrado o eliminado.`,
     labels: {
@@ -486,7 +504,10 @@ const es: MainMessages = {
     deviceFlowPollFailed: (status, detail) =>
       `GitHub respondió ${status} al consultar el token${detail ? `: ${detail}` : ''}.`,
     loginExpired: 'El inicio de sesión expiró. Empieza de nuevo.',
-    unknownError: 'Error desconocido de GitHub.'
+    unknownError: 'Error desconocido de GitHub.',
+    forkSourceNotFound: (name) => `GitHub no encontró ${name}, o tu cuenta no tiene acceso.`,
+    forkNotReady: (url) =>
+      `El fork se creó (${url}), pero GitHub todavía está copiando el repositorio. Espera un poco y clónalo desde la pestaña GitHub.`
   },
   updater: {
     releasesUnavailable: (repo) =>

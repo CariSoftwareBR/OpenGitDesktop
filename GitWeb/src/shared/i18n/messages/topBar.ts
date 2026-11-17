@@ -93,7 +93,31 @@ const ptBR = {
   },
   backToRecents: 'Voltar para recentes',
   repoBranchSync: 'Repositório, branch e sincronização',
-  repoViews: 'Visões do repositório'
+  repoViews: 'Visões do repositório',
+  upstreamUpToDate: 'Original em dia',
+  upstreamBehind: (count: number) => `Trazer do original (${count})`,
+  upstreamDivergedLabel: (count: number) => `Original: ${count} novo${count === 1 ? '' : 's'}`,
+  upstreamDivergedHint: (branch: string) => `seu ${branch} tem commits próprios`,
+  upstreamFrom: (name: string) => `upstream · ${name}`,
+  upstreamChecking: 'Verificando o original…',
+  upstreamTitle: (name: string) => `upstream é o repositório original de onde veio este fork (${name}). Clique para ver se há novidades nele.`,
+  upstreamSyncTitle: 'Trazer as novidades do original',
+  upstreamSyncMessage: (name: string, count: number, branch: string) =>
+    `O original (${name}) tem ${count} commit${count === 1 ? '' : 's'} que o seu ${branch} ainda não tem.`,
+  upstreamExplain: (name: string) =>
+    `O seu fork é uma cópia de ${name} feita num momento. Depois disso o original continua recebendo commits; trazer as novidades deixa a sua cópia em dia com ele.`,
+  upstreamStepsAria: 'O que vai acontecer',
+  upstreamStepBring: (branch: string) => `Os commits novos entram no seu ${branch} local. Nada seu é apagado.`,
+  upstreamStepPush: (branch: string) => `O ${branch} atualizado é enviado para o seu fork no GitHub (origin).`,
+  upstreamRunning: 'Trazendo as novidades e enviando ao seu fork…',
+  upstreamSyncConfirm: 'Trazer novidades',
+  upstreamNothingNew: 'O original não tem nada novo: o seu fork já está em dia.',
+  upstreamSynced: (count: number, branch: string) =>
+    `Pronto: ${count} commit${count === 1 ? '' : 's'} do original entr${count === 1 ? 'ou' : 'aram'} no seu ${branch} e o seu fork no GitHub foi atualizado.`,
+  upstreamSyncedLocalOnly: (count: number, branch: string, reason: string) =>
+    `${count} commit${count === 1 ? '' : 's'} do original entr${count === 1 ? 'ou' : 'aram'} no seu ${branch} local, mas o envio para o seu fork falhou: ${reason}`,
+  upstreamSyncedNoOrigin: (count: number, branch: string) =>
+    `${count} commit${count === 1 ? '' : 's'} do original entr${count === 1 ? 'ou' : 'aram'} no seu ${branch}. Este repositório não tem origin para onde enviar.`
 }
 
 type M = typeof ptBR
@@ -188,7 +212,29 @@ const en: M = {
   },
   backToRecents: 'Back to recents',
   repoBranchSync: 'Repository, branch and sync',
-  repoViews: 'Repository views'
+  repoViews: 'Repository views',
+  upstreamUpToDate: 'Original up to date',
+  upstreamBehind: (count) => `Bring in from original (${count})`,
+  upstreamDivergedLabel: (count) => `Original: ${count} new`,
+  upstreamDivergedHint: (branch) => `your ${branch} has its own commits`,
+  upstreamFrom: (name) => `upstream · ${name}`,
+  upstreamChecking: 'Checking the original…',
+  upstreamTitle: (name) => `upstream is the original repository this fork came from (${name}). Click to check it for updates.`,
+  upstreamSyncTitle: "Bring in the original's updates",
+  upstreamSyncMessage: (name, count, branch) => `The original (${name}) has ${count} commit${count === 1 ? '' : 's'} your ${branch} doesn't have yet.`,
+  upstreamExplain: (name) =>
+    `Your fork is a copy of ${name} taken at one point in time. The original keeps getting commits; bringing them in keeps your copy up to date with it.`,
+  upstreamStepsAria: 'What will happen',
+  upstreamStepBring: (branch) => `The new commits go into your local ${branch}. Nothing of yours is deleted.`,
+  upstreamStepPush: (branch) => `The updated ${branch} is pushed to your fork on GitHub (origin).`,
+  upstreamRunning: 'Bringing in the updates and pushing to your fork…',
+  upstreamSyncConfirm: 'Bring in updates',
+  upstreamNothingNew: 'The original has nothing new: your fork is already up to date.',
+  upstreamSynced: (count, branch) => `Done: ${count} commit${count === 1 ? '' : 's'} from the original went into your ${branch} and your fork on GitHub was updated.`,
+  upstreamSyncedLocalOnly: (count, branch, reason) =>
+    `${count} commit${count === 1 ? '' : 's'} from the original went into your local ${branch}, but pushing to your fork failed: ${reason}`,
+  upstreamSyncedNoOrigin: (count, branch) =>
+    `${count} commit${count === 1 ? '' : 's'} from the original went into your ${branch}. This repository has no origin to push to.`
 }
 
 const es: M = {
@@ -281,7 +327,29 @@ const es: M = {
   },
   backToRecents: 'Volver a recientes',
   repoBranchSync: 'Repositorio, rama y sincronización',
-  repoViews: 'Vistas del repositorio'
+  repoViews: 'Vistas del repositorio',
+  upstreamUpToDate: 'Original al día',
+  upstreamBehind: (count) => `Traer del original (${count})`,
+  upstreamDivergedLabel: (count) => `Original: ${count} nuevo${count === 1 ? '' : 's'}`,
+  upstreamDivergedHint: (branch) => `tu ${branch} tiene commits propios`,
+  upstreamFrom: (name) => `upstream · ${name}`,
+  upstreamChecking: 'Revisando el original…',
+  upstreamTitle: (name) => `upstream es el repositorio original del que salió este fork (${name}). Haz clic para ver si tiene novedades.`,
+  upstreamSyncTitle: 'Traer las novedades del original',
+  upstreamSyncMessage: (name, count, branch) => `El original (${name}) tiene ${count} commit${count === 1 ? '' : 's'} que tu ${branch} todavía no tiene.`,
+  upstreamExplain: (name) =>
+    `Tu fork es una copia de ${name} hecha en un momento. El original sigue recibiendo commits; traer las novedades mantiene tu copia al día con él.`,
+  upstreamStepsAria: 'Lo que va a pasar',
+  upstreamStepBring: (branch) => `Los commits nuevos entran en tu ${branch} local. No se borra nada tuyo.`,
+  upstreamStepPush: (branch) => `El ${branch} actualizado se envía a tu fork en GitHub (origin).`,
+  upstreamRunning: 'Trayendo las novedades y enviándolas a tu fork…',
+  upstreamSyncConfirm: 'Traer novedades',
+  upstreamNothingNew: 'El original no tiene nada nuevo: tu fork ya está al día.',
+  upstreamSynced: (count, branch) => `Listo: ${count} commit${count === 1 ? '' : 's'} del original entraron en tu ${branch} y tu fork en GitHub se actualizó.`,
+  upstreamSyncedLocalOnly: (count, branch, reason) =>
+    `${count} commit${count === 1 ? '' : 's'} del original entraron en tu ${branch} local, pero el envío a tu fork falló: ${reason}`,
+  upstreamSyncedNoOrigin: (count, branch) =>
+    `${count} commit${count === 1 ? '' : 's'} del original entraron en tu ${branch}. Este repositorio no tiene origin al que enviar.`
 }
 
 export default { 'pt-BR': ptBR, en, es }

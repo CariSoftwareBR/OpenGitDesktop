@@ -383,6 +383,10 @@ function installBrowserApiStub(): void {
       initialCommit: async () => undefined,
       clone: async () => ({ status: 'ok' as const }),
       cancelClone: async () => undefined,
+      addUpstreamRemote: async () => undefined,
+      upstreamStatus: async () => null,
+      fetchUpstream: async () => undefined,
+      syncWithUpstream: async () => ({ branch: 'main', brought: 0, pushed: false }),
       onCloneProgress: () => () => undefined,
       status: async () => demoStatus,
       stage: async () => undefined,
@@ -574,6 +578,12 @@ function installBrowserApiStub(): void {
       logout: async () => undefined,
 
       listRepositoryOwners: async () => [{ login: 'demo', kind: 'user' as const, avatarUrl: '' }],
+      getForkSource: async () => {
+        throw new Error('GitHub indisponível na pré-visualização do navegador.')
+      },
+      forkRepository: async () => {
+        throw new Error('GitHub indisponível na pré-visualização do navegador.')
+      },
       publishRepository: async (_cwd: string, input: { owner: string; name: string }) => ({
         fullName: `${input.owner}/${input.name}`,
         htmlUrl: `https://github.com/${input.owner}/${input.name}`,

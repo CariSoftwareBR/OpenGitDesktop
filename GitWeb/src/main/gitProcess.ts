@@ -42,6 +42,7 @@ import type {
 import { parseCheckoutBlockers } from '../shared/git'
 import { parseBlamePorcelain, parseBranchOverview, parseChurnLog, parseDecorations, parseNumstatZ, sumNumstat, validateRebasePlan } from '../shared/gitParsing'
 import { parseGitHubRemote, credentialKey } from '../shared/githubRemote'
+import type { UpstreamStatus, UpstreamSyncResult } from '../shared/github'
 import { getSecret } from './credentials'
 import { tMain } from './i18n'
 
@@ -401,6 +402,103 @@ export async function cancelClone(destination: string): Promise<void> {
   cancelledClones.add(key)
   const child = activeClones.get(key)
   if (child) killProcessTree(child)
+}
+
+/**
+ * Links a fork's clone to the repository it came from: `upstream`, the name
+ * GitHub's own docs and most tools expect, then fetches it so its branches
+ * show up. An `upstream` the clone already has is the user's and is kept.
+ */
+export async function addUpstreamRemote(cwd: string, url: string, branch?: string): Promise<void> {
+  const trimmed = url.trim()
+  assertSafeCloneUrl(trimmed)
+  if (branch) assertNotOption(branch, tMain().git.labels.branchName)
+  if (await getRemoteUrl(cwd, 'upstream')) return
+  // Only the original's main branch: that is what a fork keeps in step with,
+  // and a busy project's hundreds of branches would flood the branch menu.
+  const add = branch ? ['remote', 'add', '-t', branch, 'upstream', trimmed] : ['remote', 'add', 'upstream', trimmed]
+  throwOnFailure(await runGit(add, cwd), ['remote', 'add', 'upstream'])
+  await fetchUpstream(cwd)
+  // Records which branch is the original's main one (needs the fetched ref).
+  if (branch) throwOnFailure(await runGit(['remote', 'set-head', 'upstream', branch], cwd), ['remote', 'set-head'])
+}
+
+/** Fetches the `upstream` remote, with the stored GitHub token when it is a GitHub HTTPS URL. */
+export async function fetchUpstream(cwd: string): Promise<void> {
+  const url = await getRemoteUrl(cwd, 'upstream')
+  if (!url) return
+  const extraEnv = await buildAuthEnv(url)
+  throwOnFailure(await runGit(['fetch', '--prune', 'upstream'], cwd, { extraEnv }), ['fetch', 'upstream'])
+}
+
+/**
+ * The original's main branch: what `upstream/HEAD` points at, else the first
+ * of main/master the remote has. Null when upstream was never fetched.
+ */
+async function upstreamBranch(cwd: string): Promise<string | null> {
+  const head = await readGit(['symbolic-ref', '--short', 'refs/remotes/upstream/HEAD'], cwd)
+  const named = head.exitCode === 0 ? head.stdout.trim().replace(/^upstream\//, '') : ''
+  if (named && (await refExists(cwd, `refs/remotes/upstream/${named}`))) return named
+  for (const candidate of ['main', 'master']) {
+    if (await refExists(cwd, `refs/remotes/upstream/${candidate}`)) return candidate
+  }
+  return null
+}
+
+/**
+ * How the local copy of the original's main branch compares with it, from
+ * what was last fetched (no network). Null when there is no `upstream` remote
+ * or it was never fetched.
+ */
+export async function getUpstreamStatus(cwd: string): Promise<UpstreamStatus | null> {
+  const url = await getRemoteUrl(cwd, 'upstream')
+  if (!url) return null
+  const branch = await upstreamBranch(cwd)
+  if (!branch) return null
+  const github = parseGitHubRemote(url)
+  const fullName = github ? `${github.owner}/${github.repo}` : null
+
+  const hasLocalBranch = await refExists(cwd, `refs/heads/${branch}`)
+  if (!hasLocalBranch) return { url, fullName, branch, behind: 0, ahead: 0, hasLocalBranch }
+  const counts = await readGit(['rev-list', '--left-right', '--count', `refs/heads/${branch}...refs/remotes/upstream/${branch}`], cwd)
+  throwOnFailure(counts, ['rev-list'])
+  const [ahead, behind] = counts.stdout.trim().split(/\s+/).map(Number)
+  return { url, fullName, branch, behind: behind || 0, ahead: ahead || 0, hasLocalBranch }
+}
+
+/**
+ * GitHub's "Sync fork", done locally: fetches the original, moves the local
+ * main branch forward to it, then sends it to the fork (origin). Only a fast-
+ * forward: when the local branch has commits of its own, nothing is merged
+ * and the user decides. A failed send keeps the local update.
+ */
+export async function syncWithUpstream(cwd: string): Promise<UpstreamSyncResult> {
+  await fetchUpstream(cwd)
+  const status = await getUpstreamStatus(cwd)
+  if (!status) throw new Error(tMain().git.upstreamMissing)
+  const { branch, behind, ahead } = status
+  if (!status.hasLocalBranch) throw new Error(tMain().git.upstreamNoLocalBranch(branch))
+  if (behind === 0) return { branch, brought: 0, pushed: false }
+  if (ahead > 0) throw new Error(tMain().git.upstreamDiverged(branch, ahead, behind))
+
+  const remoteRef = `refs/remotes/upstream/${branch}`
+  const current = await readGit(['symbolic-ref', '--quiet', '--short', 'HEAD'], cwd)
+  if (current.exitCode === 0 && current.stdout.trim() === branch) {
+    // Checked out: a fast-forward merge also updates the files, and git
+    // refuses it if that would overwrite local changes.
+    throwOnFailure(await runGit(['merge', '--ff-only', remoteRef], cwd), ['merge', '--ff-only'])
+  } else {
+    // Not checked out: move the branch without touching the working tree.
+    // A fetch into a branch refuses anything but a fast-forward.
+    throwOnFailure(await runGit(['fetch', '.', `${remoteRef}:refs/heads/${branch}`], cwd), ['fetch', '.'])
+  }
+
+  const origin = await getRemoteUrl(cwd)
+  if (!origin) return { branch, brought: behind, pushed: false }
+  const extraEnv = await buildAuthEnv(origin)
+  const push = await runGit(['push', 'origin', `refs/heads/${branch}:refs/heads/${branch}`], cwd, { extraEnv })
+  if (push.exitCode === 0) return { branch, brought: behind, pushed: true }
+  return { branch, brought: behind, pushed: false, pushError: (push.stderr || push.stdout).trim() }
 }
 
 // Parses `git status --porcelain=v1 -z` (NUL-delimited, no quoting/escaping

@@ -275,3 +275,115 @@ export interface PullRequestReviewCommentInput {
   body: string
   line: number
 }
+
+// --- Forks --------------------------------------------------------------------
+
+export interface ForkTarget {
+  owner: string
+  name: string
+}
+
+const GITHUB_OWNER = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/
+const GITHUB_REPO = /^[\w.-]{1,100}$/
+
+function forkTarget(owner: string | undefined, name: string | undefined): ForkTarget | null {
+  const repo = name?.replace(/\.git$/i, '')
+  if (!owner || !repo || !GITHUB_OWNER.test(owner) || !GITHUB_REPO.test(repo) || repo === '.' || repo === '..') return null
+  return { owner, name: repo }
+}
+
+/**
+ * The github.com repository in what someone pasted: "owner/repo", a clone URL
+ * (HTTPS or SSH) or a page URL copied from the browser, which may go on past
+ * the repository (`/tree/main`, `/issues/3`). Other hosts give null: the fork
+ * is made with the github.com session.
+ */
+export function parseForkTarget(input: string): ForkTarget | null {
+  const text = input.trim()
+  const short = /^([^/\s:]+)\/([^/\s]+?)\/?$/.exec(text)
+  if (short) return forkTarget(short[1], short[2])
+
+  const ssh = /^(?:ssh:\/\/)?git@github\.com[:/]([^/]+)\/([^/\s]+?)\/?$/i.exec(text)
+  if (ssh) return forkTarget(ssh[1], ssh[2])
+
+  try {
+    const url = new URL(/^[a-z]+:\/\//i.test(text) ? text : `https://${text}`)
+    if (!/^https?:$/.test(url.protocol)) return null
+    if (!/^(?:www\.)?github\.com$/i.test(url.hostname)) return null
+    const [owner, name] = url.pathname.split('/').filter(Boolean)
+    return forkTarget(owner, name)
+  } catch {
+    return null
+  }
+}
+
+export interface ForkSource {
+  owner: string
+  name: string
+  fullName: string
+  description: string | null
+  htmlUrl: string
+  cloneUrl: string
+  defaultBranch: string
+  stars: number
+  forks: number
+  private: boolean
+  archived: boolean
+  /** The repository is itself a fork of this one ("owner/repo"). */
+  parentFullName: string | null
+  /** The signed-in account can push here, so a fork is optional. */
+  canPush: boolean
+  /** The account owns it: GitHub does not fork a repository into its own owner. */
+  ownedByViewer: boolean
+  /** The signed-in account's login, the default owner of the fork. */
+  viewerLogin: string
+  /** A fork of it the account already has, under the account's login. */
+  existingFork: ForkedRepository | null
+}
+
+export interface ForkInput {
+  /** An organization to fork into; omitted, the fork goes to the account. */
+  organization?: string
+  /** Copy only the default branch, as github.com suggests. */
+  defaultBranchOnly: boolean
+}
+
+export interface ForkedRepository {
+  owner: string
+  name: string
+  fullName: string
+  cloneUrl: string
+  htmlUrl: string
+}
+
+export interface ForkResult extends ForkedRepository {
+  /** Clone URL of the original, to add as the `upstream` remote. */
+  upstreamCloneUrl: string
+  /** The original's default branch, the one `upstream` follows. */
+  upstreamDefaultBranch: string
+}
+
+/** Where a fork's clone stands against its original (the `upstream` remote). */
+export interface UpstreamStatus {
+  url: string
+  /** "owner/repo" when the URL is a GitHub one. */
+  fullName: string | null
+  /** The original's main branch, and the local branch kept in step with it. */
+  branch: string
+  /** Commits on the original's branch that the local one does not have yet. */
+  behind: number
+  /** Commits on the local branch that the original does not have. */
+  ahead: number
+  /** The local branch exists (a fork's clone has it; a stray remote may not). */
+  hasLocalBranch: boolean
+}
+
+export interface UpstreamSyncResult {
+  branch: string
+  /** How many of the original's commits came in. */
+  brought: number
+  /** The fork on GitHub (origin) got them too. */
+  pushed: boolean
+  /** Why sending them to origin failed; the local branch is updated anyway. */
+  pushError?: string
+}
