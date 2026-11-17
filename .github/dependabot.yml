@@ -14,17 +14,17 @@ updates:
           - electron-builder
           - electron-updater
           - electron-vite
+      # Minor/patch only: React, Tailwind and the other renderer libraries
+      # are dev dependencies too, and one incompatible major would block the
+      # whole group. Majors come as separate PRs.
       dev-dependencies:
         dependency-type: development
-    # electron-vite 5 aceita vite só até ^7, e @vitejs/plugin-react 6 exige
-    # vite ^8 — o major dos dois é immergível (quebra o npm ci) até o
-    # electron-vite 6 sair da beta. Sem isto o Dependabot reabre a mesma PR
-    # impossível toda semana. Quando a 6 estabilizar ela chega pelo grupo
-    # `electron` e estas duas entradas podem cair.
+        update-types: ["minor", "patch"]
+    # electron-vite 6 accepts vite only up to ^8 (and so do @tailwindcss/vite,
+    # vitest 5 and @vitejs/plugin-react 6): a vite major would break npm ci.
+    # Drop this once electron-vite accepts the next vite major.
     ignore:
       - dependency-name: vite
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@vitejs/plugin-react"
         update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions

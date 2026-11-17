@@ -29,7 +29,8 @@ type Route = { status: number; body: unknown }
 
 // Answers each GitHub endpoint the status read touches; anything unrouted is a 404.
 function serve(routes: Record<string, Route>): void {
-  vi.mocked(httpFetch).mockImplementation(async (url: string) => {
+  vi.mocked(httpFetch).mockImplementation(async (input: string | URL) => {
+    const url = String(input)
     const path = new URL(url).pathname.replace(/^\/repos\/o\/r/, '')
     const route = routes[path] ?? { status: 404, body: { message: 'Not Found' } }
     return new Response(JSON.stringify(route.body), { status: route.status, headers: { 'content-type': 'application/json' } })

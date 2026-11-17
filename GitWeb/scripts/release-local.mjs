@@ -1,9 +1,9 @@
 // Publica uma release do Windows a partir da máquina local.
 //
-// Existe porque a cota mensal de GitHub Actions do repositório se esgotou e os
-// workflows não conseguem empacotar até ela renovar. Reproduz o que o
-// gitweb-auto-release faz: calcula a próxima versão a partir da última tag,
-// empacota e sobe os arquivos para uma Release nova.
+// Caminho alternativo para quando o CI não puder empacotar (Actions fora do
+// ar, cota esgotada). Reproduz o que o gitweb-auto-release faz: calcula a
+// próxima versão a partir da última tag, empacota e sobe os arquivos para uma
+// Release nova — só do Windows.
 //
 // Uso:
 //   npm run release:local            -> bump de patch a partir da última tag
@@ -22,6 +22,14 @@ import { fileURLToPath } from 'node:url'
 const projectDir = join(dirname(fileURLToPath(import.meta.url)), '..')
 const pkgPath = join(projectDir, 'package.json')
 const lockPath = join(projectDir, 'package-lock.json')
+
+// O instalador e o título da Release usam o productName do electron-builder.
+const builderConfig = readFileSync(join(projectDir, 'electron-builder.yml'), 'utf8')
+const productName = builderConfig.match(/^productName:\s*(\S+)/m)?.[1]
+if (!productName) {
+  console.error('\n✖ productName não encontrado no electron-builder.yml\n')
+  process.exit(1)
+}
 
 const args = process.argv.slice(2)
 const dryRun = args.includes('--dry-run')
@@ -101,6 +109,9 @@ try {
   pkg.version = version
   writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
 
+  console.log('→ lint')
+  run('npm run lint')
+
   console.log('→ typecheck')
   run('npm run typecheck')
 
@@ -113,10 +124,13 @@ try {
   console.log('→ empacotando Windows')
   run('npx electron-builder --win --publish never')
 
-  const exe = `dist/GitWeb-Setup-${version}.exe`
+  // Mesmo nome que o artifactName do nsis no electron-builder.yml.
+  const exe = `dist/${productName}-Setup-${version}.exe`
   const files = [exe, `${exe}.blockmap`, 'dist/latest.yml']
   for (const f of files) {
-    if (!existsSync(join(projectDir, f))) fail(`Esperado mas não gerado: ${f}`)
+    // throw, not fail(): fail() exits on the spot and would skip the finally
+    // that puts package.json and package-lock.json back.
+    if (!existsSync(join(projectDir, f))) throw new Error(`Esperado mas não gerado: ${f}`)
   }
 
   // --- Notas ---------------------------------------------------------------
@@ -140,9 +154,8 @@ ${commits || '- Sem commits de produto desde a tag anterior.'}
 
 ---
 
-> **Somente Windows nesta versão.** Gerada localmente porque a cota mensal de
-> GitHub Actions do repositório se esgotou. Os builds de macOS e Linux voltam
-> quando a cota renovar e o CI publicar de novo.
+> **Somente Windows nesta versão.** Gerada localmente, fora do CI. Os builds
+> de macOS e Linux voltam na próxima release publicada pelo CI.
 
 ${compare}
 `
@@ -156,7 +169,7 @@ ${compare}
       'release', 'create', tag,
       '--repo', 'CariSoftwareBR/OpenGitDesktop',
       '--target', sha,
-      '--title', `GitWeb ${tag}`,
+      '--title', `${productName} ${tag}`,
       '--notes-file', notesPath,
       '--latest',
       ...files
@@ -165,6 +178,9 @@ ${compare}
   )
 
   console.log(`\n✔ ${tag} publicada.`)
+} catch (err) {
+  console.error(`\n✖ ${err instanceof Error ? err.message : String(err)}\n`)
+  process.exitCode = 1
 } finally {
   writeFileSync(pkgPath, originalPkg)
   writeFileSync(lockPath, originalLock)

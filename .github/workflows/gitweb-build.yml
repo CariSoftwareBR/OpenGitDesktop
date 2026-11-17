@@ -1,4 +1,4 @@
-name: GitWeb Build
+name: OpenGitDesktop Build
 
 # Deliberately not on push to main: gitweb-auto-release already compiles and
 # packages the very same commit there, so keeping a push trigger here ran the
@@ -69,7 +69,7 @@ jobs:
         run: npm ci
 
       # oxlint fails only on errors (real bugs); warnings are listed in the log
-      # and stay non-blocking until the backlog is cleared — see .oxlintrc.json.
+      # and do not block — see .oxlintrc.json.
       - name: Lint
         run: npm run lint
 
@@ -100,15 +100,15 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      # Only on a manual run. A full matrix upload is ~672 MB, and the private
-      # repo's Actions artifact quota is 500 MB — uploading on every push blew
-      # it and broke the release job that shares the same quota. Installers for
+      # Only on a manual run. A full matrix upload is ~672 MB against the
+      # Actions artifact storage quota — uploading on every push once blew it
+      # and broke the release job that shares the same quota. Installers for
       # every version live on the GitHub Release, which is not metered.
       - name: Upload artifacts
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
-          name: gitweb-${{ matrix.os }}
+          name: opengitdesktop-${{ matrix.os }}
           path: |
             GitWeb/dist/*.exe
             GitWeb/dist/*.dmg

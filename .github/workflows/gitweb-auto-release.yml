@@ -1,13 +1,14 @@
-name: GitWeb Auto Release
+name: OpenGitDesktop Auto Release
 
-# Patch release on pushes to main/master that touch GitWeb — only after the
+# Patch release on pushes to main/master that touch GitWeb — only after lint,
 # typecheck and the test suite pass, since the tag is pushed before packaging
 # and a tag is what users' auto-updater ends up seeing.
 # Skips the bot's own "chore(gitweb): release …" commits to avoid a loop, and
 # any push whose head commit says "[skip release]" (docs, CI tweaks, work that
 # should ship together with the next change).
-# Manual minor/major: still use `npm run release:minor` / `release:major` locally
-# (those push a tag and the tag workflow publishes).
+# Manual minor/major: `npm run release:minor` / `release:major` (scripts/
+# tag-release.mjs) push only a tag, and gitweb-release.yml publishes it. A tag
+# pushed by this workflow's GITHUB_TOKEN does not trigger that one.
 #
 # Important: only the tag is pushed — the release commit is NOT pushed to
 # main/master. That avoids racing developers (non-fast-forward) when CI
@@ -40,6 +41,10 @@ jobs:
       run:
         working-directory: GitWeb
     steps:
+      # The branch tip, not github.sha: re-running an old run must not tag
+      # that old commit as the newest version (auto-update would move every
+      # user back to it). A run that starts after a newer push simply
+      # releases the newer tip, which contains the older commits.
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
@@ -56,6 +61,9 @@ jobs:
       # Gate: nothing gets tagged or published unless this passes.
       - name: Install dependencies
         run: npm ci
+
+      - name: Lint
+        run: npm run lint
 
       - name: Typecheck
         run: npm run typecheck

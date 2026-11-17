@@ -51,7 +51,8 @@ it('waits for an in-flight push before checking whether the approved commit can 
         finish('', 1)
       }
     })
-    return child as ChildProcessWithoutNullStreams
+    // A stand-in with only the members gitProcess touches.
+    return child as unknown as ChildProcessWithoutNullStreams
   })
 
   const pushing = runGit(['push'], 'queued-push-repo')
