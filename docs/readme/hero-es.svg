@@ -55,6 +55,6 @@
 <g opacity="0"><animate attributeName="opacity" dur="12s" repeatCount="indefinite" keyTimes="0;0.6000;0.6125;0.6917;0.7042;1" values="0;0;1;1;0;0"/><path transform="translate(794 298)" d="M0 0l0 15 4-4 3 7 3-1.4-3-6.6h6z" fill="#fff" stroke="#000" stroke-width="1"/></g>
 </g>
 <rect x="512" y="336" width="326" height="1" fill="#fff" fill-opacity="0.08"/>
-<rect x="530" y="351" width="10" height="8" rx="1.5" fill="none" stroke="#868f97" stroke-width="1.4"/><path d="M532 351v-2.5a3 3 0 0 1 6 0v2.5" fill="none" stroke="#868f97" stroke-width="1.4"/><text x="548" y="360" font-size="11.5" fill="#868f97">Nada se ejecuta sin tu aprobación</text>
+<rect x="530" y="351" width="10" height="8" rx="1.5" fill="none" stroke="#868f97" stroke-width="1.4"/><path d="M532 351v-2.5a3 3 0 0 1 6 0v2.5" fill="none" stroke="#868f97" stroke-width="1.4"/><text x="548" y="360" font-size="11.5" fill="#868f97">Ningún cambio se ejecuta sin tu aprobación</text>
 </g>
 </g><rect x="0.5" y="0.5" width="879" height="419" rx="20" fill="none" stroke="#fff" stroke-opacity="0.1"/></svg>

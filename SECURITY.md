@@ -4,7 +4,9 @@
 
 Apenas a versão mais recente publicada em
 [Releases](https://github.com/CariSoftwareBR/OpenGitDesktop/releases) recebe
-correções de segurança. O app se atualiza sozinho; mantenha-o atualizado.
+correções de segurança. No Windows e no Linux o app se atualiza sozinho; no
+macOS, por enquanto, instale o `.dmg` novo à mão (veja o [INSTALL.md](INSTALL.md)).
+Mantenha-o atualizado.
 
 ## Como reportar uma vulnerabilidade
 
@@ -23,8 +25,8 @@ crédito a quem reportou (se desejar).
 
 Interessam especialmente falhas que permitam:
 
-- vazamento de tokens do GitHub ou chaves de provedores de IA guardados no
-  cofre do sistema;
+- vazamento de tokens do GitHub ou chaves de provedores de IA, guardados
+  cifrados pelo sistema operacional (`safeStorage` do Electron);
 - o assistente de IA executar ações no Git **sem** a aprovação do usuário;
 - execução de código a partir do conteúdo de um repositório, de um diff ou de
   uma resposta da IA;

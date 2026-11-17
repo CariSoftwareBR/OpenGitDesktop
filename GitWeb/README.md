@@ -16,11 +16,11 @@ Cliente Git multiplataforma (Windows, macOS, Linux), inspirado no GitDesktop —
 | Git | Git CLI (via `child_process.spawn` no processo principal) |
 | GitHub | REST API (no processo principal) + OAuth Device Flow ou PAT, ambos também usados para autenticar o `git` CLI |
 | IA | OpenAI, Claude, OpenRouter, Ollama ou endpoint local compatível com OpenAI |
-| Credenciais | `safeStorage` do Electron (Credential Manager / Keychain / libsecret) |
+| Credenciais | `safeStorage` do Electron (DPAPI no Windows, Keychain no macOS, libsecret no Linux), cifradas em `secrets.json` na pasta de dados do app |
 
 ## Requisitos
 
-- Node.js 20+
+- Node.js 22.12+
 - Git instalado e disponível no `PATH`
 
 ## Desenvolvimento
@@ -43,30 +43,32 @@ Empacotamento multiplataforma real roda via CI (`.github/workflows/gitweb-build.
 
 ## Release
 
-**Automático:** todo push em `main`/`master` que altera `GitWeb/` gera um release **patch** (ex.: 0.1.0 → 0.1.1), sobe a tag e publica os instaladores (Windows/macOS/Linux) na GitHub Release. O workflow é `.github/workflows/gitweb-auto-release.yml`.
+**Automático:** todo push em `main`/`master` que altera `GitWeb/` gera um release **patch** (ex.: 0.1.0 → 0.1.1) depois que lint, typecheck e testes passam: sobe a tag e publica os instaladores (Windows/macOS/Linux) na GitHub Release. Um push cujo último commit traz `[skip release]` não gera release — num merge de PR esse commit é o de merge, que leva o título do PR, então a marcação vai no título. O workflow é `.github/workflows/gitweb-auto-release.yml`.
 
-**Manual** (minor/major, ou forçar um patch localmente):
+**Manual** (minor/major, ou forçar um patch):
 
 ```bash
-npm run release:minor   # ou :major / :patch
+npm run release:minor   # ou :major / :patch; "-- --dry-run" só mostra a versão
 ```
 
-Isso bumpa a versão, faz push da tag e o workflow `.github/workflows/gitweb-release.yml` publica a Release.
+O script (`scripts/tag-release.mjs`) calcula a próxima versão a partir da última tag — a versão do `package.json` fica para trás de propósito — e envia só a tag; o workflow `.github/workflows/gitweb-release.yml` empacota e publica a Release. Exige working tree limpo e `HEAD` igual a `origin/main`.
+
+**Local, só Windows** (quando o CI não puder empacotar): `npm run release:local` — ou o `publicar-release.bat` na raiz do repositório — empacota nesta máquina e publica a Release com o instalador do Windows.
 
 ## Estrutura
 
 ```text
 src/
-├─ main/          # processo principal (Node) — git, credenciais, diálogos, IPC, settings
+├─ main/          # processo principal (Node) — git, API do GitHub, chamadas de IA, credenciais, diálogos, IPC, settings
 ├─ preload/       # contextBridge — API tipada exposta ao renderer
 ├─ shared/        # tipos compartilhados entre main/preload/renderer
 │  └─ i18n/       # idiomas e dicionários de tradução (pt-BR, en, es)
 └─ renderer/
    └─ src/
-      ├─ views/       # Initial, Changes, History, Stashes, PullRequests, AiChat
-      ├─ components/  # TopBar, DiffViewer, ConflictResolver
-      ├─ store/       # estado global (zustand): repo, pull requests, IA
-      └─ lib/         # github.ts (REST), ai/ (providers, tools, commit message, skills/)
+      ├─ views/       # Initial, Changes, History, Stashes, PullRequests, Collaborators, Dashboard, Messages, Settings, About, AiChat
+      ├─ components/  # TopBar, DiffViewer, ConflictResolver, …
+      ├─ store/       # estado global (zustand): repo, pull requests, colaboradores, login do GitHub, mensagens, configurações, IA
+      └─ lib/         # github.ts (tipos e leitura de remotes; a API roda em main/githubApi.ts), ai/ (providers, tools, commit message, skills/)
 ```
 
 ## Funcionalidades
@@ -79,9 +81,9 @@ src/
 - Sync: fetch/pull/push/publicar branch adaptativo conforme o estado ahead/behind/upstream.
 - Pull Requests: login com OAuth Device Flow (GitHub.com) ou PAT (GitHub.com ou Enterprise), listar, criar, ver arquivos/comentários, mesclar, fechar/reabrir.
 - Colaboradores: ver quem tem acesso, convidar por username, cancelar convites, remover pessoas e mudar permissões (em repositórios de organização), direto no app.
-- Chat de IA com ferramentas (criar/trocar/mesclar branch, commit, push/pull/fetch, stash, listar/criar PR) com fluxo de aprovação humana antes de cada ação.
+- Chat de IA com ferramentas (criar/trocar/mesclar branch, commit, push/pull/fetch, stash, listar/criar PR) no repositório aberto, e também verificação, fetch e pull em lote nos repositórios recentes. Toda ação que altera algo pede aprovação antes de rodar; as de leitura rodam direto.
 - Interface, mensagens do processo principal e respostas da IA em português (Brasil), inglês ou espanhol — segue o idioma do sistema por padrão e pode ser trocado na hora em Configurações.
-- Temas claro/escuro automáticos (via preferência do sistema) e suporte a alto contraste (Windows High Contrast Mode / `prefers-contrast`).
+- Tema claro/escuro que segue o sistema ou é escolhido em Configurações (Sistema/Escuro/Claro), e suporte a alto contraste (Windows High Contrast Mode / `prefers-contrast`).
 
 ## Autenticação GitHub
 
@@ -113,11 +115,10 @@ OpenGitDesktop acabou de exibir na sua tela.**
 
 Sair apaga o token desta máquina, mas a autorização do OAuth App continua ativa na sua conta. Revogá-la pelo app exigiria um *client secret*, que um cliente público de Device Flow não pode guardar. Por isso, depois do logout o app mostra o link para `github.com/settings/connections/applications/<client_id>`, onde você revoga o acesso de verdade.
 
-## Diferenças conhecidas em relação ao GitDesktop (WinUI)
+## Tool-calling
 
-- Chat de IA opera no repositório atual; não há um modo "global" cruzando múltiplos repositórios.
-- Tool-calling nativo é tratado de forma unificada (schema OpenAI-compatível para OpenAI/OpenRouter/Ollama/local + Anthropic Messages API para Claude), sem o fallback textual adicional que o app WinUI usa para providers que rejeitam `tools`.
+O tool-calling nativo é tratado de forma unificada: schema OpenAI-compatível para OpenAI/OpenRouter/Ollama/local e Anthropic Messages API para Claude. Para providers que rejeitam `tools`, o app cai num fallback textual: as ferramentas vão descritas no prompt e a chamada é lida da resposta.
 
 ## Status
 
-Todas as fases planejadas (bootstrap, telas core, stash/conflitos, GitHub+PRs, IA, polish/empacotamento, CI) estão implementadas e passam em `npm run typecheck` + `npm run build`. Testado manualmente contra um repositório real.
+Todas as fases planejadas (bootstrap, telas core, stash/conflitos, GitHub+PRs, IA, polish/empacotamento, CI) estão implementadas e passam em `npm run lint`, `npm run typecheck`, `npm test` e `npm run build`. Testado manualmente contra um repositório real.

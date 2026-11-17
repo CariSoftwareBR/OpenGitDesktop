@@ -9,7 +9,7 @@
 <a href="https://github.com/CariSoftwareBR/OpenGitDesktop/releases/latest"><img src="docs/readme/download-linux-pt-BR.svg" alt="Baixar para Linux" height="56"></a>&nbsp;&nbsp;
 <a href="https://github.com/CariSoftwareBR/OpenGitDesktop/releases/latest"><img src="docs/readme/download-macos-pt-BR.svg" alt="Baixar para macOS" height="56"></a>
 
-<sub>Grátis · Código aberto · Atualiza sozinho · <a href="GitWeb/README.md">Compilar do código-fonte</a></sub>
+<sub>Grátis · Código aberto · Atualiza sozinho (no macOS, por enquanto, à mão — <a href="INSTALL.md#good-to-know">por quê</a>) · <a href="GitWeb/README.md">Compilar do código-fonte</a></sub>
 
 <sub>[English](README.md) · **Português** · [Español](README.es.md)</sub>
 

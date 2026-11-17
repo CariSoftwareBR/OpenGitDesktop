@@ -13,7 +13,7 @@ propor mudanças sem atrito.
 
 ## Ambiente de desenvolvimento
 
-**Requisitos:** Node.js 20+ e Git no `PATH`.
+**Requisitos:** Node.js 22.12+ e Git no `PATH`.
 
 ```bash
 cd GitWeb
@@ -32,6 +32,7 @@ Estrutura do código e detalhes técnicos: [`GitWeb/README.md`](GitWeb/README.md
 
    ```bash
    cd GitWeb
+   npm run lint
    npm run typecheck
    npm test
    ```
@@ -43,8 +44,10 @@ Estrutura do código e detalhes técnicos: [`GitWeb/README.md`](GitWeb/README.md
 - **A IA nunca age sozinha.** Qualquer ferramenta nova do assistente que altere
   o repositório precisa passar pela aprovação explícita do usuário — este é o
   princípio central do projeto.
-- **Tokens e chaves não saem do processo main.** Chamadas autenticadas ficam no
-  `main`; o renderer nunca recebe o token.
+- **O token do GitHub não sai do processo main.** Chamadas autenticadas ficam no
+  `main`; o renderer nunca recebe o token. A exceção são as chaves de
+  provedores de IA (prefixo `GitWeb/AI/`), que o formulário de Configurações lê
+  de volta para o usuário editar.
 - Siga o estilo do código ao redor (TypeScript estrito, nomes e comentários no
   mesmo padrão do arquivo).
 - Mantenha os PRs focados: uma mudança por PR facilita a revisão.
@@ -76,8 +79,9 @@ o sistema operacional).
 ## Releases
 
 As releases são geradas pelo CI a partir da `main`; quem contribui não precisa
-mexer em versão. Commits que não devem gerar release (docs, ajustes de CI)
-podem incluir `[skip release]` na mensagem.
+mexer em versão. Para uma mudança não gerar release (docs, ajustes de CI),
+ponha `[skip release]` no **título do PR**: o CI só olha o último commit do
+push, que no merge de um PR é o commit de merge, e ele leva o título do PR.
 
 ## Licença
 

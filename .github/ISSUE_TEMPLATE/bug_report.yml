@@ -23,7 +23,8 @@ body:
     id: version
     attributes:
       label: Versão do app
-      placeholder: ex.: 0.1.51
+      description: Aparece em "Sobre o OpenGitDesktop" (ícone ⓘ no rodapé da tela inicial).
+      placeholder: 0.x.y
     validations:
       required: true
   - type: dropdown
