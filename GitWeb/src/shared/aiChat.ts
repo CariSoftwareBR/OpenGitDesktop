@@ -262,6 +262,26 @@ export const TOOL_CATALOG: ToolDefinition[] = [
     }
   },
   {
+    name: 'fix_case_collision',
+    description:
+      'Resolve caminhos rastreados que só mudam nas maiúsculas/minúsculas (ex.: agents.md e AGENTS.md). No Windows e no macOS eles são o mesmo arquivo no disco, então o Git sempre mostra um deles como alterado, e git restore/descartar só passa a alteração para o outro — nesse caso NUNCA sugira restore nem descartar. Esta tool deixa um único caminho no Git, com o conteúdo escolhido, e põe o resultado no stage; as outras versões continuam no último commit. O contexto do repositório lista esses casos com as linhas de cada versão. Prefira o conteúdo que contém o das outras versões; se não estiver claro, pergunte. Depois, ofereça commit.',
+    parameters: {
+      type: 'object',
+      properties: {
+        keep_path: {
+          type: 'string',
+          description: 'O caminho que fica, exatamente como listado (as maiúsculas importam), ex.: "front/AGENTS.md".'
+        },
+        content_from: {
+          type: 'string',
+          description:
+            'De onde vem o conteúdo: o caminho de uma das versões listadas, ou "disk" para manter o arquivo do disco como está. Opcional: sem ele, usa as alterações do disco se houver, senão a versão mais longa.'
+        }
+      },
+      required: ['keep_path']
+    }
+  },
+  {
     name: 'resolve_conflict',
     description:
       'Propõe uma resolução de conflito de merge para um arquivo (a IA decide cada bloco marcado com <<<<<<<) para aprovação do usuário antes de aplicar. Se "path" for omitido e houver só um arquivo em conflito, resolve esse; se houver mais de um, retorna a lista para escolha.',

@@ -460,6 +460,7 @@ function installBrowserApiStub(): void {
       stashDrop: async () => undefined,
       addToGitIgnore: async () => ({ success: true, message: 'Adicionado ao .gitignore (preview).' }),
       stopTracking: async () => ({ success: true, message: '' }),
+      resolveCaseCollision: async () => undefined,
       locateFileInHistory: async (_cwd: string, path: string) => ({
         path,
         upstream: 'origin/main',

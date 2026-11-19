@@ -1,4 +1,5 @@
 import {
+  CaseSensitive,
   ArrowDownToLine,
   ArrowUpFromLine,
   Check,
@@ -60,6 +61,7 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   commit: GitCommitHorizontal,
   undo_last_commit: Undo2,
   ignore_files: EyeOff,
+  fix_case_collision: CaseSensitive,
   resolve_conflict: FileDiff,
   check_incoming_commits: RadarIcon,
   get_git_identity: UserSearch,

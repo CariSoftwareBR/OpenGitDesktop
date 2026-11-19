@@ -82,6 +82,13 @@ const ptBR = {
     gitignorePatternExists: 'O padrão já existe no .gitignore.',
     gitignoreAdded: (patterns: string) => `Adicionado ao .gitignore: ${patterns}`,
     stopTrackingFailed: 'Falha ao parar o tracking dos arquivos.',
+    caseCollisionConflicted: (path: string) =>
+      `"${path}" está em conflito de merge. Resolva o conflito antes de unificar os nomes.`,
+    caseCollisionGone: (path: string) =>
+      `"${path}" não está mais rastreado com outro nome que só muda maiúsculas/minúsculas. Atualize a tela e veja de novo.`,
+    caseCollisionNoDiskFile: (path: string) => `"${path}" não existe no disco, então não há conteúdo do disco para manter.`,
+    caseCollisionTrashFailed: (path: string) =>
+      `Não deu para mover "${path}" para a lixeira, e ele tem alterações que não estão em nenhuma versão. Nada foi apagado do disco.`,
     tagNameInvalid: (name: string) => `Nome de tag inválido: "${name}".`,
     tagExists: (name: string) => `A tag "${name}" já existe.`,
     tagMissing: (name: string) => `A tag "${name}" não existe neste repositório.`,
@@ -256,6 +263,13 @@ const en: MainMessages = {
     gitignorePatternExists: 'The pattern already exists in .gitignore.',
     gitignoreAdded: (patterns) => `Added to .gitignore: ${patterns}`,
     stopTrackingFailed: 'Failed to stop tracking the files.',
+    caseCollisionConflicted: (path: string) =>
+      `"${path}" has a merge conflict. Resolve it before keeping a single name.`,
+    caseCollisionGone: (path: string) =>
+      `"${path}" is no longer tracked under another name that differs only in letter case. Refresh and look again.`,
+    caseCollisionNoDiskFile: (path: string) => `"${path}" is not on disk, so there is no disk content to keep.`,
+    caseCollisionTrashFailed: (path: string) =>
+      `Could not move "${path}" to the trash, and it has changes that are in no version. Nothing was deleted from disk.`,
     tagNameInvalid: (name) => `Invalid tag name: "${name}".`,
     tagExists: (name) => `The tag "${name}" already exists.`,
     tagMissing: (name) => `The tag "${name}" does not exist in this repository.`,
@@ -427,6 +441,13 @@ const es: MainMessages = {
     gitignorePatternExists: 'El patrón ya existe en .gitignore.',
     gitignoreAdded: (patterns) => `Añadido a .gitignore: ${patterns}`,
     stopTrackingFailed: 'Error al dejar de rastrear los archivos.',
+    caseCollisionConflicted: (path: string) =>
+      `"${path}" tiene un conflicto de merge. Resuélvelo antes de dejar un solo nombre.`,
+    caseCollisionGone: (path: string) =>
+      `"${path}" ya no está rastreado con otro nombre que solo cambia mayúsculas/minúsculas. Actualiza y vuelve a mirar.`,
+    caseCollisionNoDiskFile: (path: string) => `"${path}" no existe en el disco, así que no hay contenido del disco que conservar.`,
+    caseCollisionTrashFailed: (path: string) =>
+      `No se pudo mover "${path}" a la papelera, y tiene cambios que no están en ninguna versión. No se borró nada del disco.`,
     tagNameInvalid: (name) => `Nombre de tag no válido: "${name}".`,
     tagExists: (name) => `El tag "${name}" ya existe.`,
     tagMissing: (name) => `El tag "${name}" no existe en este repositorio.`,

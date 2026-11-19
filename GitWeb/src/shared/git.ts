@@ -25,7 +25,44 @@ export interface RepoStatus {
    * nothing to stage, when the resolution kept the current branch's version.
    */
   mergeInProgress?: boolean
+  /**
+   * Tracked paths that differ only in letter case (agents.md and AGENTS.md),
+   * listed when one of them shows up as changed. Only on a case-insensitive
+   * disk (core.ignorecase), where they share one file.
+   */
+  caseCollisions?: CaseCollision[]
 }
+
+/** One of the paths in a case collision, as the index holds it. */
+export interface CaseCollisionVersion {
+  path: string
+  /** Index blob id. */
+  blob: string
+  mode: string
+  /** Line count of this version; null for a binary file. */
+  lines: number | null
+  /** The one file on disk holds exactly this version right now. */
+  onDisk: boolean
+}
+
+/**
+ * Two or more tracked paths that differ only in letter case. On a
+ * case-insensitive disk they are one file, so git always sees it as a change
+ * to one of them — and restoring that path only moves the change to the other.
+ * The fix is keeping a single path, with the content chosen by the user.
+ */
+export interface CaseCollision {
+  versions: CaseCollisionVersion[]
+  /** The name the shared file has on disk; null when it is missing. */
+  diskPath: string | null
+  /** The disk file matches none of the versions: it holds uncommitted edits. */
+  diskEdited: boolean
+  /** Line count of the disk file when it is edited and not binary. */
+  diskLines: number | null
+}
+
+/** `source` for resolveCaseCollision: keep what is on disk now. */
+export const CASE_COLLISION_DISK_SOURCE = ':disk'
 
 export interface BranchInfo {
   name: string
@@ -410,6 +447,10 @@ export function isConflicted(entry: StatusEntry): boolean {
  * a fresh object every few seconds; storing it only when something changed keeps
  * every `status` subscriber from re-rendering on an idle repository.
  */
+function caseCollisionKey(status: RepoStatus): string {
+  return JSON.stringify(status.caseCollisions ?? [])
+}
+
 export function sameRepoStatus(a: RepoStatus | null, b: RepoStatus | null): boolean {
   if (a === b) return true
   if (!a || !b) return false
@@ -419,7 +460,8 @@ export function sameRepoStatus(a: RepoStatus | null, b: RepoStatus | null): bool
     a.behind !== b.behind ||
     a.upstream !== b.upstream ||
     Boolean(a.mergeInProgress) !== Boolean(b.mergeInProgress) ||
-    a.entries.length !== b.entries.length
+    a.entries.length !== b.entries.length ||
+    caseCollisionKey(a) !== caseCollisionKey(b)
   ) {
     return false
   }

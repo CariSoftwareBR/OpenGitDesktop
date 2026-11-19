@@ -257,7 +257,8 @@ function buildRepoContext(language: AiLanguage): string {
       ? { name: repo.status.upstream, ahead: repo.status.ahead, behind: repo.status.behind }
       : null,
     statusLines,
-    lastCommits
+    lastCommits,
+    caseCollisions: repo.status?.caseCollisions
   })
 }
 
