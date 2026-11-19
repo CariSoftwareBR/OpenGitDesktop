@@ -130,6 +130,8 @@ interface RepoState {
   unstagePaths: (paths: string[]) => Promise<void>
   discardPaths: (paths: string[]) => Promise<void>
   ignorePatterns: (patterns: string[], paths: string[], stopTracking: boolean) => Promise<void>
+  /** Keeps one path of a case collision (agents.md / AGENTS.md); `source` picks the content. */
+  resolveCaseCollision: (keepPath: string, source: string) => Promise<boolean>
   commitChanges: (summary: string, description: string) => Promise<void>
   /** Creates the repo on GitHub, sets origin and pushes; null (with `error` set) on failure. */
   publishRepository: (input: PublishRepositoryInput) => Promise<PublishRepositoryResult | null>
@@ -782,6 +784,23 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       await get().refreshStatus()
     } catch (err) {
       set({ error: describeError(err) })
+    } finally {
+      set({ isBusy: false })
+    }
+  },
+
+  resolveCaseCollision: async (keepPath, source) => {
+    const { currentRepoPath } = get()
+    if (!currentRepoPath) return false
+    set({ isBusy: true, error: null })
+    try {
+      await window.api.git.resolveCaseCollision(currentRepoPath, keepPath, source)
+      set({ selectedFile: null, diffText: '' })
+      await get().refreshStatus()
+      return true
+    } catch (err) {
+      set({ error: describeError(err) })
+      return false
     } finally {
       set({ isBusy: false })
     }

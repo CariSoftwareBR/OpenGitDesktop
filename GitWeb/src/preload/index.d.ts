@@ -177,6 +177,8 @@ export interface Api {
     stashDrop: (cwd: string, ref: string) => Promise<void>
     addToGitIgnore: (cwd: string, patterns: string[]) => Promise<{ success: boolean; message: string }>
     stopTracking: (cwd: string, paths: string[]) => Promise<{ success: boolean; message: string }>
+    /** Keeps one path of a case collision; `source` is a version's path or CASE_COLLISION_DISK_SOURCE. */
+    resolveCaseCollision: (cwd: string, keepPath: string, source: string) => Promise<void>
     locateFileInHistory: (cwd: string, path: string) => Promise<FileHistoryLocation>
     isPathIgnored: (cwd: string, path: string) => Promise<boolean>
     isCommitPublished: (cwd: string, ref?: string) => Promise<boolean>

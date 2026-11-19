@@ -254,3 +254,38 @@ export function parseChurnLog(out: string, limit: number, hotspotCount = 12): Re
     .slice(0, hotspotCount)
   return { commits, hotspots, truncated: records.length >= limit }
 }
+
+/** One record of `git ls-files -s -z`. */
+export interface IndexEntry {
+  mode: string
+  blob: string
+  stage: number
+  path: string
+}
+
+/** Parses `git ls-files -s -z`: "<mode> <blob> <stage>\t<path>\0" per entry. */
+export function parseLsFilesStage(raw: string): IndexEntry[] {
+  const entries: IndexEntry[] = []
+  for (const record of raw.split('\0')) {
+    const match = record.match(/^(\d+) ([0-9a-f]+) (\d)\t(.+)$/s)
+    if (match) entries.push({ mode: match[1], blob: match[2], stage: Number(match[3]), path: match[4] })
+  }
+  return entries
+}
+
+/**
+ * Groups the index paths that differ only in letter case — on a
+ * case-insensitive disk each group is a single file. Conflicted entries
+ * (stage 1–3) are left out: a merge in progress owns those paths.
+ */
+export function groupCaseCollisions(entries: IndexEntry[]): IndexEntry[][] {
+  const byFolded = new Map<string, IndexEntry[]>()
+  for (const entry of entries) {
+    if (entry.stage !== 0) continue
+    const key = entry.path.toLowerCase()
+    const group = byFolded.get(key)
+    if (group) group.push(entry)
+    else byFolded.set(key, [entry])
+  }
+  return [...byFolded.values()].filter((group) => group.length > 1)
+}

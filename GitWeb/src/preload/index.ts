@@ -247,6 +247,8 @@ const api = {
       cwd: string,
       paths: string[]
     ): Promise<{ success: boolean; message: string }> => invoke('git:stopTracking', cwd, paths),
+    resolveCaseCollision: (cwd: string, keepPath: string, source: string): Promise<void> =>
+      invoke('git:resolveCaseCollision', cwd, keepPath, source),
     locateFileInHistory: (cwd: string, path: string): Promise<FileHistoryLocation> =>
       invoke('git:locateFileInHistory', cwd, path),
     isPathIgnored: (cwd: string, path: string): Promise<boolean> => invoke('git:isPathIgnored', cwd, path),

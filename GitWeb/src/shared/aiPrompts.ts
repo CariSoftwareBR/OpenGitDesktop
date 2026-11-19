@@ -1,3 +1,4 @@
+import type { CaseCollision } from './git'
 import type { AiSettings } from './ai'
 import type { Locale } from './i18n/locales'
 
@@ -36,6 +37,47 @@ export interface RepoContextInput {
   upstream: { name: string; ahead: number; behind: number } | null
   statusLines: string
   lastCommits: string
+  /** Tracked paths that differ only in case (see RepoStatus.caseCollisions). */
+  caseCollisions?: CaseCollision[]
+}
+
+function formatCaseCollisions(language: AiLanguage, collisions: CaseCollision[]): string[] {
+  if (collisions.length === 0) return []
+  const l = pick(language, {
+    'pt-BR': {
+      title:
+        'Caminhos que só mudam nas maiúsculas/minúsculas (neste computador são um arquivo só; git restore e descartar NÃO resolvem — use fix_case_collision):',
+      lines: (n: number | null) => (n === null ? 'binário' : `${n} linhas`),
+      onDisk: 'mesmo conteúdo do arquivo no disco',
+      diskName: (path: string) => `nome do arquivo no disco: ${path}`,
+      diskEdited: 'o arquivo no disco tem alterações que não estão em nenhuma versão'
+    },
+    en: {
+      title:
+        'Paths that differ only in letter case (on this computer they are one file; git restore and discard do NOT fix it — use fix_case_collision):',
+      lines: (n: number | null) => (n === null ? 'binary' : `${n} lines`),
+      onDisk: 'same content as the file on disk',
+      diskName: (path: string) => `name of the file on disk: ${path}`,
+      diskEdited: 'the file on disk has changes that are in no version'
+    },
+    es: {
+      title:
+        'Rutas que solo cambian en mayúsculas/minúsculas (en este equipo son un solo archivo; git restore y descartar NO lo arreglan — usa fix_case_collision):',
+      lines: (n: number | null) => (n === null ? 'binario' : `${n} líneas`),
+      onDisk: 'mismo contenido que el archivo en el disco',
+      diskName: (path: string) => `nombre del archivo en el disco: ${path}`,
+      diskEdited: 'el archivo en el disco tiene cambios que no están en ninguna versión'
+    }
+  })
+  return [
+    '',
+    l.title,
+    ...collisions.map((c) => {
+      const versions = c.versions.map((v) => `${v.path} (${l.lines(v.lines)}${v.onDisk ? `, ${l.onDisk}` : ''})`)
+      const disk = [c.diskPath ? l.diskName(c.diskPath) : null, c.diskEdited ? l.diskEdited : null].filter(Boolean)
+      return `- ${versions.join(' | ')}${disk.length > 0 ? `; ${disk.join('; ')}` : ''}`
+    })
+  ]
 }
 
 export function formatRepoContext(language: AiLanguage, repo: RepoContextInput): string {
@@ -101,6 +143,7 @@ export function formatRepoContext(language: AiLanguage, repo: RepoContextInput):
     '',
     labels.status,
     repo.statusLines || labels.clean,
+    ...formatCaseCollisions(language, repo.caseCollisions ?? []),
     '',
     labels.commits,
     repo.lastCommits || labels.noCommits

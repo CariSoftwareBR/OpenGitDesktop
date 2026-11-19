@@ -11,7 +11,14 @@ import { useAppSettingsStore } from '../../store/appSettingsStore'
 import { DEFAULT_APP_SETTINGS } from '../../../../shared/settings'
 import { sanitizeRepositoryName } from '../../../../shared/github'
 import { basename } from '../path'
-import { isConflicted, type BranchIntegration, type BranchIntegrationReport, type StatusEntry } from '../../../../shared/git'
+import {
+  CASE_COLLISION_DISK_SOURCE,
+  isConflicted,
+  type BranchIntegration,
+  type BranchIntegrationReport,
+  type StatusEntry
+} from '../../../../shared/git'
+import { defaultCaseChoice } from '../../components/CaseCollisionDialog'
 import { attachBaseLines, parseConflictBlocks, renderResolvedWithChoices, type ConflictBlock } from '../conflicts'
 import type { ToolCallRequest } from '../../../../shared/aiChat'
 import { getFmt, getT } from '../i18n'
@@ -52,6 +59,7 @@ const WRITE_TOOLS = new Set([
   'commit',
   'undo_last_commit',
   'ignore_files',
+  'fix_case_collision',
   'merge_abort',
   'resolve_conflict',
   'create_branch',
@@ -754,6 +762,60 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
           warning: t.ignoreWarning
         },
         resolvedArgs: { patterns: requested.join('\n'), untrack: distinctUntrack.join('\n') }
+      }
+    }
+
+    case 'fix_case_collision': {
+      const repoPath = await requireCurrentRepo()
+      const requested = (a.keep_path ?? '').trim().replace(/\\/g, '/').replace(/^\.\//, '')
+      if (!requested) throw new Error(t.paramRequired('keep_path'))
+      const collisions = (await window.api.git.status(repoPath)).caseCollisions ?? []
+      if (collisions.length === 0) throw new Error(t.caseNone)
+      const describeAll = collisions.map((c) => c.versions.map((v) => v.path).join(' | ')).join('; ')
+      const collision = collisions.find((c) => c.versions.some((v) => v.path.toLowerCase() === requested.toLowerCase()))
+      if (!collision) throw new Error(t.caseNotInCollision(requested, describeAll))
+      const paths = collision.versions.map((v) => v.path)
+      const keep = collision.versions.find((v) => v.path === requested)
+      if (!keep) throw new Error(t.caseExactPath(requested, paths.join(', ')))
+
+      const rawSource = (a.content_from ?? '').trim().replace(/\\/g, '/').replace(/^\.\//, '')
+      const sourceOptions = [...paths, ...(collision.diskEdited ? ['disk'] : [])]
+      let source: string
+      if (!rawSource) source = defaultCaseChoice(collision).source
+      else if (rawSource.toLowerCase() === 'disk') {
+        // Without edits the disk holds one of the versions: the same as naming it.
+        source = collision.diskEdited ? CASE_COLLISION_DISK_SOURCE : (collision.versions.find((v) => v.onDisk)?.path ?? '')
+      } else source = paths.find((p) => p === rawSource) ?? ''
+      if (!source) throw new Error(t.caseBadSource(rawSource, sourceOptions.join(', ')))
+
+      const lines = getT().changes.caseLines
+      const chosen = collision.versions.find((v) => v.path === source)
+      const contentLabel = chosen ? t.caseContentVersion(chosen.path, lines(chosen.lines)) : t.caseContentDisk(lines(collision.diskLines))
+      const removed = paths.filter((p) => p !== keep.path)
+      const trashes = collision.diskEdited && source !== CASE_COLLISION_DISK_SOURCE
+      return {
+        preview: {
+          headline: t.caseHeadline(keep.path),
+          fields: [
+            { label: t.caseKeep, value: keep.path },
+            { label: t.caseContent, value: contentLabel },
+            { label: t.caseRemoved, value: formatFileList(removed) },
+            {
+              label: t.commands,
+              value: formatCommands([
+                `git rm --cached -- ${removed.map(quoteArg).join(' ')}`,
+                ...(chosen
+                  ? [
+                      `git update-index --cacheinfo ${chosen.mode},${chosen.blob.slice(0, 10)},${quoteArg(keep.path)}`,
+                      `git checkout-index -f -- ${quoteArg(keep.path)}`
+                    ]
+                  : [`git add -- ${quoteArg(keep.path)}`])
+              ])
+            }
+          ],
+          warning: [trashes ? t.caseTrashWarning : undefined, t.caseWarning].filter(Boolean).join(' ')
+        },
+        resolvedArgs: { keep_path: keep.path, source, removed: removed.join('\n') }
       }
     }
 
@@ -1551,6 +1613,12 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string | T
       if (useRepoStore.getState().error) throw new Error(useRepoStore.getState().error ?? t.stageGitignoreFailed)
       const untrackedNote = untrack.length > 0 ? t.untrackedNote(untrack.length) : ''
       return t.addedToGitignore(patterns.join(', '), untrackedNote)
+    }
+
+    case 'fix_case_collision': {
+      const done = await repo.resolveCaseCollision(a.keep_path, a.source)
+      if (!done) throw new Error(useRepoStore.getState().error ?? t.caseFailed)
+      return t.caseResolvedResult(a.keep_path, parsePathList(a.removed ?? '').join(', '))
     }
 
     case 'resolve_conflict': {

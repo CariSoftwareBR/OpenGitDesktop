@@ -63,6 +63,7 @@ import {
   writeRepoFile,
   addToGitIgnore,
   stopTracking,
+  resolveCaseCollision,
   locateFileInHistory,
   isCommitPublished,
   undoUnpublishedCommit,
@@ -341,6 +342,9 @@ export function registerIpcHandlers(): void {
 
   handle('git:addToGitIgnore', (_e, cwd: string, patterns: string[]) => addToGitIgnore(cwd, patterns))
   handle('git:stopTracking', (_e, cwd: string, paths: string[]) => stopTracking(cwd, paths))
+  handle('git:resolveCaseCollision', (_e, cwd: string, keepPath: string, source: string) =>
+    resolveCaseCollision(cwd, keepPath, source)
+  )
   handle('git:locateFileInHistory', (_e, cwd: string, path: string) => locateFileInHistory(cwd, path))
   handle('git:isPathIgnored', (_e, cwd: string, path: string) => isPathIgnored(cwd, path))
   handle('git:isCommitPublished', (_e, cwd: string, ref?: string) => isCommitPublished(cwd, ref))

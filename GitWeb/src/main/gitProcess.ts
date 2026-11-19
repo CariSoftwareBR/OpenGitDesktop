@@ -1,11 +1,12 @@
 import { spawn, type ChildProcess } from 'child_process'
 import { shell } from 'electron'
-import { lstat, readFile, rm, rmdir, writeFile, mkdir, mkdtemp, access, realpath, stat } from 'fs/promises'
+import { lstat, readFile, readdir, rename, rm, rmdir, writeFile, mkdir, mkdtemp, access, realpath, stat } from 'fs/promises'
 import { tmpdir } from 'os'
-import { join, dirname, basename, resolve, sep, normalize, toNamespacedPath } from 'path'
+import { join, dirname, basename, resolve, sep, normalize, toNamespacedPath, posix } from 'path'
 import type {
   BranchDeleteCheck,
   BranchDeletionResult,
+  CaseCollision,
   BranchInfo,
   BranchIntegration,
   BranchIntegrationReport,
@@ -39,8 +40,19 @@ import type {
   StatusEntry,
   SwitchBranchResult
 } from '../shared/git'
-import { parseCheckoutBlockers } from '../shared/git'
-import { parseBlamePorcelain, parseBranchOverview, parseChurnLog, parseDecorations, parseNumstatZ, sumNumstat, validateRebasePlan } from '../shared/gitParsing'
+import { CASE_COLLISION_DISK_SOURCE, parseCheckoutBlockers } from '../shared/git'
+import {
+  groupCaseCollisions,
+  parseBlamePorcelain,
+  parseBranchOverview,
+  parseChurnLog,
+  parseDecorations,
+  parseLsFilesStage,
+  parseNumstatZ,
+  sumNumstat,
+  validateRebasePlan,
+  type IndexEntry
+} from '../shared/gitParsing'
 import { parseGitHubRemote, credentialKey } from '../shared/githubRemote'
 import type { UpstreamStatus, UpstreamSyncResult } from '../shared/github'
 import { getSecret } from './credentials'
@@ -545,7 +557,164 @@ export async function getStatus(cwd: string): Promise<RepoStatus> {
   const { branch, upstream, ahead, behind } = parseStatusBranchHeader(header)
 
   const mergeHead = await readGit(['rev-parse', '-q', '--verify', 'MERGE_HEAD'], cwd)
-  return { entries: parseStatusEntries(rest), branch, ahead, behind, upstream, mergeInProgress: mergeHead.exitCode === 0 }
+  const entries = parseStatusEntries(rest)
+  // Best effort: a failed lookup must never cost the user the status itself.
+  const caseCollisions = await findCaseCollisions(cwd, entries).catch(() => [])
+  return {
+    entries,
+    branch,
+    ahead,
+    behind,
+    upstream,
+    mergeInProgress: mergeHead.exitCode === 0,
+    ...(caseCollisions.length > 0 ? { caseCollisions } : {})
+  }
+}
+
+// --- Paths that differ only in letter case ----------------------------------
+//
+// agents.md and AGENTS.md can both be tracked (committed on Linux, or added by
+// a tool). On Windows and macOS they are one file on disk, so git always shows
+// one of them as changed, and `git restore` only moves the change to the other.
+
+const caseGroupCache = new Map<string, { stamp: string; groups: IndexEntry[][] }>()
+
+/**
+ * The colliding groups in the index. Status is polled every few seconds, so
+ * the listing is cached until the index file changes.
+ */
+async function caseCollisionGroups(cwd: string): Promise<IndexEntry[][]> {
+  const key = queueKey(cwd)
+  const info = await stat(join(cwd, '.git', 'index')).catch(() => null)
+  const stamp = info ? `${info.mtimeMs}:${info.size}` : null
+  const cached = caseGroupCache.get(key)
+  if (stamp && cached?.stamp === stamp) return cached.groups
+
+  let groups: IndexEntry[][] = []
+  // Only where the disk folds case: elsewhere the paths are separate files.
+  const ignoreCase = await readGit(['config', '--bool', 'core.ignorecase'], cwd)
+  if (ignoreCase.stdout.trim() === 'true') {
+    const listed = await readGit(['ls-files', '-s', '-z'], cwd)
+    if (listed.exitCode === 0) groups = groupCaseCollisions(parseLsFilesStage(listed.stdout))
+  }
+  if (stamp) caseGroupCache.set(key, { stamp, groups })
+  return groups
+}
+
+/** Collisions that touch a changed path — the ones the user is seeing right now. */
+async function findCaseCollisions(cwd: string, entries: StatusEntry[]): Promise<CaseCollision[]> {
+  const changed = new Set(entries.filter((e) => e.index !== '?').map((e) => e.path.toLowerCase()))
+  if (changed.size === 0) return []
+  const groups = (await caseCollisionGroups(cwd)).filter((group) => changed.has(group[0].path.toLowerCase()))
+  return Promise.all(groups.map((group) => describeCaseCollision(cwd, group)))
+}
+
+function countLines(text: string): number | null {
+  if (text.includes('\0')) return null
+  if (text.length === 0) return 0
+  const breaks = text.split('\n').length - 1
+  return text.endsWith('\n') ? breaks : breaks + 1
+}
+
+/** The name the file really has on disk (any case), as a repo-relative path. */
+async function findDiskName(cwd: string, relativePath: string): Promise<string | null> {
+  const folder = posix.dirname(relativePath)
+  const wanted = posix.basename(relativePath).toLowerCase()
+  const names = await readdir(resolveWithinRepo(cwd, folder)).catch(() => [] as string[])
+  const found = names.find((name) => name.toLowerCase() === wanted)
+  if (!found) return null
+  return folder === '.' ? found : `${folder}/${found}`
+}
+
+async function diskBlobOf(cwd: string, diskPath: string): Promise<string | null> {
+  const hashed = await readGit(['hash-object', '--', diskPath], cwd)
+  return hashed.exitCode === 0 ? hashed.stdout.trim() : null
+}
+
+async function describeCaseCollision(cwd: string, group: IndexEntry[]): Promise<CaseCollision> {
+  const diskPath = await findDiskName(cwd, group[0].path)
+  const diskBlob = diskPath ? await diskBlobOf(cwd, diskPath) : null
+  const versions = await Promise.all(
+    group.map(async (entry) => {
+      const content = await readGit(['cat-file', 'blob', entry.blob], cwd)
+      return {
+        path: entry.path,
+        blob: entry.blob,
+        mode: entry.mode,
+        lines: content.exitCode === 0 ? countLines(content.stdout) : null,
+        onDisk: diskBlob === entry.blob
+      }
+    })
+  )
+  const diskEdited = diskPath !== null && !versions.some((v) => v.onDisk)
+  const diskLines =
+    diskEdited && diskPath
+      ? countLines(await readFile(resolveWithinRepo(cwd, diskPath), 'utf-8').catch(() => '\0'))
+      : null
+  return { versions, diskPath, diskEdited, diskLines }
+}
+
+/** A rename that only changes case needs a stop in between on a case-insensitive disk. */
+async function renameCaseOnly(cwd: string, from: string, to: string): Promise<void> {
+  const source = resolveWithinRepo(cwd, from)
+  const target = resolveWithinRepo(cwd, to)
+  const temp = `${target}.${process.pid}.case-rename`
+  await rename(source, temp)
+  await rename(temp, target)
+}
+
+/**
+ * Leaves a single path of a case collision in the index, with the chosen
+ * content: one of the versions in the index (`source` is its path) or the
+ * file on disk as it is (CASE_COLLISION_DISK_SOURCE). The result is staged,
+ * for the user to commit. Every other version is still in the last commit,
+ * and disk edits that are in no version go to the OS trash — nothing is lost.
+ */
+export async function resolveCaseCollision(cwd: string, keepPath: string, source: string): Promise<void> {
+  const t = tMain().git
+  // Re-read from the index: the screen or the approval card may be stale.
+  const listed = await readGit(['ls-files', '-s', '-z', '--', `:(icase,literal)${keepPath}`], cwd)
+  throwOnFailure(listed, ['ls-files'])
+  const group = parseLsFilesStage(listed.stdout).filter((e) => e.path.toLowerCase() === keepPath.toLowerCase())
+  if (group.some((e) => e.stage !== 0)) throw new Error(t.caseCollisionConflicted(keepPath))
+  const keep = group.find((e) => e.path === keepPath)
+  if (!keep || group.length < 2) throw new Error(t.caseCollisionGone(keepPath))
+  const others = group.filter((e) => e !== keep).map((e) => e.path)
+  const diskPath = await findDiskName(cwd, keepPath)
+
+  if (source === CASE_COLLISION_DISK_SOURCE) {
+    if (!diskPath) throw new Error(t.caseCollisionNoDiskFile(keepPath))
+    if (diskPath !== keepPath) await renameCaseOnly(cwd, diskPath, keepPath)
+    throwOnFailure(await runGit(['rm', '--cached', '-q', '--', ...others], cwd), ['rm', '--cached'])
+    throwOnFailure(await runGit(['add', '--', keepPath], cwd), ['add'])
+    return
+  }
+
+  const chosen = group.find((e) => e.path === source)
+  if (!chosen) throw new Error(t.caseCollisionGone(source))
+  // Index first: if it fails, the file on disk is still untouched.
+  throwOnFailure(await runGit(['rm', '--cached', '-q', '--', ...others], cwd), ['rm', '--cached'])
+  throwOnFailure(
+    await runGit(['update-index', '--cacheinfo', `${chosen.mode},${chosen.blob},${keepPath}`], cwd),
+    ['update-index']
+  )
+  if (diskPath) {
+    const target = resolveWithinRepo(cwd, diskPath)
+    const diskBlob = await diskBlobOf(cwd, diskPath)
+    if (group.some((e) => e.blob === diskBlob)) {
+      await rm(target, { force: true })
+    } else {
+      // Edits that are in no version exist nowhere else.
+      try {
+        await shell.trashItem(target)
+      } catch {
+        throw new Error(t.caseCollisionTrashFailed(diskPath))
+      }
+    }
+  }
+  // Writes the chosen blob under the kept name — case included — with the
+  // repository's line-ending filters and file mode.
+  throwOnFailure(await runGit(['checkout-index', '-f', '--', keepPath], cwd), ['checkout-index'])
 }
 
 /**

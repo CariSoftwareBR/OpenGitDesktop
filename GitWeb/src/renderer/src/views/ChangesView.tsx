@@ -4,6 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import {
   AlertTriangle,
   ArrowLeft,
+  CaseSensitive,
   Check,
   CircleHelp,
   FileDiff,
@@ -34,6 +35,7 @@ import ConflictResolver from '../components/ConflictResolver'
 import ConfirmDialog from '../components/ConfirmDialog'
 import ProtectedBranchDialog from '../components/ProtectedBranchDialog'
 import SensitiveFilesDialog from '../components/SensitiveFilesDialog'
+import CaseCollisionDialog from '../components/CaseCollisionDialog'
 import { openSettings } from '../lib/openAiSettings'
 import type { SensitiveFinding } from '../../../shared/sensitiveFiles'
 import { DEFAULT_APP_SETTINGS } from '../../../shared/settings'
@@ -42,7 +44,7 @@ import type { BranchRules } from '../../../shared/github'
 import FileContextMenu, { type FileContextMenuTarget } from '../components/FileContextMenu'
 import { basename } from '../lib/path'
 import { ignoreSensitive, unstageSensitive } from '../lib/sensitive'
-import { isConflicted, type FileLineStat, type StatusEntry } from '../../../shared/git'
+import { isConflicted, type CaseCollision, type FileLineStat, type StatusEntry } from '../../../shared/git'
 import { relativeTime } from '../lib/relativeTime'
 import { useLocale, useT } from '../lib/i18n'
 
@@ -441,6 +443,8 @@ function ChangesView(): JSX.Element {
   const unstagePaths = useRepoStore((s) => s.unstagePaths)
   const discardPaths = useRepoStore((s) => s.discardPaths)
   const ignorePatterns = useRepoStore((s) => s.ignorePatterns)
+  const resolveCaseCollision = useRepoStore((s) => s.resolveCaseCollision)
+  const [caseDialog, setCaseDialog] = useState<CaseCollision | null>(null)
   const commitChanges = useRepoStore((s) => s.commitChanges)
   const createBranch = useRepoStore((s) => s.createBranch)
   const [protectedBlock, setProtectedBlock] = useState<{ branch: string; rules: BranchRules } | null>(null)
@@ -580,6 +584,7 @@ function ChangesView(): JSX.Element {
   )
 
   const { staged, unstaged, conflicted } = splitStatus(status)
+  const caseCollisions = status?.caseCollisions ?? []
 
   // +/- per file. Refetched whenever status changes: a cheap `diff --numstat`
   // pair that never blocks the list, which renders without it.
@@ -1127,6 +1132,49 @@ function ChangesView(): JSX.Element {
           </section>
         )}
 
+        {caseCollisions.length > 0 && (
+          <section className="border-b border-warning-amber/20 bg-warning-amber-soft p-3">
+            <h2 className="mb-2 flex items-center gap-1.5 text-label uppercase tracking-wide text-warning-amber">
+              <CaseSensitive size={14} aria-hidden /> {t.caseTitle}
+            </h2>
+            <p className="mb-2.5 text-caption text-secondary-text">{t.caseHint}</p>
+            <ul className="flex flex-col gap-2.5">
+              {caseCollisions.map((collision) => {
+                const first = collision.versions[0].path
+                const folder = first.includes('/') ? first.slice(0, first.lastIndexOf('/') + 1) : ''
+                return (
+                  <li key={first}>
+                    {folder && (
+                      <p className="truncate font-mono text-caption text-tertiary-text" title={folder}>
+                        {folder}
+                      </p>
+                    )}
+                    <p className="mb-2 flex flex-wrap items-center gap-1.5">
+                      {collision.versions.map((v) => (
+                        <span
+                          key={v.path}
+                          className="max-w-full truncate rounded border border-warning-amber/30 bg-obsidian-panel/60 px-1.5 py-0.5 font-mono text-caption text-primary-text"
+                          title={v.path}
+                        >
+                          {v.path.slice(folder.length)}
+                        </span>
+                      ))}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setCaseDialog(collision)}
+                      disabled={isBusy}
+                      className="btn-secondary w-full justify-center border-warning-amber/40 text-warning-amber"
+                    >
+                      {t.caseFix}
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        )}
+
         {totalCount > 0 && <ChangeMeter entries={meterEntries} stagedCount={staged.length} lines={meterLines} />}
 
         <div className="p-3 pb-1">
@@ -1656,6 +1704,16 @@ function ChangesView(): JSX.Element {
         danger={Boolean(status?.upstream && status.ahead === 0)}
         onCancel={() => setConfirm(null)}
         onConfirm={() => void runConfirmed()}
+      />
+      <CaseCollisionDialog
+        collision={caseDialog}
+        onCancel={() => setCaseDialog(null)}
+        onConfirm={(keepPath, source) => {
+          setCaseDialog(null)
+          void resolveCaseCollision(keepPath, source).then((done) => {
+            if (done) setLiveMessage(t.caseResolved(keepPath))
+          })
+        }}
       />
       <FileContextMenu
         open={contextMenu !== null}
