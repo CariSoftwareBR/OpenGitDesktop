@@ -23,7 +23,7 @@ import {
   UploadCloud,
   Users
 } from 'lucide-react'
-import { basename } from '../lib/path'
+import { basename, displayFolder } from '../lib/path'
 import DeleteBranchDialog from './DeleteBranchDialog'
 import { sanitizeBranchInput, validateBranchName } from '../lib/branchName'
 import { useClickOutside } from '../lib/useClickOutside'
@@ -84,6 +84,14 @@ function samePath(a: string | null, b: string | null): boolean {
   if (!a || !b) return false
   const norm = (p: string): string => p.replace(/[\\/]+/g, '/').replace(/\/$/, '').toLowerCase()
   return norm(a) === norm(b)
+}
+
+/** The last two folders of a path, enough to tell worktrees apart in a narrow menu. */
+function shortFolder(path: string): string {
+  const shown = displayFolder(path)
+  const sep = shown.includes('\\') ? '\\' : '/'
+  const parts = shown.split(sep).filter(Boolean)
+  return parts.length > 2 ? `…${sep}${parts.slice(-2).join(sep)}` : shown
 }
 
 function RepoCard({ compact }: { compact: boolean }): JSX.Element {
@@ -195,6 +203,7 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
   const deleteCheckedBranch = useRepoStore((s) => s.deleteCheckedBranch)
   const repoPath = useRepoStore((s) => s.currentRepoPath)
   const renameBranch = useRepoStore((s) => s.renameBranch)
+  const openWorktree = useRepoStore((s) => s.openWorktree)
   const [open, setOpen] = useState(false)
   const [menuPos, setMenuPos] = useState<MenuPosition | null>(null)
   const t = useT().topBar
@@ -314,16 +323,48 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
                   type="button"
                   role="menuitem"
                   className={`${MENU_ITEM} min-w-0 flex-1`}
-                  title={branch.name}
+                  title={
+                    branch.worktreePath
+                      ? branch.worktreeMissing
+                        ? t.worktreeGoneTitle(branch.name, displayFolder(branch.worktreePath))
+                        : t.openWorktreeTitle(branch.name, displayFolder(branch.worktreePath))
+                      : branch.name
+                  }
                   onClick={() => {
                     setOpen(false)
-                    if (!branch.isCurrent) switchBranch(branch.name)
+                    if (branch.isCurrent) return
+                    // Checked out in another folder: git would refuse the switch,
+                    // so open that folder instead. A worktree whose folder is gone
+                    // goes through the switch, whose refusal offers the prune.
+                    if (branch.worktreePath && !branch.worktreeMissing) void openWorktree(branch.worktreePath)
+                    else void switchBranch(branch.name)
                   }}
                 >
                   {branch.isCurrent ? (
                     <>
                       <span className="truncate font-semibold">{branch.name}</span>
                       <Check size={14} className="ml-auto shrink-0 text-command-blue" aria-label={t.currentMarker} />
+                    </>
+                  ) : branch.worktreePath ? (
+                    <>
+                      <span className="flex min-w-0 flex-col gap-0.5 leading-tight">
+                        <span className="truncate">{branch.name}</span>
+                        <span className="flex min-w-0 items-center gap-1 text-caption text-tertiary-text">
+                          <FolderGit2 size={12} className="shrink-0" aria-hidden />
+                          <span className="truncate">
+                            {branch.worktreeMissing ? t.worktreeFolderGone : shortFolder(branch.worktreePath)}
+                          </span>
+                        </span>
+                      </span>
+                      <span
+                        className={`ml-auto shrink-0 rounded-pill border px-1.5 text-label leading-4 ${
+                          branch.worktreeMissing
+                            ? 'border-warning-amber/30 text-warning-amber'
+                            : 'border-command-blue/30 text-command-blue'
+                        }`}
+                      >
+                        {t.worktreeBadge}
+                      </span>
                     </>
                   ) : (
                     <span className="truncate">{branch.name}</span>
@@ -351,16 +392,21 @@ function BranchCard({ compact }: { compact: boolean }): JSX.Element {
                     >
                       <GitMerge size={14} aria-hidden />
                     </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className={`${ROW_ICON} hover:text-danger-red`}
-                      title={t.deleteBranchAria(branch.name)}
-                      aria-label={t.deleteBranchAria(branch.name)}
-                      onClick={() => requestDelete(branch.name)}
-                    >
-                      <Trash2 size={14} aria-hidden />
-                    </button>
+                    {/* git refuses to delete a branch checked out in another worktree;
+                        the spacer keeps this row's icons in line with the others. */}
+                    {branch.worktreePath && <span className="w-[26px] shrink-0" aria-hidden />}
+                    {!branch.worktreePath && (
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={`${ROW_ICON} hover:text-danger-red`}
+                        title={t.deleteBranchAria(branch.name)}
+                        aria-label={t.deleteBranchAria(branch.name)}
+                        onClick={() => requestDelete(branch.name)}
+                      >
+                        <Trash2 size={14} aria-hidden />
+                      </button>
+                    )}
                   </>
                 )}
               </div>
@@ -736,6 +782,50 @@ function SwitchBlockedDialog(): JSX.Element {
   )
 }
 
+// Mounted next to SwitchBlockedDialog: any switch can also be refused because
+// the branch is checked out in another worktree of the same repository.
+function WorktreeBlockedDialog(): JSX.Element {
+  const blocked = useRepoStore((s) => s.worktreeBlocked)
+  const openWorktree = useRepoStore((s) => s.openWorktree)
+  const pruneWorktreesAndSwitch = useRepoStore((s) => s.pruneWorktreesAndSwitch)
+  const dismiss = useRepoStore((s) => s.dismissWorktreeBlocked)
+  const t = useT().topBar
+
+  return (
+    <ConfirmDialog
+      open={blocked !== null}
+      title={blocked?.missing ? t.worktreeGoneDialogTitle : t.worktreeDialogTitle}
+      message={
+        !blocked ? '' : blocked.missing ? t.worktreeGoneDialogMessage(blocked.target) : t.worktreeDialogMessage(blocked.target)
+      }
+      confirmLabel={blocked?.missing ? t.pruneAndSwitch : t.openWorktree}
+      onCancel={dismiss}
+      onConfirm={() => {
+        if (!blocked) return
+        if (blocked.missing) void pruneWorktreesAndSwitch(blocked.target)
+        else void openWorktree(blocked.path)
+      }}
+    >
+      {blocked && (
+        <>
+          <p
+            className="mt-3 flex items-center gap-2 rounded-md border border-default-border bg-midnight-base px-3 py-2 font-mono text-caption text-secondary-text"
+            title={displayFolder(blocked.path)}
+          >
+            <FolderGit2 size={14} className="shrink-0 text-tertiary-text" aria-hidden />
+            <span className={`truncate ${blocked.missing ? 'line-through decoration-tertiary-text' : ''}`}>
+              {displayFolder(blocked.path)}
+            </span>
+          </p>
+          <p className="mt-3 text-caption text-tertiary-text">
+            {blocked.missing ? t.worktreeGoneDialogNote : t.worktreeDialogNote}
+          </p>
+        </>
+      )}
+    </ConfirmDialog>
+  )
+}
+
 function TopBar(): JSX.Element {
   const view = useRepoStore((s) => s.view)
   const setView = useRepoStore((s) => s.setView)
@@ -818,6 +908,7 @@ function TopBar(): JSX.Element {
         })}
       </nav>
       <SwitchBlockedDialog />
+      <WorktreeBlockedDialog />
     </>
   )
 }

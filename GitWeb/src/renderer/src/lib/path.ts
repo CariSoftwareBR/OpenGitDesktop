@@ -69,3 +69,8 @@ export function toIgnorePattern(path: string): string {
   const normalized = path.replace(/\\/g, '/').replace(/^\.\//, '')
   return normalized.startsWith('/') ? normalized : `/${normalized}`
 }
+
+/** A folder as the OS writes it: git prints worktree paths with forward slashes, even on Windows. */
+export function displayFolder(path: string): string {
+  return /^[a-zA-Z]:[\\/]/.test(path) ? path.replace(/\//g, '\\') : path
+}

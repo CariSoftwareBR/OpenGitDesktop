@@ -68,6 +68,24 @@ const ptBR = {
   switchBlockedNote: (current: string, total: number): string =>
     `Todas as alterações (${total === 1 ? '1 arquivo' : `${total} arquivos`}) vão para um stash de "${current}". Ao voltar para essa branch, o app oferece restaurá-las.`,
   stashAndSwitch: 'Guardar e trocar',
+  worktreeBadge: 'worktree',
+  worktreeFolderGone: 'pasta apagada',
+  openWorktreeTitle: (branch: string, path: string) =>
+    `"${branch}" está aberta em outro worktree (${path}). Clique para abrir essa pasta.`,
+  worktreeGoneTitle: (branch: string, path: string) =>
+    `"${branch}" está presa a um worktree cuja pasta foi apagada (${path}). Clique para liberar a branch.`,
+  worktreeDialogTitle: 'Branch aberta em outro worktree',
+  worktreeDialogMessage: (branch: string) =>
+    `"${branch}" já está aberta em outro worktree deste repositório, nesta pasta:`,
+  worktreeDialogNote:
+    'O Git não deixa a mesma branch aberta em duas pastas ao mesmo tempo. Abrir o worktree troca o repositório aberto no app para essa pasta; nada nela é alterado.',
+  worktreeGoneDialogTitle: 'Worktree com a pasta apagada',
+  worktreeGoneDialogMessage: (branch: string) =>
+    `"${branch}" ainda está presa a um worktree cuja pasta não existe mais:`,
+  worktreeGoneDialogNote:
+    'Liberar roda git worktree prune, que só esquece os worktrees cujas pastas foram apagadas, e depois troca para a branch.',
+  openWorktree: 'Abrir worktree',
+  pruneAndSwitch: 'Liberar e trocar',
   branchStashHint: (branch: string) => `Há alterações guardadas num stash de "${branch}".`,
   restoreStash: 'Restaurar',
   dismissStashHint: 'Dispensar aviso do stash',
@@ -187,6 +205,21 @@ const en: M = {
   switchBlockedNote: (current, total) =>
     `All changes (${total === 1 ? '1 file' : `${total} files`}) go to a stash of "${current}". When you come back to that branch, the app offers to restore them.`,
   stashAndSwitch: 'Stash and switch',
+  worktreeBadge: 'worktree',
+  worktreeFolderGone: 'folder deleted',
+  openWorktreeTitle: (branch, path) => `"${branch}" is checked out in another worktree (${path}). Click to open that folder.`,
+  worktreeGoneTitle: (branch, path) =>
+    `"${branch}" is held by a worktree whose folder was deleted (${path}). Click to free the branch.`,
+  worktreeDialogTitle: 'Branch open in another worktree',
+  worktreeDialogMessage: (branch) => `"${branch}" is already checked out in another worktree of this repository, in this folder:`,
+  worktreeDialogNote:
+    'Git does not let the same branch be checked out in two folders at once. Opening the worktree switches the app to that folder; nothing in it changes.',
+  worktreeGoneDialogTitle: 'Worktree folder deleted',
+  worktreeGoneDialogMessage: (branch) => `"${branch}" is still held by a worktree whose folder no longer exists:`,
+  worktreeGoneDialogNote:
+    'Freeing it runs git worktree prune, which only forgets worktrees whose folders were deleted, then switches to the branch.',
+  openWorktree: 'Open worktree',
+  pruneAndSwitch: 'Free and switch',
   branchStashHint: (branch) => `There are changes saved in a stash of "${branch}".`,
   restoreStash: 'Restore',
   dismissStashHint: 'Dismiss stash notice',
@@ -302,6 +335,21 @@ const es: M = {
   switchBlockedNote: (current, total) =>
     `Todos los cambios (${total === 1 ? '1 archivo' : `${total} archivos`}) van a un stash de "${current}". Al volver a esa rama, la app ofrece restaurarlos.`,
   stashAndSwitch: 'Guardar y cambiar',
+  worktreeBadge: 'worktree',
+  worktreeFolderGone: 'carpeta eliminada',
+  openWorktreeTitle: (branch, path) => `"${branch}" está abierta en otro worktree (${path}). Haz clic para abrir esa carpeta.`,
+  worktreeGoneTitle: (branch, path) =>
+    `"${branch}" está retenida por un worktree cuya carpeta se eliminó (${path}). Haz clic para liberar la rama.`,
+  worktreeDialogTitle: 'Rama abierta en otro worktree',
+  worktreeDialogMessage: (branch) => `"${branch}" ya está abierta en otro worktree de este repositorio, en esta carpeta:`,
+  worktreeDialogNote:
+    'Git no permite tener la misma rama abierta en dos carpetas a la vez. Abrir el worktree cambia el repositorio abierto en la app a esa carpeta; no se modifica nada en ella.',
+  worktreeGoneDialogTitle: 'Worktree con la carpeta eliminada',
+  worktreeGoneDialogMessage: (branch) => `"${branch}" sigue retenida por un worktree cuya carpeta ya no existe:`,
+  worktreeGoneDialogNote:
+    'Liberar ejecuta git worktree prune, que solo olvida los worktrees cuyas carpetas se eliminaron, y luego cambia a la rama.',
+  openWorktree: 'Abrir worktree',
+  pruneAndSwitch: 'Liberar y cambiar',
   branchStashHint: (branch) => `Hay cambios guardados en un stash de "${branch}".`,
   restoreStash: 'Restaurar',
   dismissStashHint: 'Descartar aviso del stash',

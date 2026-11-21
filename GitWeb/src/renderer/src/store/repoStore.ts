@@ -1,7 +1,14 @@
 import { create } from 'zustand'
 import type { PublishRepositoryInput, PublishRepositoryResult } from '../../../shared/github'
 import type { ReorganizeResult, RepoMove } from '../../../shared/repoOrganize'
-import { isConflicted, isHistoryRewrittenMessage, remoteBranchesToOffer, sameRepoStatus, stashBranchName } from '../../../shared/git'
+import {
+  isConflicted,
+  isHistoryRewrittenMessage,
+  parseWorktreeConflict,
+  remoteBranchesToOffer,
+  sameRepoStatus,
+  stashBranchName
+} from '../../../shared/git'
 import type {
   BranchInfo,
   CommitFile,
@@ -26,7 +33,7 @@ import {
 import { useAppSettingsStore } from './appSettingsStore'
 import { getT } from '../lib/i18n'
 import { directPushBlock } from '../lib/branchProtection'
-import { isInsidePath, joinPath, pathKey } from '../lib/path'
+import { displayFolder, isInsidePath, joinPath, pathKey } from '../lib/path'
 import { extractHunkPatch, parseFileDiff } from '../../../shared/patch'
 
 type ViewName = 'changes' | 'history' | 'stash' | 'pullRequests' | 'collaborators' | 'dashboard' | 'messages' | 'settings' | 'about'
@@ -62,6 +69,11 @@ interface RepoState {
   forcePushPrompt: { branch: string } | null
   /** A switch git refused because it would overwrite these local changes. */
   switchBlocked: { from: string; target: string; remote: boolean; files: string[] } | null
+  /**
+   * A switch git refused because the branch is checked out in another
+   * worktree; `missing` when that worktree's folder no longer exists.
+   */
+  worktreeBlocked: { target: string; path: string; missing: boolean } | null
   /** Just switched onto a branch that has changes parked in a stash. */
   branchStashHint: { repoPath: string; branch: string } | null
   /** Every branch, remote and tag with parents and refs — the History graph's input. */
@@ -161,6 +173,14 @@ interface RepoState {
   /** Stashes everything on the current branch, then retries the blocked switch. */
   stashAndSwitch: () => Promise<void>
   cancelBlockedSwitch: () => void
+  /** Opens another worktree's folder as the current repository. */
+  openWorktree: (path: string) => Promise<void>
+  /**
+   * `git worktree prune` (forgets worktrees whose folder was deleted), then the
+   * switch to `branch` they were blocking. Same contract as switchBranch.
+   */
+  pruneWorktreesAndSwitch: (branch: string, options?: { interactive?: boolean }) => Promise<boolean>
+  dismissWorktreeBlocked: () => void
   restoreBranchStash: () => Promise<void>
   dismissBranchStashHint: () => void
   deleteBranch: (name: string, force: boolean) => Promise<boolean>
@@ -219,7 +239,16 @@ function applyRecentData(
 }
 
 function describeError(err: unknown): string {
-  return err instanceof Error ? err.message : String(err)
+  const message = err instanceof Error ? err.message : String(err)
+  // git's "'x' is already used by worktree at 'p'" (checkout, delete…) says
+  // nothing about what to do; explain it in the user's language instead.
+  const inWorktree = parseWorktreeConflict(message)
+  return inWorktree ? describeWorktreeConflict(inWorktree.branch, inWorktree.path, false) : message
+}
+
+function describeWorktreeConflict(branch: string, path: string, missing: boolean): string {
+  const t = getT().stores
+  return missing ? t.branchInMissingWorktree(branch, displayFolder(path)) : t.branchInWorktree(branch, displayFolder(path))
 }
 
 function isHistoryRewritten(err: unknown): boolean {
@@ -271,6 +300,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
   remoteBranches: [],
   forcePushPrompt: null,
   switchBlocked: null,
+  worktreeBlocked: null,
   branchStashHint: null,
   log: [],
   historyFocus: null,
@@ -466,6 +496,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
         commitSummary: '',
         commitDescription: '',
         switchBlocked: null,
+        worktreeBlocked: null,
         branchStashHint: null
       })
       await Promise.all([get().refreshStatus(), get().refreshBranches(), get().refreshLog()])
@@ -580,6 +611,7 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       remoteBranches: [],
       forcePushPrompt: null,
       switchBlocked: null,
+      worktreeBlocked: null,
       branchStashHint: null,
       log: [],
       stashes: [],
@@ -1052,6 +1084,20 @@ export const useRepoStore = create<RepoState>((set, get) => ({
       const result = remote
         ? await window.api.git.checkoutRemoteBranch(target, currentRepoPath)
         : await window.api.git.switchBranch(target, currentRepoPath)
+      if (!result.switched && 'worktreePath' in result) {
+        // From origin/x, git tried the local x — that is the branch held elsewhere.
+        const branch = remote ? target.slice(target.indexOf('/') + 1) : target
+        // Refreshed so the branch menu shows where the branch lives, and so we
+        // know whether that folder still exists.
+        await get().refreshBranches()
+        const missing = get().branches.find((b) => b.name === branch)?.worktreeMissing ?? false
+        if (options?.interactive === false) {
+          set({ error: describeWorktreeConflict(branch, result.worktreePath, missing) })
+        } else {
+          set({ worktreeBlocked: { target: branch, path: result.worktreePath, missing } })
+        }
+        return false
+      }
       if (!result.switched) {
         if (options?.interactive === false) {
           set({ error: getT().stores.switchBlocked(target, result.blockingFiles.join(', ')) })
@@ -1093,6 +1139,36 @@ export const useRepoStore = create<RepoState>((set, get) => ({
   },
 
   cancelBlockedSwitch: () => set({ switchBlocked: null }),
+
+  openWorktree: async (path) => {
+    set({ worktreeBlocked: null })
+    await get().openRepository(path)
+  },
+
+  pruneWorktreesAndSwitch: async (branch, options) => {
+    const { currentRepoPath } = get()
+    if (!currentRepoPath) return false
+    set({ worktreeBlocked: null, isBusy: true, error: null })
+    try {
+      await window.api.git.pruneWorktrees(currentRepoPath)
+      // prune keeps locked worktrees (a removable or network drive that is
+      // just offline): say so, instead of a switch that would land right back
+      // on the same dialog.
+      const held = (await window.api.git.worktrees(currentRepoPath)).find((w) => w.branch === branch && w.locked)
+      if (held) {
+        set({ error: getT().stores.branchInLockedWorktree(branch, displayFolder(held.path)) })
+        return false
+      }
+    } catch (err) {
+      set({ error: describeError(err) })
+      return false
+    } finally {
+      set({ isBusy: false })
+    }
+    return get().switchBranch(branch, options)
+  },
+
+  dismissWorktreeBlocked: () => set({ worktreeBlocked: null }),
 
   // Looked up again at click time: stash@{n} indexes shift whenever another
   // stash is pushed or dropped, so a ref captured at switch time can go stale.

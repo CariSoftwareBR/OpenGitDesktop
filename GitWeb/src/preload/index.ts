@@ -32,7 +32,8 @@ import type {
   RepoUpdateResult,
   RepoUpdateStatus,
   StashEntry,
-  SwitchBranchResult
+  SwitchBranchResult,
+  WorktreeInfo
 } from '../shared/git'
 import type { AiSettings, ResolvedAiConfig } from '../shared/ai'
 import type { AiRequestOptions, ChatMessage, ChatRequestOutcome, ChatResponse, ToolDefinition } from '../shared/aiChat'
@@ -152,6 +153,8 @@ const api = {
       invoke('git:scanSensitive', cwd, scope),
     scanSensitiveHistory: (cwd: string): Promise<SensitiveFinding[]> => invoke('git:scanSensitiveHistory', cwd),
     branches: (cwd: string): Promise<BranchInfo[]> => invoke('git:branches', cwd),
+    worktrees: (cwd: string): Promise<WorktreeInfo[]> => invoke('git:worktrees', cwd),
+    pruneWorktrees: (cwd: string): Promise<string[]> => invoke('git:pruneWorktrees', cwd),
     createBranch: (name: string, cwd: string, checkout: boolean, from?: string): Promise<void> =>
       invoke('git:createBranch', name, cwd, checkout, from),
     switchBranch: (name: string, cwd: string): Promise<SwitchBranchResult> =>

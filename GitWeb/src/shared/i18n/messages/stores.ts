@@ -62,7 +62,13 @@ const ptBR = {
   checking: 'Verificando…',
   leftChangesStash: (branch: string) => `Alterações deixadas em ${branch}`,
   switchBlocked: (target: string, files: string) =>
-    `Não foi possível trocar para "${target}": alterações locais seriam sobrescritas (${files}). Faça commit ou stash antes.`
+    `Não foi possível trocar para "${target}": alterações locais seriam sobrescritas (${files}). Faça commit ou stash antes.`,
+  branchInWorktree: (branch: string, path: string) =>
+    `A branch "${branch}" já está aberta em outro worktree, na pasta ${path}. O Git não deixa a mesma branch aberta em duas pastas ao mesmo tempo: abra essa pasta para trabalhar nela.`,
+  branchInMissingWorktree: (branch: string, path: string) =>
+    `A branch "${branch}" ainda está presa a um worktree cuja pasta foi apagada (${path}). Rode git worktree prune para liberá-la.`,
+  branchInLockedWorktree: (branch: string, path: string) =>
+    `A branch "${branch}" está num worktree travado (locked) cuja pasta não está acessível (${path}), e o git worktree prune não mexe em worktrees travados. Reconecte a unidade dessa pasta, ou rode git worktree unlock "${path}" se ela não vai mais voltar.`
 }
 
 type M = typeof ptBR
@@ -129,7 +135,13 @@ const en: M = {
   checking: 'Checking…',
   leftChangesStash: (branch) => `Changes left on ${branch}`,
   switchBlocked: (target, files) =>
-    `Could not switch to "${target}": local changes would be overwritten (${files}). Commit or stash them first.`
+    `Could not switch to "${target}": local changes would be overwritten (${files}). Commit or stash them first.`,
+  branchInWorktree: (branch, path) =>
+    `The branch "${branch}" is already checked out in another worktree, in ${path}. Git does not let the same branch be checked out in two folders at once: open that folder to work on it.`,
+  branchInMissingWorktree: (branch, path) =>
+    `The branch "${branch}" is still held by a worktree whose folder was deleted (${path}). Run git worktree prune to free it.`,
+  branchInLockedWorktree: (branch, path) =>
+    `The branch "${branch}" is in a locked worktree whose folder cannot be reached (${path}), and git worktree prune leaves locked worktrees alone. Reconnect that folder's drive, or run git worktree unlock "${path}" if it is not coming back.`
 }
 
 const es: M = {
@@ -195,7 +207,13 @@ const es: M = {
   checking: 'Comprobando…',
   leftChangesStash: (branch) => `Cambios dejados en ${branch}`,
   switchBlocked: (target, files) =>
-    `No se pudo cambiar a "${target}": se sobrescribirían cambios locales (${files}). Haz commit o stash antes.`
+    `No se pudo cambiar a "${target}": se sobrescribirían cambios locales (${files}). Haz commit o stash antes.`,
+  branchInWorktree: (branch, path) =>
+    `La rama "${branch}" ya está abierta en otro worktree, en ${path}. Git no permite tener la misma rama abierta en dos carpetas a la vez: abre esa carpeta para trabajar en ella.`,
+  branchInMissingWorktree: (branch, path) =>
+    `La rama "${branch}" sigue retenida por un worktree cuya carpeta se eliminó (${path}). Ejecuta git worktree prune para liberarla.`,
+  branchInLockedWorktree: (branch, path) =>
+    `La rama "${branch}" está en un worktree bloqueado (locked) cuya carpeta no es accesible (${path}), y git worktree prune no toca los worktrees bloqueados. Vuelve a conectar la unidad de esa carpeta, o ejecuta git worktree unlock "${path}" si no va a volver.`
 }
 
 export default { 'pt-BR': ptBR, en, es }
