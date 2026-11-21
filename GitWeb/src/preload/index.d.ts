@@ -31,7 +31,8 @@ import type {
   RepoUpdateResult,
   RepoUpdateStatus,
   StashEntry,
-  SwitchBranchResult
+  SwitchBranchResult,
+  WorktreeInfo
 } from '../shared/git'
 import type { AiSettings, ResolvedAiConfig } from '../shared/ai'
 import type { AiRequestOptions, ChatMessage, ChatRequestOutcome, ChatResponse, ToolDefinition } from '../shared/aiChat'
@@ -113,6 +114,10 @@ export interface Api {
     /** Every commit reachable from HEAD — what a first publish would push. */
     scanSensitiveHistory: (cwd: string) => Promise<SensitiveFinding[]>
     branches: (cwd: string) => Promise<BranchInfo[]>
+    /** `git worktree list`, the main worktree first. */
+    worktrees: (cwd: string) => Promise<WorktreeInfo[]>
+    /** `git worktree prune`; resolves to the folders it forgot. */
+    pruneWorktrees: (cwd: string) => Promise<string[]>
     createBranch: (name: string, cwd: string, checkout: boolean, from?: string) => Promise<void>
     switchBranch: (name: string, cwd: string) => Promise<SwitchBranchResult>
     log: (cwd: string, limit?: number, path?: string) => Promise<CommitSummary[]>

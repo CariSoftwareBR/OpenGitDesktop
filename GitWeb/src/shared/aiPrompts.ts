@@ -1066,11 +1066,14 @@ const SCM_SKILL_TRIGGERS: { id: ScmSkillId; tools: Set<string>; pattern: RegExp;
       'create_tag',
       'push_tag',
       'prepare_release_notes',
-      'reorganize_local_commits'
+      'reorganize_local_commits',
+      'list_worktrees',
+      'open_worktree',
+      'prune_worktrees'
     ]),
     // "pull request" belongs to the PR skills, not to pull.
     pattern:
-      /\b(commit\w*|comitar|comitear|push\w*|pull\w*(?!\s*-?\s*requests?)|branch(?:es)?|ramas?|stash\w*|identidade|identidad|identity|tags?|releases?|changelog|squash\w*|rebase\w*|blame|hist[oó]rico|historial|history)\b/i
+      /\b(commit\w*|comitar|comitear|push\w*|pull\w*(?!\s*-?\s*requests?)|branch(?:es)?|ramas?|stash\w*|identidade|identidad|identity|tags?|releases?|changelog|squash\w*|rebase\w*|blame|hist[oó]rico|historial|history|worktrees?)\b/i
   },
   {
     id: 'merge-branch',

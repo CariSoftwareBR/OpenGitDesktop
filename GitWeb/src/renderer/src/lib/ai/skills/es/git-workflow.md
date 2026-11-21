@@ -30,6 +30,13 @@ En `main`/`master`: avisa una vez y ofrece `create_branch`. Si el usuario quiere
 - Nombre = prefijo + palabras en minúsculas unidas por `-`. Prefijos: `feature/`, `fix/`, `refactor/`, `docs/`, `hotfix/` (p. ej., `feature/wizard-pr`).
 - Cambios sin commit antes de `switch_branch` → ofrece `stash`; `stash_pop` los recupera después.
 
+## Worktrees
+- Un worktree es otra carpeta del mismo repositorio con su propio checkout (herramientas como Orca crean uno por tarea). Git no permite la misma rama abierta en dos carpetas.
+- `list_branches` marca con `+` la rama abierta en otro worktree. No uses `switch_branch` con ella: llama a `open_worktree`, que abre esa carpeta en la app. Dile al usuario que la app pasó a otra carpeta.
+- "is already used by worktree at" / "checked out at" en un error → es este caso. Llama a `list_worktrees` y ofrece `open_worktree`.
+- Un worktree con la carpeta eliminada retiene su rama hasta un `prune_worktrees`. Después, `switch_branch` funciona.
+- Nunca elimines la carpeta de un worktree ni su rama para "resolverlo": puede haber trabajo sin commit allí.
+
 ## Mostrar en vez de listar
 - Preguntas sobre dónde está algo ("¿de dónde salió esta rama de main?", "¿este fix ya está en la release?") → encuentra el commit (`list_commits`/`read_commit`) y llama a `show_in_history`: el usuario lo ve resaltado en el grafo y tú recibes en qué ramas y tags ya está.
 - "¿Por qué esta línea está así?" / "¿quién tocó este archivo?" → `explain_file_history` (con `line` cuando haya una línea).

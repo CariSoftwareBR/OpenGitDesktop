@@ -67,6 +67,29 @@ export const CASE_COLLISION_DISK_SOURCE = ':disk'
 export interface BranchInfo {
   name: string
   isCurrent: boolean
+  /**
+   * Folder of another worktree that has this branch checked out. Git refuses
+   * to check out (or delete) a branch that is open in another folder, so the
+   * branch is opened there instead.
+   */
+  worktreePath?: string
+  /** That worktree's folder no longer exists: `git worktree prune` frees the branch. */
+  worktreeMissing?: boolean
+}
+
+/** One entry of `git worktree list`: a folder with its own checkout of the repository. */
+export interface WorktreeInfo {
+  path: string
+  /** Short branch name; null when the worktree is on a detached HEAD (or bare). */
+  branch: string | null
+  head: string
+  /** The repository's original folder; the others are linked worktrees. */
+  isMain: boolean
+  /** The folder open in the app. */
+  isCurrent: boolean
+  locked: boolean
+  /** Its folder is gone; `git worktree prune` removes the leftover entry. */
+  missing: boolean
 }
 
 /**
@@ -395,8 +418,27 @@ export interface RecentReposData {
   repos: RecentRepository[]
 }
 
-/** A checkout git refused because it would overwrite local changes. */
-export type SwitchBranchResult = { switched: true } | { switched: false; blockingFiles: string[] }
+/**
+ * A checkout git refused: because it would overwrite local changes
+ * (`blockingFiles`), or because the branch is checked out in another worktree
+ * (`worktreePath`).
+ */
+export type SwitchBranchResult =
+  | { switched: true }
+  | { switched: false; blockingFiles: string[] }
+  | { switched: false; worktreePath: string }
+
+/**
+ * Branch and folder from git's refusal to touch a branch open in another
+ * worktree, or null for any other message. Covers checkout ("'x' is already
+ * used by worktree at 'p'", older gits: "is already checked out at") and
+ * delete ("cannot delete branch 'x' used by worktree at 'p'"). Expects git's
+ * untranslated output.
+ */
+export function parseWorktreeConflict(message: string): { branch: string; path: string } | null {
+  const match = /'([^'\n]+)'\s+(?:is already\s+)?(?:used by worktree|checked out) at '([^'\n]+)'/i.exec(message)
+  return match ? { branch: match[1], path: match[2] } : null
+}
 
 /**
  * Files listed under git's "would be overwritten by checkout:" headers (tracked

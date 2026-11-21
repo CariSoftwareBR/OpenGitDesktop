@@ -1,4 +1,4 @@
-import type { BlameCommit, BlameLine, BranchOverview, ChurnPoint, CommitRef, FileHotspot, FileLineStat, RebaseAction, RebaseStep, RepoChurn } from './git'
+import type { BlameCommit, BlameLine, BranchOverview, ChurnPoint, CommitRef, FileHotspot, FileLineStat, RebaseAction, RebaseStep, RepoChurn, WorktreeInfo } from './git'
 
 /**
  * Parses `%D` from a log run with `--decorate=full`:
@@ -288,4 +288,29 @@ export function groupCaseCollisions(entries: IndexEntry[]): IndexEntry[][] {
     else byFolded.set(key, [entry])
   }
   return [...byFolded.values()].filter((group) => group.length > 1)
+}
+
+/**
+ * Parses `git worktree list --porcelain`: one block per worktree, separated by
+ * blank lines; the first block is the main worktree. `isCurrent` is left to
+ * the caller, which knows the folder that is open.
+ */
+export function parseWorktreeList(porcelain: string): Omit<WorktreeInfo, 'isCurrent'>[] {
+  const worktrees: Omit<WorktreeInfo, 'isCurrent'>[] = []
+  for (const block of porcelain.split(/\r?\n\r?\n/)) {
+    let path = ''
+    let head = ''
+    let branch: string | null = null
+    let locked = false
+    let missing = false
+    for (const line of block.split(/\r?\n/)) {
+      if (line.startsWith('worktree ')) path = line.slice('worktree '.length)
+      else if (line.startsWith('HEAD ')) head = line.slice('HEAD '.length)
+      else if (line.startsWith('branch ')) branch = line.slice('branch '.length).replace(/^refs\/heads\//, '')
+      else if (line === 'locked' || line.startsWith('locked ')) locked = true
+      else if (line === 'prunable' || line.startsWith('prunable ')) missing = true
+    }
+    if (path) worktrees.push({ path, branch, head, isMain: worktrees.length === 0, locked, missing })
+  }
+  return worktrees
 }

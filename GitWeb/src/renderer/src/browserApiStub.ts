@@ -26,7 +26,9 @@ import type {
   RecentRepository,
   RepoGroup,
   RepoStatus,
-  RepoUpdateStatus
+  RepoUpdateStatus,
+  SwitchBranchResult,
+  WorktreeInfo
 } from '../../shared/git'
 import type { UpdateStatus } from '../../shared/updates'
 
@@ -181,7 +183,16 @@ const demoUpdateStatus: RepoUpdateStatus = {
 
 const demoBranches: BranchInfo[] = [
   { name: 'main', isCurrent: true },
-  { name: 'feature/demo', isCurrent: false }
+  { name: 'feature/demo', isCurrent: false },
+  // Checked out in other folders: the branch menu opens those instead of switching.
+  { name: 'feature/worktree', isCurrent: false, worktreePath: '/home/preview/worktrees/demo-repo/feature-worktree' },
+  { name: 'fix/old-worktree', isCurrent: false, worktreePath: '/home/preview/worktrees/old', worktreeMissing: true }
+]
+
+const demoWorktrees: WorktreeInfo[] = [
+  { path: '/home/preview/demo-repo', branch: 'main', head: 'abc1234567890', isMain: true, isCurrent: true, locked: false, missing: false },
+  { path: '/home/preview/worktrees/demo-repo/feature-worktree', branch: 'feature/worktree', head: 'abc1234567890', isMain: false, isCurrent: false, locked: false, missing: false },
+  { path: '/home/preview/worktrees/old', branch: 'fix/old-worktree', head: 'abc1234567890', isMain: false, isCurrent: false, locked: false, missing: true }
 ]
 
 const demoLog: CommitSummary[] = [
@@ -403,8 +414,14 @@ function installBrowserApiStub(): void {
       scanSensitive: async () => [],
       scanSensitiveHistory: async () => [],
       branches: async () => demoBranches,
+      worktrees: async () => demoWorktrees,
+      pruneWorktrees: async () => [],
       createBranch: async () => undefined,
-      switchBranch: async () => ({ switched: true as const }),
+      // Like git: a branch checked out in another worktree is refused.
+      switchBranch: async (name: string): Promise<SwitchBranchResult> => {
+        const worktreePath = demoBranches.find((b) => b.name === name)?.worktreePath
+        return worktreePath ? { switched: false, worktreePath } : { switched: true }
+      },
       log: async () => (demoGithub() ? demoYear() : demoLog),
       commitFiles: async () => [],
       commitDiff: async () => '',

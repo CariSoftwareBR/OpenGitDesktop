@@ -46,7 +46,10 @@ const ptBR = {
     merge_abort: 'Abortar merge',
     list_files: 'Listar arquivos',
     read_file: 'Ler arquivo',
-    read_changes: 'Ler alterações'
+    read_changes: 'Ler alterações',
+    list_worktrees: 'Listar worktrees',
+    open_worktree: 'Abrir worktree',
+    prune_worktrees: 'Limpar worktrees apagados'
   } as Record<string, string>,
   exploring: 'Explorando',
   readings: (n: number) => `${n} ${n === 1 ? 'leitura' : 'leituras'}`,
@@ -312,6 +315,8 @@ const ptBR = {
   refuseProtected: (name: string) => `• "${name}" é protegida e nunca pode ser apagada.`,
   refuseNotLocal: (name: string) => `• "${name}" não é uma branch local (as remotas não são apagadas por aqui).`,
   refuseCurrent: (name: string) => `• "${name}" é a branch atual — troque de branch antes.`,
+  refuseInWorktree: (name: string, folder: string) =>
+    `• "${name}" está aberta em outro worktree (${folder}) — o Git não apaga uma branch aberta em outra pasta.`,
   refuseUnmerged: (name: string, ahead: number, base: string) => `• "${name}" tem ${ahead} commit(s) que não estão em ${base}.`,
   deleteRefused: (list: string) => `Nada foi apagado. Estas branches não podem ser apagadas:\n${list}`,
   deleteBranchesHeadline: (n: number) => `Apagar ${n} branch(es) local(is) já integrada(s)`,
@@ -346,6 +351,35 @@ const ptBR = {
   alreadyOnBranch: (branch: string) => `Você já está na branch "${branch}".`,
   branchNotLocal: (branch: string) => `Branch "${branch}" não existe localmente. Use create_branch para criar.`,
   switchHeadline: (branch: string) => `Trocar para a branch "${branch}"`,
+  switchInWorktree: (branch: string, folder: string) =>
+    `A branch "${branch}" está aberta em outro worktree (${folder}): o Git não deixa a mesma branch aberta em duas pastas, então o checkout aqui seria recusado. Use open_worktree para abrir essa pasta no app.`,
+  switchWorktreeGone: (branch: string, folder: string) =>
+    `A branch "${branch}" está presa a um worktree cuja pasta foi apagada (${folder}). Use prune_worktrees para liberá-la e depois switch_branch.`,
+  listWorktreesHeadline: 'Listar worktrees do repositório',
+  inWorktree: (folder: string) => `aberta no worktree ${folder}`,
+  inGoneWorktree: (folder: string) => `presa a um worktree cuja pasta foi apagada (${folder})`,
+  worktreeMain: 'principal',
+  worktreeOpenHere: 'aberto no app',
+  worktreeGoneNote: 'pasta apagada',
+  detachedHead: 'HEAD destacado',
+  openWorktreeHeadline: 'Abrir a pasta de outro worktree no app',
+  worktreeFolder: 'Pasta',
+  worktreeBranch: 'Branch',
+  worktreeNotFound: (folder: string) => `Nenhum worktree deste repositório está em ${folder}. Use list_worktrees para ver as pastas.`,
+  noWorktreeForBranch: (branch: string) =>
+    `A branch "${branch}" não está aberta em nenhum worktree. Use list_worktrees para ver as pastas, ou switch_branch para trocar de branch aqui.`,
+  worktreeAlreadyOpen: (folder: string) => `O worktree ${folder} já é a pasta aberta no app.`,
+  worktreeFolderGone: (folder: string) => `A pasta do worktree ${folder} foi apagada. Use prune_worktrees para liberar a branch dele.`,
+  openWorktreeFailed: (folder: string) => `Não foi possível abrir o worktree ${folder}.`,
+  openedWorktree: (folder: string, branch: string) =>
+    `Worktree aberto: ${folder} (branch "${branch}"). As próximas ferramentas agem nessa pasta.`,
+  noWorktreesToPrune: 'Nenhum worktree com a pasta apagada: não há nada a limpar.',
+  onlyLockedWorktreesGone: (list: string) =>
+    `Os worktrees com a pasta inacessível estão travados (locked), e o git worktree prune não mexe neles:\n${list}\nNão os destrave por conta própria: diga ao usuário para reconectar a unidade dessas pastas, ou rodar git worktree unlock se elas não vão voltar.`,
+  pruneWorktreesHeadline: (n: number) =>
+    n === 1 ? 'Esquecer 1 worktree cuja pasta foi apagada' : `Esquecer ${n} worktrees cujas pastas foram apagadas`,
+  worktreesGone: 'Pastas apagadas',
+  prunedWorktrees: (list: string) => `Worktrees esquecidos (as branches deles estão livres para checkout):\n${list}`,
   currentBranch: 'Branch atual',
   switchDirtyWarning: (n: number) =>
     `Você tem ${n} arquivo(s) modificado(s). O checkout pode ser bloqueado — considere stash ou commit antes.`,
@@ -498,7 +532,10 @@ const en: M = {
     merge_abort: 'Abort merge',
     list_files: 'List files',
     read_file: 'Read file',
-    read_changes: 'Read changes'
+    read_changes: 'Read changes',
+    list_worktrees: 'List worktrees',
+    open_worktree: 'Open worktree',
+    prune_worktrees: 'Prune deleted worktrees'
   },
   exploring: 'Exploring',
   readings: (n) => `${n} ${n === 1 ? 'read' : 'reads'}`,
@@ -752,6 +789,8 @@ const en: M = {
   refuseProtected: (name: string) => `• "${name}" is protected and can never be deleted.`,
   refuseNotLocal: (name: string) => `• "${name}" is not a local branch (remote branches are not deleted here).`,
   refuseCurrent: (name: string) => `• "${name}" is the current branch — switch to another one first.`,
+  refuseInWorktree: (name: string, folder: string) =>
+    `• "${name}" is checked out in another worktree (${folder}) — git does not delete a branch open in another folder.`,
   refuseUnmerged: (name: string, ahead: number, base: string) => `• "${name}" has ${ahead} commit(s) that are not on ${base}.`,
   deleteRefused: (list: string) => `Nothing was deleted. These branches cannot be deleted:\n${list}`,
   deleteBranchesHeadline: (n: number) => `Delete ${n} already-integrated local branch(es)`,
@@ -784,6 +823,34 @@ const en: M = {
   alreadyOnBranch: (branch) => `You are already on the branch "${branch}".`,
   branchNotLocal: (branch) => `Branch "${branch}" does not exist locally. Use create_branch to create it.`,
   switchHeadline: (branch) => `Switch to the branch "${branch}"`,
+  switchInWorktree: (branch, folder) =>
+    `The branch "${branch}" is checked out in another worktree (${folder}): git does not let the same branch be open in two folders, so a checkout here would be refused. Use open_worktree to open that folder in the app.`,
+  switchWorktreeGone: (branch, folder) =>
+    `The branch "${branch}" is held by a worktree whose folder was deleted (${folder}). Use prune_worktrees to free it, then switch_branch.`,
+  listWorktreesHeadline: 'List repository worktrees',
+  inWorktree: (folder) => `checked out in worktree ${folder}`,
+  inGoneWorktree: (folder) => `held by a worktree whose folder was deleted (${folder})`,
+  worktreeMain: 'main',
+  worktreeOpenHere: 'open in the app',
+  worktreeGoneNote: 'folder deleted',
+  detachedHead: 'detached HEAD',
+  openWorktreeHeadline: "Open another worktree's folder in the app",
+  worktreeFolder: 'Folder',
+  worktreeBranch: 'Branch',
+  worktreeNotFound: (folder) => `No worktree of this repository is at ${folder}. Use list_worktrees to see the folders.`,
+  noWorktreeForBranch: (branch) =>
+    `The branch "${branch}" is not checked out in any worktree. Use list_worktrees to see the folders, or switch_branch to switch here.`,
+  worktreeAlreadyOpen: (folder) => `The worktree ${folder} is already the folder open in the app.`,
+  worktreeFolderGone: (folder) => `The worktree folder ${folder} was deleted. Use prune_worktrees to free its branch.`,
+  openWorktreeFailed: (folder) => `Could not open the worktree ${folder}.`,
+  openedWorktree: (folder, branch) => `Opened worktree ${folder} (branch "${branch}"). The next tools act on that folder.`,
+  noWorktreesToPrune: 'No worktree has a deleted folder: nothing to prune.',
+  onlyLockedWorktreesGone: (list) =>
+    `The worktrees whose folder cannot be reached are locked, and git worktree prune leaves them alone:\n${list}\nDo not unlock them yourself: tell the user to reconnect those folders' drive, or run git worktree unlock if they are not coming back.`,
+  pruneWorktreesHeadline: (n) =>
+    n === 1 ? 'Forget 1 worktree whose folder was deleted' : `Forget ${n} worktrees whose folders were deleted`,
+  worktreesGone: 'Deleted folders',
+  prunedWorktrees: (list) => `Forgot these worktrees (their branches are free for checkout):\n${list}`,
   currentBranch: 'Current branch',
   switchDirtyWarning: (n) => `You have ${n} modified file(s). The checkout may be blocked — consider stashing or committing first.`,
   stashHeadline: 'Stash the current changes',
@@ -928,7 +995,10 @@ const es: M = {
     merge_abort: 'Abortar merge',
     list_files: 'Listar archivos',
     read_file: 'Leer archivo',
-    read_changes: 'Leer cambios'
+    read_changes: 'Leer cambios',
+    list_worktrees: 'Listar worktrees',
+    open_worktree: 'Abrir worktree',
+    prune_worktrees: 'Limpiar worktrees eliminados'
   },
   exploring: 'Explorando',
   readings: (n) => `${n} ${n === 1 ? 'lectura' : 'lecturas'}`,
@@ -1187,6 +1257,8 @@ const es: M = {
   refuseProtected: (name: string) => `• "${name}" está protegida y nunca puede borrarse.`,
   refuseNotLocal: (name: string) => `• "${name}" no es una rama local (las remotas no se borran por aquí).`,
   refuseCurrent: (name: string) => `• "${name}" es la rama actual — cambia de rama antes.`,
+  refuseInWorktree: (name: string, folder: string) =>
+    `• "${name}" está abierta en otro worktree (${folder}) — Git no elimina una rama abierta en otra carpeta.`,
   refuseUnmerged: (name: string, ahead: number, base: string) => `• "${name}" tiene ${ahead} commit(s) que no están en ${base}.`,
   deleteRefused: (list: string) => `No se borró nada. Estas ramas no pueden borrarse:\n${list}`,
   deleteBranchesHeadline: (n: number) => `Borrar ${n} rama(s) local(es) ya integrada(s)`,
@@ -1221,6 +1293,34 @@ const es: M = {
   alreadyOnBranch: (branch) => `Ya estás en la rama "${branch}".`,
   branchNotLocal: (branch) => `La rama "${branch}" no existe localmente. Usa create_branch para crearla.`,
   switchHeadline: (branch) => `Cambiar a la rama "${branch}"`,
+  switchInWorktree: (branch, folder) =>
+    `La rama "${branch}" está abierta en otro worktree (${folder}): Git no permite la misma rama abierta en dos carpetas, así que el checkout aquí sería rechazado. Usa open_worktree para abrir esa carpeta en la app.`,
+  switchWorktreeGone: (branch, folder) =>
+    `La rama "${branch}" está retenida por un worktree cuya carpeta se eliminó (${folder}). Usa prune_worktrees para liberarla y después switch_branch.`,
+  listWorktreesHeadline: 'Listar worktrees del repositorio',
+  inWorktree: (folder) => `abierta en el worktree ${folder}`,
+  inGoneWorktree: (folder) => `retenida por un worktree cuya carpeta se eliminó (${folder})`,
+  worktreeMain: 'principal',
+  worktreeOpenHere: 'abierto en la app',
+  worktreeGoneNote: 'carpeta eliminada',
+  detachedHead: 'HEAD separado',
+  openWorktreeHeadline: 'Abrir en la app la carpeta de otro worktree',
+  worktreeFolder: 'Carpeta',
+  worktreeBranch: 'Rama',
+  worktreeNotFound: (folder) => `Ningún worktree de este repositorio está en ${folder}. Usa list_worktrees para ver las carpetas.`,
+  noWorktreeForBranch: (branch) =>
+    `La rama "${branch}" no está abierta en ningún worktree. Usa list_worktrees para ver las carpetas, o switch_branch para cambiar aquí.`,
+  worktreeAlreadyOpen: (folder) => `El worktree ${folder} ya es la carpeta abierta en la app.`,
+  worktreeFolderGone: (folder) => `La carpeta del worktree ${folder} se eliminó. Usa prune_worktrees para liberar su rama.`,
+  openWorktreeFailed: (folder) => `No se pudo abrir el worktree ${folder}.`,
+  openedWorktree: (folder, branch) => `Worktree abierto: ${folder} (rama "${branch}"). Las próximas herramientas actúan en esa carpeta.`,
+  noWorktreesToPrune: 'Ningún worktree tiene la carpeta eliminada: no hay nada que limpiar.',
+  onlyLockedWorktreesGone: (list) =>
+    `Los worktrees cuya carpeta no es accesible están bloqueados (locked), y git worktree prune no los toca:\n${list}\nNo los desbloquees por tu cuenta: dile al usuario que vuelva a conectar la unidad de esas carpetas, o que ejecute git worktree unlock si no van a volver.`,
+  pruneWorktreesHeadline: (n) =>
+    n === 1 ? 'Olvidar 1 worktree cuya carpeta se eliminó' : `Olvidar ${n} worktrees cuyas carpetas se eliminaron`,
+  worktreesGone: 'Carpetas eliminadas',
+  prunedWorktrees: (list) => `Worktrees olvidados (sus ramas quedan libres para checkout):\n${list}`,
   currentBranch: 'Rama actual',
   switchDirtyWarning: (n) =>
     `Tienes ${n} archivo(s) modificado(s). El checkout podría bloquearse — considera hacer stash o commit antes.`,

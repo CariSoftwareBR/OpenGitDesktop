@@ -10,13 +10,15 @@ import { describeFindings, SensitiveBlockedError, withheldForAi } from '../sensi
 import { useAppSettingsStore } from '../../store/appSettingsStore'
 import { DEFAULT_APP_SETTINGS } from '../../../../shared/settings'
 import { sanitizeRepositoryName } from '../../../../shared/github'
-import { basename } from '../path'
+import { basename, displayFolder, pathKey } from '../path'
 import {
   CASE_COLLISION_DISK_SOURCE,
   isConflicted,
+  type BranchInfo,
   type BranchIntegration,
   type BranchIntegrationReport,
-  type StatusEntry
+  type StatusEntry,
+  type WorktreeInfo
 } from '../../../../shared/git'
 import { defaultCaseChoice } from '../../components/CaseCollisionDialog'
 import { attachBaseLines, parseConflictBlocks, renderResolvedWithChoices, type ConflictBlock } from '../conflicts'
@@ -75,7 +77,9 @@ const WRITE_TOOLS = new Set([
   'fetch_all',
   'set_git_identity',
   'create_tag',
-  'reorganize_local_commits'
+  'reorganize_local_commits',
+  'open_worktree',
+  'prune_worktrees'
 ])
 
 export function toolSeverity(name: string): ToolSeverity {
@@ -257,6 +261,25 @@ async function requireCurrentRepo(): Promise<string> {
   const repoPath = useRepoStore.getState().currentRepoPath
   if (!repoPath) throw new Error(getT().tools.noRepoOpen)
   return repoPath
+}
+
+/** One list_branches line: `*` current, `+` checked out in another worktree (git's own markers). */
+function branchLine(b: BranchInfo): string {
+  const t = getT().tools
+  if (b.isCurrent) return `* ${b.name}`
+  if (!b.worktreePath) return `  ${b.name}`
+  const folder = displayFolder(b.worktreePath)
+  return `+ ${b.name} — ${b.worktreeMissing ? t.inGoneWorktree(folder) : t.inWorktree(folder)}`
+}
+
+/** The worktree open_worktree means: by branch (any case) or by folder. */
+function findWorktree(worktrees: WorktreeInfo[], branch: string | undefined, path: string | undefined): WorktreeInfo | undefined {
+  if (path) return worktrees.find((w) => pathKey(w.path) === pathKey(path))
+  if (!branch) return undefined
+  return (
+    worktrees.find((w) => w.branch === branch) ??
+    worktrees.find((w) => w.branch?.toLowerCase() === branch.toLowerCase())
+  )
 }
 
 // Returns the addressing the GitHub IPC calls need. There is no token here on
@@ -991,6 +1014,54 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
     case 'list_branches_all_repos':
       return { preview: { headline: t.listBranchesAllHeadline, fields: [] }, resolvedArgs: a }
 
+    case 'list_worktrees':
+      return { preview: { headline: t.listWorktreesHeadline, fields: [] }, resolvedArgs: a }
+
+    case 'open_worktree': {
+      if (!a.branch_name && !a.path) throw new Error(t.paramRequired('branch_name'))
+      const worktrees = await window.api.git.worktrees(await requireCurrentRepo())
+      const target = findWorktree(worktrees, a.branch_name || undefined, a.path || undefined)
+      if (!target) {
+        throw new Error(a.path ? t.worktreeNotFound(displayFolder(a.path)) : t.noWorktreeForBranch(a.branch_name))
+      }
+      const folder = displayFolder(target.path)
+      if (target.isCurrent) throw new Error(t.worktreeAlreadyOpen(folder))
+      if (target.missing) throw new Error(t.worktreeFolderGone(folder))
+      return {
+        preview: {
+          headline: t.openWorktreeHeadline,
+          fields: [
+            { label: t.worktreeFolder, value: folder },
+            { label: t.worktreeBranch, value: target.branch ?? t.detachedHead }
+          ]
+        },
+        resolvedArgs: { path: target.path }
+      }
+    }
+
+    case 'prune_worktrees': {
+      const worktrees = await window.api.git.worktrees(await requireCurrentRepo())
+      const gone = worktrees.filter((w) => w.missing && !w.locked)
+      if (gone.length === 0) {
+        // git worktree prune leaves locked worktrees alone, even with their folder gone.
+        const locked = worktrees.filter((w) => w.missing && w.locked).map((w) => `• ${displayFolder(w.path)}`)
+        throw new Error(locked.length > 0 ? t.onlyLockedWorktreesGone(locked.join('\n')) : t.noWorktreesToPrune)
+      }
+      return {
+        preview: {
+          headline: t.pruneWorktreesHeadline(gone.length),
+          fields: [
+            {
+              label: t.worktreesGone,
+              value: gone.map((w) => `• ${displayFolder(w.path)}${w.branch ? ` (${w.branch})` : ''}`).join('\n')
+            },
+            { label: t.commands, value: formatCommands(['git worktree prune']) }
+          ]
+        },
+        resolvedArgs: a
+      }
+    }
+
     case 'list_unmerged_branches':
       return {
         preview: {
@@ -1004,9 +1075,14 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       const requested = parseBranchList(a.branch_names ?? '')
       if (requested.length === 0) throw new Error(t.paramRequired('branch_names'))
       const repoPath = await requireCurrentRepo()
-      const report = await window.api.git.branchIntegration(repoPath, a.base_branch || undefined)
+      const [report, branches] = await Promise.all([
+        window.api.git.branchIntegration(repoPath, a.base_branch || undefined),
+        window.api.git.branches(repoPath)
+      ])
       const local = new Map(report.branches.filter((b) => !b.remoteOnly).map((b) => [b.name, b]))
       const protectedNames = new Set(report.protectedNames)
+      // git refuses to delete a branch checked out in another worktree.
+      const worktreeOf = new Map(branches.filter((b) => b.worktreePath).map((b) => [b.name, b.worktreePath!]))
 
       // All or nothing: the card must list exactly what was asked, so one bad
       // name refuses the call instead of silently shrinking the list. The
@@ -1014,9 +1090,11 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       const refused: string[] = []
       for (const name of requested) {
         const info = local.get(name)
+        const worktree = worktreeOf.get(name)
         if (protectedNames.has(name.toLowerCase())) refused.push(t.refuseProtected(name))
         else if (!info) refused.push(t.refuseNotLocal(name))
         else if (info.isCurrent) refused.push(t.refuseCurrent(name))
+        else if (worktree) refused.push(t.refuseInWorktree(name, displayFolder(worktree)))
         else if (info.state === 'unmerged') refused.push(t.refuseUnmerged(name, info.ahead, report.base))
       }
       if (refused.length > 0) throw new Error(t.deleteRefused(refused.join('\n')))
@@ -1148,6 +1226,11 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       const branch =
         branches.find((b) => b.name === target) ?? branches.find((b) => b.name.toLowerCase() === target.toLowerCase())
       if (!branch) throw new Error(t.branchNotLocal(target))
+      // git would refuse: the branch is checked out in another folder.
+      if (branch.worktreePath) {
+        const folder = displayFolder(branch.worktreePath)
+        throw new Error(branch.worktreeMissing ? t.switchWorktreeGone(branch.name, folder) : t.switchInWorktree(branch.name, folder))
+      }
 
       return {
         preview: {
@@ -1753,7 +1836,7 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string | T
 
     case 'list_branches': {
       await repo.refreshBranches()
-      const lines = useRepoStore.getState().branches.map((b) => `${b.isCurrent ? '* ' : '  '}${b.name}`)
+      const lines = useRepoStore.getState().branches.map(branchLine)
       if (a.include_remote === 'true') {
         const remote = await window.api.git.remoteBranches(await requireCurrentRepo())
         lines.push('', t.remoteOnly(remote.length), ...remote.map((r) => `  ${r}`))
@@ -1768,12 +1851,43 @@ export async function executeToolCall(call: ToolCallRequest): Promise<string | T
         try {
           const branches = await window.api.git.branches(r.path)
           lines.push(`${r.name}:`)
-          for (const b of branches) lines.push(`  ${b.isCurrent ? '* ' : '  '}${b.name}`)
+          for (const b of branches) lines.push(`  ${branchLine(b)}`)
         } catch (err) {
           lines.push(t.repoError(r.name, err instanceof Error ? err.message : String(err)))
         }
       }
       return lines.join('\n')
+    }
+
+    case 'list_worktrees': {
+      const worktrees = await window.api.git.worktrees(await requireCurrentRepo())
+      return worktrees
+        .map((w) => {
+          const notes = [
+            w.isMain ? t.worktreeMain : null,
+            w.isCurrent ? t.worktreeOpenHere : null,
+            w.locked ? 'locked' : null,
+            w.missing ? t.worktreeGoneNote : null
+          ].filter(Boolean)
+          const line = `${w.isCurrent ? '* ' : '  '}${displayFolder(w.path)} — ${w.branch ?? t.detachedHead}`
+          return notes.length > 0 ? `${line} (${notes.join(', ')})` : line
+        })
+        .join('\n')
+    }
+
+    case 'open_worktree': {
+      await repo.openWorktree(a.path)
+      const opened = useRepoStore.getState()
+      if (!opened.currentRepoPath || pathKey(opened.currentRepoPath) !== pathKey(a.path)) {
+        throw new Error(opened.error ?? t.openWorktreeFailed(displayFolder(a.path)))
+      }
+      return t.openedWorktree(displayFolder(a.path), opened.status?.branch ?? '?')
+    }
+
+    case 'prune_worktrees': {
+      const gone = await window.api.git.pruneWorktrees(await requireCurrentRepo())
+      await repo.refreshBranches()
+      return gone.length > 0 ? t.prunedWorktrees(gone.map((p) => `• ${displayFolder(p)}`).join('\n')) : t.noWorktreesToPrune
     }
 
     case 'list_unmerged_branches': {

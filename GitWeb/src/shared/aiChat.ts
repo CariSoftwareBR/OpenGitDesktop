@@ -371,7 +371,8 @@ export const TOOL_CATALOG: ToolDefinition[] = [
   },
   {
     name: 'list_branches',
-    description: 'Lista as branches do repositório aberto, indicando qual é a atual.',
+    description:
+      'Lista as branches do repositório aberto, indicando qual é a atual e quais estão abertas em outro worktree (outra pasta do mesmo repositório) — essas não podem receber checkout aqui.',
     parameters: {
       type: 'object',
       properties: {
@@ -384,6 +385,31 @@ export const TOOL_CATALOG: ToolDefinition[] = [
     name: 'list_branches_all_repos',
     description:
       'Lista as branches locais de cada repositório recente. Use para responder se algum repositório tem branches além da principal.',
+    parameters: { type: 'object', properties: {}, required: [] }
+  },
+  {
+    name: 'list_worktrees',
+    description:
+      'Lista os worktrees do repositório aberto: cada pasta com seu próprio checkout, a branch aberta nela, qual é a pasta aberta no app e quais pastas foram apagadas. Use quando um checkout ou exclusão de branch falhar com "is already used by worktree" / "checked out at", ou quando o usuário perguntar sobre worktrees.',
+    parameters: { type: 'object', properties: {}, required: [] }
+  },
+  {
+    name: 'open_worktree',
+    description:
+      'Abre no app a pasta de outro worktree do mesmo repositório, para trabalhar na branch aberta lá. É o caminho quando switch_branch recusa porque a branch está em outro worktree: o Git não deixa a mesma branch aberta em duas pastas. Depois disso, as ferramentas passam a agir nessa pasta.',
+    parameters: {
+      type: 'object',
+      properties: {
+        branch_name: { type: 'string', description: 'Branch aberta no worktree que deve ser aberto. Informe este ou path.' },
+        path: { type: 'string', description: 'Pasta do worktree, como list_worktrees mostra. Informe este ou branch_name.' }
+      },
+      required: []
+    }
+  },
+  {
+    name: 'prune_worktrees',
+    description:
+      'Roda git worktree prune: esquece os worktrees cujas pastas foram apagadas, liberando as branches deles para checkout. Não apaga pastas nem branches, e não mexe em worktrees que ainda existem ou estão travados (locked). Use quando list_worktrees mostrar pastas apagadas.',
     parameters: { type: 'object', properties: {}, required: [] }
   },
   {
@@ -452,7 +478,8 @@ export const TOOL_CATALOG: ToolDefinition[] = [
   },
   {
     name: 'switch_branch',
-    description: 'Faz checkout para outra branch existente.',
+    description:
+      'Faz checkout para outra branch existente. Uma branch aberta em outro worktree não pode receber checkout aqui: para ela, use open_worktree.',
     parameters: {
       type: 'object',
       properties: {

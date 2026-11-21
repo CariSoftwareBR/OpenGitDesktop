@@ -28,6 +28,8 @@ import {
   fetchRemote,
   getBranchDiff,
   getBranches,
+  listWorktrees,
+  pruneWorktrees,
   getBranchIntegration,
   getBranchDeleteCheck,
   deleteCheckedBranch,
@@ -250,6 +252,8 @@ export function registerIpcHandlers(): void {
     scanSensitive(cwd, scope === 'all' ? 'all' : 'staged')
   )
   handle('git:branches', (_e, cwd: string) => getBranches(cwd))
+  handle('git:worktrees', (_e, cwd: string) => listWorktrees(cwd))
+  handle('git:pruneWorktrees', (_e, cwd: string) => pruneWorktrees(cwd))
   handle('git:createBranch', (_e, name: string, cwd: string, checkout: boolean, from?: string) =>
     createBranch(name, cwd, checkout, from)
   )

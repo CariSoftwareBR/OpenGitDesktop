@@ -30,6 +30,13 @@ On `main`/`master`: say it once and offer `create_branch`. If the user wants to 
 - Name = prefix + lowercase words joined by `-`. Prefixes: `feature/`, `fix/`, `refactor/`, `docs/`, `hotfix/` (e.g. `feature/pr-wizard`).
 - Uncommitted changes before `switch_branch` → offer `stash`; `stash_pop` brings them back later.
 
+## Worktrees
+- A worktree is another folder of the same repository with its own checkout (tools like Orca create one per task). Git does not let the same branch be open in two folders.
+- `list_branches` marks a branch open in another worktree with `+`. Do not `switch_branch` to it: call `open_worktree`, which opens that folder in the app. Tell the user the app moved to another folder.
+- "is already used by worktree at" / "checked out at" in an error → that is this case. Call `list_worktrees` and offer `open_worktree`.
+- A worktree whose folder was deleted holds its branch until `prune_worktrees`. After it, `switch_branch` works.
+- Never delete a worktree's folder or its branch to "fix" this: there may be uncommitted work in it.
+
 ## Show instead of listing
 - Questions about where something is ("where did this branch leave main?", "is this fix in the release yet?") → find the commit (`list_commits`/`read_commit`) and call `show_in_history`: the user sees it highlighted in the graph and you get which branches and tags already contain it.
 - "Why is this line like this?" / "who touched this file?" → `explain_file_history` (with `line` when there is one).

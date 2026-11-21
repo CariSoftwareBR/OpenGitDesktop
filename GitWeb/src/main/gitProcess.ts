@@ -38,9 +38,10 @@ import type {
   RepoUpdateStatus,
   StashEntry,
   StatusEntry,
+  WorktreeInfo,
   SwitchBranchResult
 } from '../shared/git'
-import { CASE_COLLISION_DISK_SOURCE, parseCheckoutBlockers } from '../shared/git'
+import { CASE_COLLISION_DISK_SOURCE, parseCheckoutBlockers, parseWorktreeConflict } from '../shared/git'
 import {
   groupCaseCollisions,
   parseBlamePorcelain,
@@ -49,6 +50,7 @@ import {
   parseDecorations,
   parseLsFilesStage,
   parseNumstatZ,
+  parseWorktreeList,
   sumNumstat,
   validateRebasePlan,
   type IndexEntry
@@ -903,19 +905,76 @@ export async function commitAmend(cwd: string, summary?: string, description?: s
 }
 
 export async function getBranches(cwd: string): Promise<BranchInfo[]> {
-  const result = await readGit(
-    ['branch', '--format=%(HEAD)' + FS + '%(refname:short)'],
+  // %(worktreepath) names the folder each branch is checked out in: this one
+  // for the current branch, another worktree's for a branch git will refuse
+  // to check out here.
+  let result = await readGit(
+    ['branch', '--format=%(HEAD)' + FS + '%(refname:short)' + FS + '%(worktreepath)'],
     cwd
   )
+  // %(worktreepath) needs git 2.23+; older ones still list the branches, just
+  // without knowing which are open elsewhere.
+  if (result.exitCode !== 0 && /worktreepath/.test(result.stderr)) {
+    result = await readGit(['branch', '--format=%(HEAD)' + FS + '%(refname:short)'], cwd)
+  }
   throwOnFailure(result, ['branch'])
 
-  return result.stdout
-    .split('\n')
-    .filter(Boolean)
-    .map((line) => {
-      const [head, name] = line.split(FS)
-      return { name, isCurrent: head === '*' }
+  return Promise.all(
+    result.stdout
+      .split('\n')
+      .filter(Boolean)
+      .map(async (line): Promise<BranchInfo> => {
+        const [head, name, worktree] = line.split(FS)
+        const isCurrent = head === '*'
+        if (isCurrent || !worktree) return { name, isCurrent }
+        const worktreePath = normalize(worktree)
+        return { name, isCurrent, worktreePath, worktreeMissing: !(await pathExistsOnDisk(worktreePath)) }
+      })
+  )
+}
+
+/** Same folder, whatever the slashes, trailing separator or (on Windows/macOS) case. */
+function sameFolder(a: string, b: string): boolean {
+  const norm = (p: string): string => {
+    const n = normalize(p).replace(/[/\\]+$/, '')
+    return process.platform === 'linux' ? n : n.toLowerCase()
+  }
+  return norm(a) === norm(b)
+}
+
+/** Every worktree of the repository open at `cwd`, the main one first. */
+export async function listWorktrees(cwd: string): Promise<WorktreeInfo[]> {
+  const [list, top] = await Promise.all([
+    readGit(['worktree', 'list', '--porcelain'], cwd),
+    readGit(['rev-parse', '--show-toplevel'], cwd)
+  ])
+  throwOnFailure(list, ['worktree', 'list'])
+  const current = top.exitCode === 0 ? top.stdout.trim() : cwd
+  return Promise.all(
+    parseWorktreeList(list.stdout).map(async (w) => {
+      const path = normalize(w.path)
+      return {
+        ...w,
+        path,
+        isCurrent: sameFolder(path, current),
+        // git flags a worktree prunable once its folder is gone; check the disk too.
+        missing: w.missing || !(await pathExistsOnDisk(path))
+      }
     })
+  )
+}
+
+/**
+ * `git worktree prune`: forgets worktrees whose folder was deleted, which frees
+ * their branches for checkout here. Locked worktrees are kept. Returns the
+ * folders it forgot.
+ */
+export async function pruneWorktrees(cwd: string): Promise<string[]> {
+  const before = await listWorktrees(cwd)
+  const args = ['worktree', 'prune']
+  throwOnFailure(await runGit(args, cwd), args)
+  const after = new Set((await listWorktrees(cwd)).map((w) => w.path))
+  return before.filter((w) => !after.has(w.path)).map((w) => w.path)
 }
 
 export async function createBranch(name: string, cwd: string, checkout: boolean, from?: string): Promise<void> {
@@ -973,6 +1032,8 @@ async function runCheckout(args: string[], cwd: string): Promise<SwitchBranchRes
   if (result.exitCode === 0) return { switched: true }
   const blockingFiles = parseCheckoutBlockers(result.stderr)
   if (blockingFiles) return { switched: false, blockingFiles }
+  const inWorktree = parseWorktreeConflict(result.stderr)
+  if (inWorktree) return { switched: false, worktreePath: normalize(inWorktree.path) }
   throwOnFailure(result, args)
   return { switched: true }
 }
