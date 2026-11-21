@@ -79,7 +79,9 @@ describe('worktrees in a real repository', () => {
   let worktree: string
 
   beforeEach(() => {
-    root = realpathSync(mkdtempSync(join(tmpdir(), 'ogd-worktrees-')))
+    // .native expands Windows 8.3 names (CI's temp is C:\Users\RUNNER~1\…),
+    // which git always prints in full.
+    root = realpathSync.native(mkdtempSync(join(tmpdir(), 'ogd-worktrees-')))
     repo = join(root, 'repo')
     worktree = join(root, 'wt')
     execFileSync('git', ['init', '-q', '-b', 'main', repo])
