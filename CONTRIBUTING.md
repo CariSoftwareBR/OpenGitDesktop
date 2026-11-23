@@ -13,7 +13,7 @@ propor mudanças sem atrito.
 
 ## Ambiente de desenvolvimento
 
-**Requisitos:** Node.js 22.12+ e Git no `PATH`.
+**Requisitos:** Node.js 22.12+ (recomendado: 26, a versão do CI e do `.nvmrc`) e Git no `PATH`.
 
 ```bash
 cd GitWeb

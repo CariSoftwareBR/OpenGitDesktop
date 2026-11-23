@@ -20,7 +20,7 @@ Cross-platform Git client (Windows, macOS, Linux), inspired by GitDesktop — th
 
 ## Requirements
 
-- Node.js 22.12+
+- Node.js 22.12+ (recommended: 26, the version used by CI and `.nvmrc`)
 - Git installed and available on the `PATH`
 
 ## Development
