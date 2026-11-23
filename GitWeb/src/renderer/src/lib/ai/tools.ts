@@ -95,19 +95,27 @@ export class AiRuleBlockedError extends Error {
   }
 }
 
+// status.branch first: it is refreshed with HEAD, while the branch list's
+// isCurrent flag can lag behind a checkout made in a terminal.
 function currentBranchName(): string | null {
   const repo = useRepoStore.getState()
-  return repo.branches.find((b) => b.isCurrent)?.name ?? repo.status?.branch ?? null
+  return repo.status?.branch ?? repo.branches.find((b) => b.isCurrent)?.name ?? null
+}
+
+function protectedBranches(): string[] {
+  return (useAppSettingsStore.getState().settings ?? DEFAULT_APP_SETTINGS).aiProtectedBranches
+}
+
+/** Throws when the user protected this branch from the assistant. */
+function assertBranchAllowed(branch: string | null | undefined): void {
+  if (branch && isProtectedBranch(branch, protectedBranches())) {
+    throw new AiRuleBlockedError(getT().tools.protectedBranchBlocked(branch))
+  }
 }
 
 /** Throws when the user's rules forbid this tool on the current branch. */
 export function assertAllowedByRules(name: string): void {
-  if (!CURRENT_BRANCH_WRITE_TOOLS.has(name)) return
-  const settings = useAppSettingsStore.getState().settings ?? DEFAULT_APP_SETTINGS
-  const branch = currentBranchName()
-  if (branch && isProtectedBranch(branch, settings.aiProtectedBranches)) {
-    throw new AiRuleBlockedError(getT().tools.protectedBranchBlocked(branch))
-  }
+  if (CURRENT_BRANCH_WRITE_TOOLS.has(name)) assertBranchAllowed(currentBranchName())
 }
 
 export function toolSeverity(name: string): ToolSeverity {
@@ -492,6 +500,8 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       // merge that comes back as an API error.
       if (pr.merged) throw new Error(t.prAlreadyMerged(number))
       if (pr.state === 'closed') throw new Error(t.prClosedCannotMerge(number))
+      // Merging the PR lands commits on its base branch.
+      assertBranchAllowed(pr.baseRef)
 
       const mergeability =
         pr.mergeable === true
@@ -1103,6 +1113,8 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
     case 'delete_merged_branches': {
       const requested = parseBranchList(a.branch_names ?? '')
       if (requested.length === 0) throw new Error(t.paramRequired('branch_names'))
+      const guarded = requested.filter((name) => isProtectedBranch(name, protectedBranches()))
+      if (guarded.length > 0) throw new AiRuleBlockedError(t.protectedBranchDeleteBlocked(guarded.join(', ')))
       const repoPath = await requireCurrentRepo()
       const [report, branches] = await Promise.all([
         window.api.git.branchIntegration(repoPath, a.base_branch || undefined),

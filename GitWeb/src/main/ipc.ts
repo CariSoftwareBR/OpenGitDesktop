@@ -57,7 +57,6 @@ import {
   pushStash,
   readRepoFile,
   resetSoftHead,
-  setGitIdentity,
   stageFiles,
   switchBranch,
   unstageFiles,
@@ -121,7 +120,7 @@ import type { AiRequestOptions, ChatMessage, ToolDefinition } from '../shared/ai
 import type { RebaseStep } from '../shared/git'
 import { withProjectCoAuthor, type AppSettings } from '../shared/settings'
 import { checkForUpdates, getUpdateStatus, quitAndInstall } from './updater'
-import { applyProfileToRepo, getIdentityOverview, saveIdentityProfiles, setGlobalIdentity } from './gitIdentity'
+import { applyProfileToRepo, getIdentityOverview, saveIdentityProfiles, setGlobalIdentity, setIdentityKeepingProfiles } from './gitIdentity'
 import { clearAiActions, listAiActions, recordAiAction } from './aiActionLog'
 import { applyDiagnosticFix, runDiagnostics } from './diagnostics'
 import type { IdentityProfile } from '../shared/identity'
@@ -308,8 +307,10 @@ export function registerIpcHandlers(): void {
   handle('git:remoteUrl', (_e, cwd: string, remoteName?: string) => getRemoteUrl(cwd, remoteName))
 
   handle('git:getIdentity', (_e, cwd: string) => getGitIdentity(cwd))
+  // Also what the AI's set_git_identity uses: a global write must keep the
+  // folder profiles' includeIf lines after [user] (see setIdentityKeepingProfiles).
   handle('git:setIdentity', (_e, cwd: string, scope: 'local' | 'global', values: { name?: string; email?: string }) =>
-    setGitIdentity(cwd, scope, values)
+    setIdentityKeepingProfiles(cwd, scope, values)
   )
 
   handle('identity:getOverview', (_e, cwd: string | null) => getIdentityOverview(cwd))

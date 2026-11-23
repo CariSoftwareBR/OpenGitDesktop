@@ -64,6 +64,8 @@ const ptBR = {
   moreFiles: (n: number) => `… e mais ${n} arquivo(s)`,
   protectedBranchBlocked: (branch: string) =>
     `${branch} está protegida nas regras da IA (Configurações › Ações da IA): o assistente não pode commitar, enviar, fazer merge nem reescrever commits nela. Crie outra branch e troque para ela antes.`,
+  protectedBranchDeleteBlocked: (branches: string) =>
+    `Protegida nas regras da IA (Configurações › Ações da IA), não pode ser apagada pelo assistente: ${branches}. Tire essas branches da lista.`,
   ambiguousPath: (requested: string, list: string) =>
     `"${requested}" corresponde a mais de um arquivo do commit. Informe o caminho completo:\n${list}`,
   notInCommit: (requested: string, n: number, list: string) =>
@@ -552,6 +554,8 @@ const en: M = {
   moreFiles: (n) => `… and ${n} more file(s)`,
   protectedBranchBlocked: (branch) =>
     `${branch} is protected in the AI rules (Settings › AI actions): the assistant cannot commit, push, merge into or rewrite commits on it. Create another branch and switch to it first.`,
+  protectedBranchDeleteBlocked: (branches) =>
+    `Protected in the AI rules (Settings › AI actions), the assistant cannot delete: ${branches}. Leave these branches out of the list.`,
   ambiguousPath: (requested, list) => `"${requested}" matches more than one file in the commit. Give the full path:\n${list}`,
   notInCommit: (requested, n, list) => `"${requested}" was not changed in this commit. Changed files (${n}):\n${list}`,
   noRepoOpen: 'No repository is open.',
@@ -1017,6 +1021,8 @@ const es: M = {
   moreFiles: (n) => `… y ${n} archivo(s) más`,
   protectedBranchBlocked: (branch) =>
     `${branch} está protegida en las reglas de la IA (Configuración › Acciones de la IA): el asistente no puede hacer commit, push, merge ni reescribir commits en ella. Crea otra rama y cambia a ella antes.`,
+  protectedBranchDeleteBlocked: (branches) =>
+    `Protegida en las reglas de la IA (Configuración › Acciones de la IA), el asistente no puede borrarla: ${branches}. Deja esas ramas fuera de la lista.`,
   ambiguousPath: (requested, list) =>
     `"${requested}" coincide con más de un archivo del commit. Indica la ruta completa:\n${list}`,
   notInCommit: (requested, n, list) => `"${requested}" no se modificó en este commit. Archivos modificados (${n}):\n${list}`,

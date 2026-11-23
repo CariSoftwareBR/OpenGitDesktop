@@ -59,14 +59,16 @@ export async function getGlobalIdentity(): Promise<GitIdentityValues> {
 }
 
 /**
- * Parses `git config --show-scope --show-origin --get <key>`:
- * `global<TAB>file:C:/Users/x/.gitconfig<TAB>value`.
+ * Parses `git config [--show-scope] --show-origin -z --get <key>`:
+ * `global\0file:C:/Users/x/.gitconfig\0value\0` (no scope field without
+ * --show-scope). -z keeps paths verbatim: without it git C-quotes any path
+ * with non-ASCII bytes (C:\Users\João), and the origin no longer matches.
  */
-export function parseOriginLine(line: string): { scope: string; origin: string; value: string } | null {
-  const parts = line.replace(/\r?\n$/, '').split('\t')
-  if (parts.length < 3) return null
-  const [scope, origin, ...rest] = parts
-  return { scope, origin: origin.replace(/^file:/, ''), value: rest.join('\t').trim() }
+export function parseOriginRecord(stdout: string, withScope: boolean): { scope: string; origin: string; value: string } | null {
+  const fields = stdout.split('\0')
+  const [scope, origin, value] = withScope ? fields : ['', ...fields]
+  if (origin === undefined || value === undefined) return null
+  return { scope, origin: origin.replace(/^file:/, ''), value: value.trim() }
 }
 
 function sourceOf(scope: string, origin: string): { source: IdentitySource; profileId: string | null } {
@@ -74,18 +76,32 @@ function sourceOf(scope: string, origin: string): { source: IdentitySource; prof
   if (profileId) return { source: 'profile', profileId }
   if (scope === 'local' || scope === 'worktree') return { source: 'local', profileId: null }
   if (scope === 'global') return { source: 'global', profileId: null }
+  // Git before 2.26 has no --show-scope: tell the repository's own file by its path.
+  if (!scope && /(^|\/)\.git\/config(\.worktree)?$/.test(origin.replace(/\\/g, '/'))) return { source: 'local', profileId: null }
   return { source: 'other', profileId: null }
+}
+
+/** user.email with where it came from; falls back step by step on older Git. */
+async function readEmailWithOrigin(cwd: string): Promise<{ scope: string; origin: string; value: string } | null> {
+  const scoped = await readGit(['config', '--show-scope', '--show-origin', '-z', '--get', 'user.email'], cwd)
+  if (scoped.exitCode === 0) return parseOriginRecord(scoped.stdout, true)
+  // 1 = not set anywhere. Anything else is an option this Git does not know.
+  if (scoped.exitCode === 1) return null
+  const origin = await readGit(['config', '--show-origin', '-z', '--get', 'user.email'], cwd)
+  if (origin.exitCode === 0) return parseOriginRecord(origin.stdout, false)
+  if (origin.exitCode === 1) return null
+  const plain = await readGit(['config', '--get', 'user.email'], cwd)
+  return plain.exitCode === 0 ? { scope: '', origin: '', value: plain.stdout.trim() } : null
 }
 
 /** The identity a commit in this repository would carry, and where it comes from. */
 export async function getRepoIdentity(cwd: string): Promise<RepoIdentity> {
-  const [emailResult, nameResult, remoteUrl] = await Promise.all([
-    readGit(['config', '--show-scope', '--show-origin', '--get', 'user.email'], cwd),
+  const [parsed, nameResult, remoteUrl] = await Promise.all([
+    readEmailWithOrigin(cwd),
     readGit(['config', '--get', 'user.name'], cwd),
     getRemoteUrl(cwd).catch(() => null)
   ])
-  const parsed = emailResult.exitCode === 0 ? parseOriginLine(emailResult.stdout) : null
-  const { source, profileId } = parsed ? sourceOf(parsed.scope, parsed.origin) : { source: 'none' as const, profileId: null }
+  const { source, profileId } = parsed?.value ? sourceOf(parsed.scope, parsed.origin) : { source: 'none' as const, profileId: null }
   return {
     name: nameResult.exitCode === 0 ? nameResult.stdout.trim() || null : null,
     email: parsed?.value || null,
@@ -110,10 +126,29 @@ function assertIdentity(values: { name: string; email: string }): void {
   if (!isValidEmail(values.email)) throw new Error(t.invalidEmail(values.email))
 }
 
+/**
+ * Any write of the global identity goes through here (Settings, the AI's
+ * set_git_identity, git:setIdentity). When ~/.gitconfig had no [user]
+ * section, git appends one at the end — after the app's includeIf lines — and
+ * the last value read wins, so the global e-mail would silently override every
+ * folder profile. Rewriting the app's include lines afterwards puts them back
+ * after [user].
+ */
+export async function setIdentityKeepingProfiles(
+  cwd: string,
+  scope: 'local' | 'global',
+  values: { name?: string; email?: string }
+): Promise<void> {
+  await setGitIdentity(cwd, scope, values)
+  if (scope !== 'global') return
+  const profiles = (await getSettings()).identityProfiles
+  if (profiles.some((p) => p.folder)) await saveIdentityProfiles(profiles)
+}
+
 export async function setGlobalIdentity(values: { name: string; email: string }): Promise<IdentityOverview> {
   const clean = { name: values.name.trim(), email: values.email.trim() }
   assertIdentity(clean)
-  await setGitIdentity(homedir(), 'global', clean)
+  await setIdentityKeepingProfiles(homedir(), 'global', clean)
   return getIdentityOverview(null)
 }
 
@@ -125,20 +160,39 @@ export async function applyProfileToRepo(cwd: string, profileId: string): Promis
   return getRepoIdentity(cwd)
 }
 
-/** includeIf entries in the global config that point at one of the app's profile files. */
-async function managedIncludeKeys(): Promise<string[]> {
+/** includeIf values in the global config that point at one of the app's profile files. */
+async function managedIncludes(): Promise<{ key: string; value: string }[]> {
   const result = await readGit(['config', '--global', '-z', '--get-regexp', '^includeif\\.'], homedir())
   // Exit 1 just means there is no includeIf entry at all.
   if (result.exitCode !== 0) return []
-  const keys: string[] = []
+  const found: { key: string; value: string }[] = []
   for (const record of result.stdout.split('\0')) {
     const newline = record.indexOf('\n')
     if (newline < 0) continue
     const key = record.slice(0, newline)
     const value = record.slice(newline + 1)
-    if (key.toLowerCase().endsWith('.path') && isManagedPath(value)) keys.push(key)
+    if (key.toLowerCase().endsWith('.path') && isManagedPath(value)) found.push({ key, value })
   }
-  return [...new Set(keys)]
+  return found
+}
+
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * Removes only the app's own value under a key. The user may have their own
+ * include for the same folder under that very key, and `--unset-all <key>`
+ * alone would take it too.
+ */
+async function unsetManagedInclude(key: string, value: string): Promise<void> {
+  let result = await runGit(['config', '--global', '--fixed-value', '--unset-all', key, value], homedir())
+  // --fixed-value is Git 2.30+; before that the value is a regex.
+  if (result.exitCode === 129) {
+    result = await runGit(['config', '--global', '--unset-all', key, `^${escapeRegex(value)}$`], homedir())
+  }
+  // 5 = nothing matched (already gone); anything else is a real failure.
+  if (result.exitCode !== 0 && result.exitCode !== 5) throwOnFailure(result, ['config'])
 }
 
 async function writeProfileFile(profile: IdentityProfile): Promise<void> {
@@ -162,11 +216,10 @@ export function saveIdentityProfiles(input: IdentityProfile[]): Promise<Identity
     await mkdir(profilesDir(), { recursive: true })
     for (const profile of profiles) await writeProfileFile(profile)
 
-    for (const key of await managedIncludeKeys()) {
-      const result = await runGit(['config', '--global', '--unset-all', key], homedir())
-      // 5 = the key was already gone; anything else is a real failure.
-      if (result.exitCode !== 0 && result.exitCode !== 5) throwOnFailure(result, ['config'])
-    }
+    // Removed and added again (rather than left alone when unchanged) so they
+    // always sit at the end of the file, after [user]. Git drops a section
+    // left empty, so the new ones open fresh sections at the end.
+    for (const { key, value } of await managedIncludes()) await unsetManagedInclude(key, value)
     for (const profile of profiles) {
       if (!profile.folder) continue
       const key = includeIfKey(profile.folder, process.platform)

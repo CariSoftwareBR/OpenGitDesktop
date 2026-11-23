@@ -784,21 +784,20 @@ export const useAiStore = create<AiState>((set, get) => ({
   dismissPendingFix: () => set({ pendingFix: null }),
 
   approveToolCall: async (messageId: string, callId: string) => {
-    set({ isBusy: true, phase: 'executing' })
     const message = get().messages.find((m) => m.id === messageId)
     const uiCall = message?.toolCalls?.find((c) => c.call.id === callId)
-    if (!uiCall) {
-      set({ isBusy: false, phase: 'idle' })
-      return
-    }
+    // Only a card waiting for approval can be approved: anything else (a
+    // failed card, a double click) must not run the action.
+    if (!uiCall || uiCall.status !== 'pending') return
+    set({ isBusy: true, phase: 'executing' })
 
-    await runToolCall(set, messageId, callId, uiCall)
+    const { blocked } = await runToolCall(set, messageId, callId, uiCall)
     const finished = get()
       .messages.find((m) => m.id === messageId)
       ?.toolCalls?.find((c) => c.call.id === callId)
     if (finished) {
-      const outcome = finished.status === 'completed' ? 'completed' : 'failed'
-      logAiAction(finished, 'approved', outcome, finished.result ?? null)
+      if (blocked) logAiAction(finished, 'blocked', null, finished.result ?? null)
+      else logAiAction(finished, 'approved', finished.status === 'completed' ? 'completed' : 'failed', finished.result ?? null)
     }
     await continueIfAllResolved(get, set, messageId)
     set({ isBusy: false, phase: 'idle' })
@@ -813,8 +812,23 @@ export const useAiStore = create<AiState>((set, get) => ({
     void continueIfAllResolved(get, set, messageId)
   },
 
+  // Retry prepares the action again instead of running it: the card comes
+  // back for approval (with the danger double-click), with arguments resolved
+  // against the repository as it is now. A card that failed in prepare —
+  // including one blocked by a rule — never had resolved arguments at all.
   retryToolCall: async (messageId: string, callId: string) => {
-    await get().approveToolCall(messageId, callId)
+    const uiCall = get()
+      .messages.find((m) => m.id === messageId)
+      ?.toolCalls?.find((c) => c.call.id === callId)
+    if (!uiCall || uiCall.status !== 'failed') return
+    const [fresh] = await buildUiToolCalls([uiCall.call])
+    set((state) => ({
+      messages: state.messages.map((m) =>
+        m.id !== messageId ? m : { ...m, toolCalls: m.toolCalls?.map((c) => (c.call.id === callId ? fresh : c)) }
+      )
+    }))
+    // Read-only lookups never wait for approval.
+    if (fresh.status === 'pending' && toolSeverity(fresh.call.name) === 'read') await get().approveToolCall(messageId, callId)
   },
 
   retryAssistantTurn: async () => {
@@ -878,17 +892,19 @@ export const useAiStore = create<AiState>((set, get) => ({
   setFloatingRect: (rect) => set((s) => ({ floatingRect: { ...s.floatingRect, ...rect } }))
 }))
 
+/** `blocked`: a Settings rule refused it at run time (the branch changed while the card waited). */
 async function runToolCall(
   set: (partial: Partial<AiState> | ((state: AiState) => Partial<AiState>)) => void,
   messageId: string,
   callId: string,
   uiCall: UiToolCall
-): Promise<void> {
+): Promise<{ blocked: boolean }> {
   updateToolCall(set, messageId, callId, 'running', uiCall.result ?? '')
 
   let result: string
   let visual: ToolVisual | undefined
   let status: ToolCallStatus
+  let blocked = false
   try {
     const output = toToolOutput(await executeToolCall({ ...uiCall.call, arguments: uiCall.resolvedArgs }))
     result = output.text
@@ -897,9 +913,11 @@ async function runToolCall(
   } catch (err) {
     result = err instanceof Error ? err.message : String(err)
     status = 'failed'
+    blocked = err instanceof AiRuleBlockedError
   }
 
   updateToolCall(set, messageId, callId, status, result, visual)
+  return { blocked }
 }
 
 function updateToolCall(

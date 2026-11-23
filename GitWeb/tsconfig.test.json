@@ -13,5 +13,5 @@
       "@renderer/*": ["./src/renderer/src/*"]
     }
   },
-  "include": ["test/**/*", "vitest.config.mts", "src/preload/index.d.ts"]
+  "include": ["test/**/*", "vitest.config.mts", "src/preload/index.d.ts", "src/renderer/src/global-jsx.d.ts"]
 }

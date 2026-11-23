@@ -35,9 +35,15 @@ vi.mock('../src/main/settings', () => ({
   })
 }))
 
-const { applyProfileToRepo, getIdentityOverview, getRepoIdentity, parseOriginLine, saveIdentityProfiles, setGlobalIdentity } = await import(
-  '../src/main/gitIdentity'
-)
+const {
+  applyProfileToRepo,
+  getIdentityOverview,
+  getRepoIdentity,
+  parseOriginRecord,
+  saveIdentityProfiles,
+  setGlobalIdentity,
+  setIdentityKeepingProfiles
+} = await import('../src/main/gitIdentity')
 
 function git(cwd: string, ...args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim()
@@ -120,13 +126,51 @@ describe('main/gitIdentity with real git', () => {
     git(root, 'config', '--global', 'user.email', 'global@example.com')
   })
 
-  it('parses show-origin output, including paths with spaces', () => {
-    expect(parseOriginLine('global\tfile:C:/Users/a b/.gitconfig\tme@x.com\n')).toEqual({
+  it('parses -z show-origin output, with and without the scope field', () => {
+    expect(parseOriginRecord('global\0file:C:/Users/João Silva/.gitconfig\0me@x.com\0', true)).toEqual({
       scope: 'global',
-      origin: 'C:/Users/a b/.gitconfig',
+      origin: 'C:/Users/João Silva/.gitconfig',
       value: 'me@x.com'
     })
-    expect(parseOriginLine('nonsense')).toBeNull()
+    // Git before 2.26 has no --show-scope.
+    expect(parseOriginRecord('file:.git/config\0me@x.com\0', false)).toEqual({ scope: '', origin: '.git/config', value: 'me@x.com' })
+    expect(parseOriginRecord('nonsense', true)).toBeNull()
+  })
+
+  it('keeps the user’s own include under the same key as a profile', async () => {
+    const folder = join(root, 'shared-key')
+    const key = includeIfKey(folder, process.platform)
+    git(root, 'config', '--global', '--add', key, '/user/own-work.gitconfig')
+    await saveIdentityProfiles([{ id: 'sk', account: null, folder, name: 'SK', email: 'sk@x.com' }])
+    await saveIdentityProfiles([{ id: 'sk', account: null, folder, name: 'SK2', email: 'sk2@x.com' }])
+    await saveIdentityProfiles([])
+    expect(git(root, 'config', '--global', '--get-all', key)).toBe('/user/own-work.gitconfig')
+  })
+
+  it('keeps folder profiles in force when the global identity is written after them', async () => {
+    // No [user] yet: the profile's includeIf is the last thing in the file.
+    rmSync(globalConfig, { force: true })
+    const folder = join(root, 'ordem')
+    const repo = newRepo('ordem', 'app')
+    await saveIdentityProfiles([{ id: 'ord', account: null, folder, name: 'Perfil', email: 'perfil@x.com' }])
+
+    // Settings › Identidade: git appends [user] at the end of the file.
+    await setGlobalIdentity({ name: 'Global', email: 'global@x.com' })
+    expect(git(repo, 'config', 'user.email')).toBe('perfil@x.com')
+
+    // The AI's set_git_identity goes through git:setIdentity → same rule.
+    rmSync(globalConfig, { force: true })
+    await saveIdentityProfiles([{ id: 'ord', account: null, folder, name: 'Perfil', email: 'perfil@x.com' }])
+    await setIdentityKeepingProfiles(root, 'global', { name: 'IA', email: 'ia@x.com' })
+    expect(git(repo, 'config', 'user.email')).toBe('perfil@x.com')
+    expect(git(root, 'config', '--global', 'user.email')).toBe('ia@x.com')
+  })
+
+  it('recognizes a profile whose file lives under a path with accents', async () => {
+    const folder = join(root, 'Ação Ltda')
+    const repo = newRepo('Ação Ltda', 'site')
+    await saveIdentityProfiles([{ id: 'acento', account: 'acao', folder, name: 'Ação', email: 'a@acao.com' }])
+    expect(await getRepoIdentity(repo)).toMatchObject({ email: 'a@acao.com', source: 'profile', profileId: 'acento' })
   })
 
   it('reports the global identity for a plain repository', async () => {
