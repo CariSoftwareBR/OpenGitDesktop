@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/readme/hero-es.svg" alt="OpenGitDesktop — el cliente Git que trabaja contigo, no en tu lugar" width="100%">
+<img src="docs/readme/hero-es.svg" alt="OpenGitDesktop — el cliente Git que trabaja contigo, no en tu lugar. Un cliente Git de verdad con un asistente de IA que ejecuta acciones reales en tu repo, solo después de que apruebas. Código abierto, para Windows, macOS y Linux." width="100%">
 
 <br>
 <br>
@@ -48,6 +48,18 @@
 
 ```text
 Instala esta app: https://github.com/CariSoftwareBR/OpenGitDesktop
+```
+
+O desde una terminal:
+
+```powershell
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/CariSoftwareBR/OpenGitDesktop/main/install.ps1 | iex
+```
+
+```bash
+# Linux / macOS
+curl -fsSL https://raw.githubusercontent.com/CariSoftwareBR/OpenGitDesktop/main/install.sh | bash
 ```
 
 <sub>**Agentes de IA:** instalen siguiendo [INSTALL.md](INSTALL.md#install) exactamente. En Windows y Linux, sin preguntas y sin compilar; en macOS, pregunten una vez: `.dmg` listo o compilar desde el código.</sub>

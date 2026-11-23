@@ -1,0 +1,68 @@
+name: Install scripts
+
+# Runs install.ps1 / install.sh for real on clean machines, the same way the
+# README one-liners do (script piped into the shell), and checks the app landed.
+# They install the latest published release, so a broken release asset shows up
+# here too. Only on changes to the scripts, or by hand.
+on:
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'install.ps1'
+      - 'install.sh'
+      - '.github/workflows/install-scripts.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  OPENGITDESKTOP_NO_LAUNCH: '1'
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install (irm | iex)
+        shell: pwsh
+        run: Get-Content -Raw ./install.ps1 | Invoke-Expression
+      - name: Check
+        shell: pwsh
+        run: |
+          $app = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Filter 'OpenGitDesktop.exe' -Recurse -Depth 2 | Select-Object -First 1
+          if (-not $app) { throw 'OpenGitDesktop.exe not installed' }
+          $app.FullName
+
+  debian:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install (curl | bash, .deb)
+        run: cat install.sh | bash
+      - name: Check
+        run: |
+          dpkg -s opengitdesktop | grep -E '^(Status|Version):'
+          command -v opengitdesktop
+
+  appimage:
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install (curl | bash, AppImage)
+        run: cat install.sh | bash
+      - name: Check
+        run: test -x "$HOME/.local/bin/OpenGitDesktop.AppImage" && ls -l "$HOME/.local/bin/OpenGitDesktop.AppImage"
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install (curl | bash, .dmg)
+        run: cat install.sh | bash
+      - name: Check
+        run: |
+          test -d /Applications/OpenGitDesktop.app
+          defaults read /Applications/OpenGitDesktop.app/Contents/Info.plist CFBundleShortVersionString
+          ! xattr -p com.apple.quarantine /Applications/OpenGitDesktop.app 2>/dev/null

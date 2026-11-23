@@ -4,3 +4,6 @@
 # cmd.exe mis-handles labels (goto :fim) in LF-only batch files.
 *.bat text eol=crlf
 *.cmd text eol=crlf
+
+# Shell scripts must keep LF, even in a Windows checkout.
+*.sh text eol=lf
