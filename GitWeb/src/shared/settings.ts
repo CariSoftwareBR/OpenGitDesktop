@@ -1,5 +1,6 @@
 import type { LanguagePreference } from './i18n/locales'
 import type { SensitiveCheckMode } from './sensitiveFiles'
+import type { IdentityProfile } from './identity'
 
 /** Manual color-scheme override. `system` follows OS prefers-color-scheme;
  *  high-contrast variants are derived from prefers-contrast at apply time. */
@@ -29,6 +30,15 @@ export interface AppSettings {
   // When true, clones land in <base folder>/<account>/<repository> instead of
   // directly in the base folder.
   cloneOrganizeByOwner: boolean
+  // Name and e-mail per account; a profile with a folder is applied to the
+  // repositories below it through includeIf (see main/gitIdentity.ts).
+  identityProfiles: IdentityProfile[]
+  // Branches the AI assistant may never commit to, push or rewrite, even with
+  // approval: it has to create another branch first.
+  aiProtectedBranches: string[]
+  // Danger-tier AI actions (push, merge, delete branches…) need a second
+  // click on the approval card.
+  aiConfirmDanger: boolean
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -41,7 +51,37 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   language: 'system',
   cloneBaseFolders: [],
   lastCloneBaseFolder: null,
-  cloneOrganizeByOwner: false
+  cloneOrganizeByOwner: false,
+  identityProfiles: [],
+  aiProtectedBranches: [],
+  aiConfirmDanger: false
+}
+
+export const MAX_PROTECTED_BRANCHES = 30
+
+/** Trimmed, deduplicated (case-sensitive, as Git is), and without names Git would reject outright. */
+export function sanitizeBranchList(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  const result: string[] = []
+  for (const item of value) {
+    if (typeof item !== 'string') continue
+    const name = item.trim()
+    // `*` only as the trailing prefix wildcard (see isProtectedBranch).
+    if (!name || name.startsWith('-') || /[\s~^:?[\\]/.test(name) || name.slice(0, -1).includes('*') || result.includes(name)) continue
+    result.push(name)
+  }
+  return result.slice(0, MAX_PROTECTED_BRANCHES)
+}
+
+/**
+ * Whether a branch is on the protected list. A trailing `*` matches a prefix
+ * (`release/*`), which is how teams usually name the branches they guard.
+ */
+export function isProtectedBranch(branch: string | null | undefined, protectedBranches: string[]): boolean {
+  if (!branch) return false
+  return protectedBranches.some((pattern) =>
+    pattern.endsWith('*') ? branch.startsWith(pattern.slice(0, -1)) : branch === pattern
+  )
 }
 
 export const MAX_CLONE_BASE_FOLDERS = 10

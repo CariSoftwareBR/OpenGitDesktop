@@ -10,7 +10,13 @@ const ptBR = {
     appearance: 'Aparência',
     appearanceHint: 'Idioma e tema',
     security: 'Segurança',
-    securityHint: 'Arquivos sensíveis no commit'
+    securityHint: 'Arquivos sensíveis no commit',
+    identity: 'Identidade',
+    identityHint: 'Nome e e-mail dos commits',
+    aiRules: 'Ações da IA',
+    aiRulesHint: 'Regras e registro',
+    diagnostics: 'Diagnóstico',
+    diagnosticsHint: 'Git, GitHub e IA'
   },
   github: {
     signOut: 'Sair',
@@ -110,6 +116,153 @@ const ptBR = {
     byContent: 'Pelo conteúdo das linhas adicionadas',
     exempt: 'Modelos como .env.example e chaves públicas (.pub) não contam. Um arquivo que está sendo apagado também não.'
   },
+  identity: {
+    globalHeading: 'Identidade global',
+    globalHint: 'Vale para os repositórios sem perfil nem configuração própria. Fica no seu ~/.gitconfig.',
+    name: 'Nome',
+    email: 'E-mail',
+    namePlaceholder: 'Como você aparece nos commits',
+    emailPlaceholder: 'voce@exemplo.com',
+    save: 'Salvar',
+    saving: 'Salvando…',
+    saved: 'Salvo',
+    repoHeading: 'Este repositório',
+    commitsAs: 'Os commits saem como',
+    notConfigured: 'Sem nome ou e-mail: o Git vai recusar o commit.',
+    sourceLocal: 'Configuração do repositório',
+    sourceProfile: (name: string) => `Perfil de ${name}`,
+    sourceGlobal: 'Identidade global',
+    sourceOther: 'Configuração do sistema',
+    remoteOwner: (owner: string) => `Remoto de ${owner}`,
+    mismatch: (account: string, email: string) => `Este repositório é de ${account}, mas o perfil dessa conta usa ${email}.`,
+    applyProfileHere: (account: string) => `Usar o perfil de ${account} aqui`,
+    profilesHeading: 'Perfis por conta',
+    profilesHint:
+      'Cada perfil guarda o nome e o e-mail de uma conta. Com uma pasta, todo repositório dentro dela usa o perfil sozinho (includeIf do Git). Com a conta, o app avisa quando um repositório dela for commitar com outro e-mail.',
+    noProfiles: 'Nenhum perfil ainda. Crie um para cada conta com que você commita.',
+    addProfile: 'Adicionar perfil',
+    editProfile: 'Editar',
+    removeProfile: 'Remover',
+    account: 'Conta',
+    accountPlaceholder: 'Dono do remoto, como aparece no GitHub',
+    folder: 'Pasta',
+    noFolder: 'Sem pasta',
+    chooseFolder: 'Escolher pasta…',
+    clearFolder: 'Tirar a pasta',
+    cancel: 'Cancelar',
+    saveProfile: 'Salvar perfil',
+    githubSuggestions: 'Da sua conta do GitHub',
+    noreply: 'privado',
+    noreplyHint: 'O GitHub liga o commit à sua conta sem mostrar o seu e-mail.',
+    invalidEmail: 'E-mail inválido.',
+    invalidName: 'Escreva um nome.',
+    needsAccountOrFolder: 'Informe a conta, a pasta ou as duas.',
+    folderSuggested: 'Sugerida pela organização por conta',
+    applyNote: 'Ao salvar, o app só mexe nas linhas includeIf que ele mesmo criou no seu ~/.gitconfig.',
+    profileCount: (n: number) => (n === 1 ? '1 perfil' : `${n} perfis`),
+    saveError: (detail: string) => `Não consegui salvar: ${detail}`
+  },
+  aiRules: {
+    protectedHeading: 'Branches protegidas',
+    protectedHint:
+      'O assistente não pode commitar, enviar, fazer merge nem reescrever commits nessas branches, nem com a sua aprovação: ele precisa criar outra branch antes. Use * no fim para um prefixo, como release/*.',
+    branchPlaceholder: 'Nome da branch',
+    add: 'Adicionar',
+    remove: (branch: string) => `Remover ${branch}`,
+    suggestions: 'Sugestões',
+    noneProtected: 'Nenhuma branch protegida.',
+    confirmHeading: 'Aprovação',
+    confirmDanger: 'Confirmar ações irreversíveis com dois cliques',
+    confirmDangerHint:
+      'Push, merge, apagar branches e as outras ações marcadas como irreversíveis pedem um segundo clique no cartão de aprovação.',
+    logHeading: 'Registro de ações',
+    logHint: 'O que o assistente propôs para mudar algo e o que você decidiu. Fica só neste computador.',
+    onlyThisRepo: 'Só este repositório',
+    clear: 'Limpar registro',
+    clearConfirm: 'Clique de novo para apagar',
+    empty: 'Nenhuma ação registrada ainda. Quando o assistente propuser uma mudança, ela aparece aqui.',
+    emptyFiltered: 'Nenhuma ação registrada neste repositório.',
+    completed: 'Aprovada e concluída',
+    failed: 'Aprovada, mas falhou',
+    rejected: 'Recusada',
+    blocked: 'Bloqueada por uma regra',
+    irreversible: 'irreversível',
+    loadError: 'Não consegui ler o registro.'
+  },
+  diagnostics: {
+    hint: 'Confere o Git, a sua configuração e as integrações. Nada muda sem você clicar em Corrigir.',
+    rerun: 'Verificar de novo',
+    running: 'Verificando…',
+    allGood: 'Tudo certo',
+    issues: (n: number) => (n === 1 ? '1 ponto para olhar' : `${n} pontos para olhar`),
+    checkedAt: (when: string) => `Verificado ${when}`,
+    fix: 'Corrigir',
+    fixing: 'Corrigindo…',
+    willRun: 'Vai rodar',
+    openIdentity: 'Abrir Identidade',
+    openAccount: 'Entrar no GitHub',
+    openAi: 'Configurar a IA',
+    testAi: 'Testar conexão',
+    testingAi: 'Testando…',
+    failed: (detail: string) => `Não consegui verificar: ${detail}`,
+    statusLabel: { ok: 'OK', warn: 'Atenção', error: 'Problema', info: 'Informação' },
+    checks: {
+      git: {
+        title: 'Git',
+        ok: 'Instalado e numa versão recente.',
+        outdated: 'Versão antiga. Atualize para a 2.36 ou mais nova: algumas telas usam recursos dela.',
+        notFound: 'Não encontrei o Git no PATH. Instale-o e reabra o app.'
+      },
+      identity: {
+        title: 'Nome e e-mail dos commits',
+        ok: 'Configurados na identidade global.',
+        missingName: 'Falta o nome na identidade global.',
+        missingEmail: 'Falta o e-mail na identidade global.',
+        missingBoth: 'Sem nome e e-mail globais: repositórios sem perfil não conseguem commitar.'
+      },
+      safeDirectory: {
+        title: 'Permissão da pasta do repositório',
+        ok: 'O Git aceita trabalhar nesta pasta.',
+        dubiousOwnership: 'A pasta pertence a outro usuário do sistema e o Git se recusa a usá-la até ela ser marcada como confiável.'
+      },
+      longPaths: {
+        title: 'Caminhos longos',
+        ok: 'Ativado: arquivos com caminho acima de 260 caracteres funcionam.',
+        disabled: 'Desativado: no Windows, arquivos com caminho acima de 260 caracteres falham no clone e no checkout.'
+      },
+      lfs: {
+        title: 'Git LFS',
+        ok: 'Instalado.',
+        usedButMissing: 'Este repositório usa Git LFS, mas ele não está instalado: os arquivos grandes ficam só como ponteiros.',
+        notInstalled: 'Não instalado. Só faz falta em repositórios que guardam arquivos grandes com LFS.'
+      },
+      ssh: {
+        title: 'Cliente SSH',
+        ok: 'Instalado. O remoto deste repositório usa SSH.',
+        notFound: 'O remoto deste repositório usa SSH, mas não encontrei o comando ssh.'
+      },
+      credentialHelper: {
+        title: 'Gerenciador de credenciais',
+        ok: 'Configurado para os remotos fora do GitHub.',
+        notConfigured: 'Não configurado. No GitHub o app usa o próprio login; outros servidores vão pedir usuário e senha.'
+      },
+      github: {
+        title: 'Conta do GitHub',
+        ok: 'Conectada.',
+        notSignedIn: 'Não conectada. Pull requests, colaboradores e mensagens precisam do login.',
+        tokenInvalid: 'O GitHub recusou o login salvo. Entre de novo.',
+        missingRepoScope: 'O login não tem a permissão repo: repositórios privados não vão aparecer.',
+        unreachable: 'Não consegui falar com o GitHub agora. Confira a internet.'
+      },
+      ai: {
+        title: 'Assistente IA',
+        notConfigured: 'Nenhum provedor configurado. O app funciona sem a IA.',
+        configured: (provider: string, model: string) => `${provider} · ${model}. Teste para ver se o provedor responde.`,
+        ok: (provider: string, model: string) => `${provider} · ${model} respondeu.`,
+        failed: (detail: string) => `O provedor não respondeu: ${detail}`
+      }
+    }
+  },
   app: {
     heading: 'Aplicativo',
     about: 'Sobre o OpenGitDesktop',
@@ -135,7 +288,13 @@ const en: M = {
     appearance: 'Appearance',
     appearanceHint: 'Language and theme',
     security: 'Security',
-    securityHint: 'Sensitive files in commits'
+    securityHint: 'Sensitive files in commits',
+    identity: 'Identity',
+    identityHint: 'Name and e-mail on commits',
+    aiRules: 'AI actions',
+    aiRulesHint: 'Rules and log',
+    diagnostics: 'Diagnostics',
+    diagnosticsHint: 'Git, GitHub and AI'
   },
   github: {
     signOut: 'Sign out',
@@ -234,6 +393,152 @@ const en: M = {
     byContent: 'By the content of added lines',
     exempt: 'Templates like .env.example and public keys (.pub) do not count. Neither does a file being deleted.'
   },
+  identity: {
+    globalHeading: 'Global identity',
+    globalHint: 'Used by repositories with no profile and no setting of their own. Stored in your ~/.gitconfig.',
+    name: 'Name',
+    email: 'E-mail',
+    namePlaceholder: 'How you appear on commits',
+    emailPlaceholder: 'you@example.com',
+    save: 'Save',
+    saving: 'Saving…',
+    saved: 'Saved',
+    repoHeading: 'This repository',
+    commitsAs: 'Commits are made as',
+    notConfigured: 'No name or e-mail: Git will refuse the commit.',
+    sourceLocal: 'Repository setting',
+    sourceProfile: (name) => `${name} profile`,
+    sourceGlobal: 'Global identity',
+    sourceOther: 'System setting',
+    remoteOwner: (owner) => `Remote owned by ${owner}`,
+    mismatch: (account, email) => `This repository belongs to ${account}, but that account’s profile uses ${email}.`,
+    applyProfileHere: (account) => `Use the ${account} profile here`,
+    profilesHeading: 'Profiles per account',
+    profilesHint:
+      'Each profile holds an account’s name and e-mail. With a folder, every repository inside it uses the profile on its own (Git includeIf). With the account, the app warns when one of its repositories is about to commit with another e-mail.',
+    noProfiles: 'No profiles yet. Create one for each account you commit with.',
+    addProfile: 'Add profile',
+    editProfile: 'Edit',
+    removeProfile: 'Remove',
+    account: 'Account',
+    accountPlaceholder: 'Remote owner, as shown on GitHub',
+    folder: 'Folder',
+    noFolder: 'No folder',
+    chooseFolder: 'Choose folder…',
+    clearFolder: 'Remove folder',
+    cancel: 'Cancel',
+    saveProfile: 'Save profile',
+    githubSuggestions: 'From your GitHub account',
+    noreply: 'private',
+    noreplyHint: 'GitHub links the commit to your account without showing your e-mail.',
+    invalidEmail: 'Invalid e-mail.',
+    invalidName: 'Enter a name.',
+    needsAccountOrFolder: 'Enter the account, the folder or both.',
+    folderSuggested: 'Suggested by organize by account',
+    applyNote: 'When saving, the app only touches the includeIf lines it created itself in your ~/.gitconfig.',
+    profileCount: (n) => (n === 1 ? '1 profile' : `${n} profiles`),
+    saveError: (detail) => `Could not save: ${detail}`
+  },
+  aiRules: {
+    protectedHeading: 'Protected branches',
+    protectedHint:
+      'The assistant cannot commit, push, merge into or rewrite commits on these branches, even with your approval: it has to create another branch first. End with * for a prefix, such as release/*.',
+    branchPlaceholder: 'Branch name',
+    add: 'Add',
+    remove: (branch) => `Remove ${branch}`,
+    suggestions: 'Suggestions',
+    noneProtected: 'No protected branches.',
+    confirmHeading: 'Approval',
+    confirmDanger: 'Confirm irreversible actions with two clicks',
+    confirmDangerHint: 'Push, merge, deleting branches and the other actions marked irreversible need a second click on the approval card.',
+    logHeading: 'Action log',
+    logHint: 'What the assistant proposed to change and what you decided. Stays on this computer.',
+    onlyThisRepo: 'This repository only',
+    clear: 'Clear log',
+    clearConfirm: 'Click again to delete',
+    empty: 'No actions logged yet. When the assistant proposes a change, it shows up here.',
+    emptyFiltered: 'No actions logged for this repository.',
+    completed: 'Approved and done',
+    failed: 'Approved, but failed',
+    rejected: 'Rejected',
+    blocked: 'Blocked by a rule',
+    irreversible: 'irreversible',
+    loadError: 'Could not read the log.'
+  },
+  diagnostics: {
+    hint: 'Checks Git, your configuration and the integrations. Nothing changes until you click Fix.',
+    rerun: 'Check again',
+    running: 'Checking…',
+    allGood: 'All good',
+    issues: (n) => (n === 1 ? '1 thing to look at' : `${n} things to look at`),
+    checkedAt: (when) => `Checked ${when}`,
+    fix: 'Fix',
+    fixing: 'Fixing…',
+    willRun: 'Will run',
+    openIdentity: 'Open Identity',
+    openAccount: 'Sign in to GitHub',
+    openAi: 'Set up the AI',
+    testAi: 'Test connection',
+    testingAi: 'Testing…',
+    failed: (detail) => `Could not run the checks: ${detail}`,
+    statusLabel: { ok: 'OK', warn: 'Attention', error: 'Problem', info: 'Info' },
+    checks: {
+      git: {
+        title: 'Git',
+        ok: 'Installed and recent.',
+        outdated: 'Old version. Update to 2.36 or newer: some screens rely on it.',
+        notFound: 'Git was not found on the PATH. Install it and reopen the app.'
+      },
+      identity: {
+        title: 'Name and e-mail on commits',
+        ok: 'Set in the global identity.',
+        missingName: 'The global identity has no name.',
+        missingEmail: 'The global identity has no e-mail.',
+        missingBoth: 'No global name or e-mail: repositories without a profile cannot commit.'
+      },
+      safeDirectory: {
+        title: 'Repository folder permission',
+        ok: 'Git agrees to work in this folder.',
+        dubiousOwnership: 'The folder belongs to another system user, and Git refuses to use it until it is marked as trusted.'
+      },
+      longPaths: {
+        title: 'Long paths',
+        ok: 'On: files with paths over 260 characters work.',
+        disabled: 'Off: on Windows, files with paths over 260 characters fail to clone and check out.'
+      },
+      lfs: {
+        title: 'Git LFS',
+        ok: 'Installed.',
+        usedButMissing: 'This repository uses Git LFS, but it is not installed: large files stay as pointers.',
+        notInstalled: 'Not installed. Only needed for repositories that store large files with LFS.'
+      },
+      ssh: {
+        title: 'SSH client',
+        ok: 'Installed. This repository’s remote uses SSH.',
+        notFound: 'This repository’s remote uses SSH, but the ssh command was not found.'
+      },
+      credentialHelper: {
+        title: 'Credential manager',
+        ok: 'Set up for remotes outside GitHub.',
+        notConfigured: 'Not set up. For GitHub the app uses its own sign-in; other servers will ask for a username and password.'
+      },
+      github: {
+        title: 'GitHub account',
+        ok: 'Connected.',
+        notSignedIn: 'Not connected. Pull requests, collaborators and messages need the sign-in.',
+        tokenInvalid: 'GitHub rejected the saved sign-in. Sign in again.',
+        missingRepoScope: 'The sign-in lacks the repo permission: private repositories will not show up.',
+        unreachable: 'Could not reach GitHub right now. Check your connection.'
+      },
+      ai: {
+        title: 'AI assistant',
+        notConfigured: 'No provider set up. The app works without the AI.',
+        configured: (provider, model) => `${provider} · ${model}. Test it to see if the provider answers.`,
+        ok: (provider, model) => `${provider} · ${model} answered.`,
+        failed: (detail) => `The provider did not answer: ${detail}`
+      }
+    }
+  },
   app: {
     heading: 'Application',
     about: 'About OpenGitDesktop',
@@ -257,7 +562,13 @@ const es: M = {
     appearance: 'Apariencia',
     appearanceHint: 'Idioma y tema',
     security: 'Seguridad',
-    securityHint: 'Archivos sensibles en el commit'
+    securityHint: 'Archivos sensibles en el commit',
+    identity: 'Identidad',
+    identityHint: 'Nombre y correo de los commits',
+    aiRules: 'Acciones de la IA',
+    aiRulesHint: 'Reglas y registro',
+    diagnostics: 'Diagnóstico',
+    diagnosticsHint: 'Git, GitHub e IA'
   },
   github: {
     signOut: 'Cerrar sesión',
@@ -356,6 +667,152 @@ const es: M = {
     byName: 'Por el nombre del archivo',
     byContent: 'Por el contenido de las líneas añadidas',
     exempt: 'Las plantillas como .env.example y las claves públicas (.pub) no cuentan. Tampoco un archivo que se está borrando.'
+  },
+  identity: {
+    globalHeading: 'Identidad global',
+    globalHint: 'Vale para los repositorios sin perfil ni configuración propia. Se guarda en tu ~/.gitconfig.',
+    name: 'Nombre',
+    email: 'Correo',
+    namePlaceholder: 'Cómo apareces en los commits',
+    emailPlaceholder: 'tu@ejemplo.com',
+    save: 'Guardar',
+    saving: 'Guardando…',
+    saved: 'Guardado',
+    repoHeading: 'Este repositorio',
+    commitsAs: 'Los commits se hacen como',
+    notConfigured: 'Sin nombre o correo: Git va a rechazar el commit.',
+    sourceLocal: 'Configuración del repositorio',
+    sourceProfile: (name) => `Perfil de ${name}`,
+    sourceGlobal: 'Identidad global',
+    sourceOther: 'Configuración del sistema',
+    remoteOwner: (owner) => `Remoto de ${owner}`,
+    mismatch: (account, email) => `Este repositorio es de ${account}, pero el perfil de esa cuenta usa ${email}.`,
+    applyProfileHere: (account) => `Usar el perfil de ${account} aquí`,
+    profilesHeading: 'Perfiles por cuenta',
+    profilesHint:
+      'Cada perfil guarda el nombre y el correo de una cuenta. Con una carpeta, todo repositorio dentro de ella usa el perfil solo (includeIf de Git). Con la cuenta, la app avisa cuando un repositorio de ella va a hacer commit con otro correo.',
+    noProfiles: 'Todavía no hay perfiles. Crea uno para cada cuenta con la que haces commits.',
+    addProfile: 'Añadir perfil',
+    editProfile: 'Editar',
+    removeProfile: 'Quitar',
+    account: 'Cuenta',
+    accountPlaceholder: 'Dueño del remoto, como aparece en GitHub',
+    folder: 'Carpeta',
+    noFolder: 'Sin carpeta',
+    chooseFolder: 'Elegir carpeta…',
+    clearFolder: 'Quitar la carpeta',
+    cancel: 'Cancelar',
+    saveProfile: 'Guardar perfil',
+    githubSuggestions: 'De tu cuenta de GitHub',
+    noreply: 'privado',
+    noreplyHint: 'GitHub vincula el commit a tu cuenta sin mostrar tu correo.',
+    invalidEmail: 'Correo no válido.',
+    invalidName: 'Escribe un nombre.',
+    needsAccountOrFolder: 'Indica la cuenta, la carpeta o las dos.',
+    folderSuggested: 'Sugerida por la organización por cuenta',
+    applyNote: 'Al guardar, la app solo toca las líneas includeIf que ella misma creó en tu ~/.gitconfig.',
+    profileCount: (n) => (n === 1 ? '1 perfil' : `${n} perfiles`),
+    saveError: (detail) => `No pude guardar: ${detail}`
+  },
+  aiRules: {
+    protectedHeading: 'Ramas protegidas',
+    protectedHint:
+      'El asistente no puede hacer commit, push, merge ni reescribir commits en estas ramas, ni siquiera con tu aprobación: tiene que crear otra rama antes. Termina con * para un prefijo, como release/*.',
+    branchPlaceholder: 'Nombre de la rama',
+    add: 'Añadir',
+    remove: (branch) => `Quitar ${branch}`,
+    suggestions: 'Sugerencias',
+    noneProtected: 'Ninguna rama protegida.',
+    confirmHeading: 'Aprobación',
+    confirmDanger: 'Confirmar acciones irreversibles con dos clics',
+    confirmDangerHint: 'Push, merge, borrar ramas y las demás acciones marcadas como irreversibles piden un segundo clic en la tarjeta de aprobación.',
+    logHeading: 'Registro de acciones',
+    logHint: 'Lo que el asistente propuso cambiar y lo que decidiste. Se queda solo en este equipo.',
+    onlyThisRepo: 'Solo este repositorio',
+    clear: 'Vaciar registro',
+    clearConfirm: 'Haz clic de nuevo para borrar',
+    empty: 'Todavía no hay acciones registradas. Cuando el asistente proponga un cambio, aparecerá aquí.',
+    emptyFiltered: 'No hay acciones registradas en este repositorio.',
+    completed: 'Aprobada y completada',
+    failed: 'Aprobada, pero falló',
+    rejected: 'Rechazada',
+    blocked: 'Bloqueada por una regla',
+    irreversible: 'irreversible',
+    loadError: 'No pude leer el registro.'
+  },
+  diagnostics: {
+    hint: 'Revisa Git, tu configuración y las integraciones. Nada cambia hasta que hagas clic en Corregir.',
+    rerun: 'Revisar de nuevo',
+    running: 'Revisando…',
+    allGood: 'Todo bien',
+    issues: (n) => (n === 1 ? '1 punto para revisar' : `${n} puntos para revisar`),
+    checkedAt: (when) => `Revisado ${when}`,
+    fix: 'Corregir',
+    fixing: 'Corrigiendo…',
+    willRun: 'Va a ejecutar',
+    openIdentity: 'Abrir Identidad',
+    openAccount: 'Iniciar sesión en GitHub',
+    openAi: 'Configurar la IA',
+    testAi: 'Probar conexión',
+    testingAi: 'Probando…',
+    failed: (detail) => `No pude revisar: ${detail}`,
+    statusLabel: { ok: 'OK', warn: 'Atención', error: 'Problema', info: 'Información' },
+    checks: {
+      git: {
+        title: 'Git',
+        ok: 'Instalado y en una versión reciente.',
+        outdated: 'Versión antigua. Actualiza a la 2.36 o más nueva: algunas pantallas la necesitan.',
+        notFound: 'No encontré Git en el PATH. Instálalo y vuelve a abrir la app.'
+      },
+      identity: {
+        title: 'Nombre y correo de los commits',
+        ok: 'Configurados en la identidad global.',
+        missingName: 'Falta el nombre en la identidad global.',
+        missingEmail: 'Falta el correo en la identidad global.',
+        missingBoth: 'Sin nombre ni correo globales: los repositorios sin perfil no pueden hacer commit.'
+      },
+      safeDirectory: {
+        title: 'Permiso de la carpeta del repositorio',
+        ok: 'Git acepta trabajar en esta carpeta.',
+        dubiousOwnership: 'La carpeta pertenece a otro usuario del sistema y Git se niega a usarla hasta que se marque como confiable.'
+      },
+      longPaths: {
+        title: 'Rutas largas',
+        ok: 'Activado: los archivos con rutas de más de 260 caracteres funcionan.',
+        disabled: 'Desactivado: en Windows, los archivos con rutas de más de 260 caracteres fallan al clonar y en el checkout.'
+      },
+      lfs: {
+        title: 'Git LFS',
+        ok: 'Instalado.',
+        usedButMissing: 'Este repositorio usa Git LFS, pero no está instalado: los archivos grandes quedan solo como punteros.',
+        notInstalled: 'No instalado. Solo hace falta en repositorios que guardan archivos grandes con LFS.'
+      },
+      ssh: {
+        title: 'Cliente SSH',
+        ok: 'Instalado. El remoto de este repositorio usa SSH.',
+        notFound: 'El remoto de este repositorio usa SSH, pero no encontré el comando ssh.'
+      },
+      credentialHelper: {
+        title: 'Administrador de credenciales',
+        ok: 'Configurado para los remotos fuera de GitHub.',
+        notConfigured: 'No configurado. En GitHub la app usa su propio inicio de sesión; otros servidores van a pedir usuario y contraseña.'
+      },
+      github: {
+        title: 'Cuenta de GitHub',
+        ok: 'Conectada.',
+        notSignedIn: 'No conectada. Las pull requests, los colaboradores y los mensajes necesitan el inicio de sesión.',
+        tokenInvalid: 'GitHub rechazó el inicio de sesión guardado. Vuelve a iniciar sesión.',
+        missingRepoScope: 'El inicio de sesión no tiene el permiso repo: los repositorios privados no van a aparecer.',
+        unreachable: 'No pude hablar con GitHub ahora. Revisa la conexión.'
+      },
+      ai: {
+        title: 'Asistente IA',
+        notConfigured: 'Ningún proveedor configurado. La app funciona sin la IA.',
+        configured: (provider, model) => `${provider} · ${model}. Pruébalo para ver si el proveedor responde.`,
+        ok: (provider, model) => `${provider} · ${model} respondió.`,
+        failed: (detail) => `El proveedor no respondió: ${detail}`
+      }
+    }
   },
   app: {
     heading: 'Aplicación',

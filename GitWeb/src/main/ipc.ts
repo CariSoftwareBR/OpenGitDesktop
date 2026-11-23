@@ -121,6 +121,12 @@ import type { AiRequestOptions, ChatMessage, ToolDefinition } from '../shared/ai
 import type { RebaseStep } from '../shared/git'
 import { withProjectCoAuthor, type AppSettings } from '../shared/settings'
 import { checkForUpdates, getUpdateStatus, quitAndInstall } from './updater'
+import { applyProfileToRepo, getIdentityOverview, saveIdentityProfiles, setGlobalIdentity } from './gitIdentity'
+import { clearAiActions, listAiActions, recordAiAction } from './aiActionLog'
+import { applyDiagnosticFix, runDiagnostics } from './diagnostics'
+import type { IdentityProfile } from '../shared/identity'
+import type { NewAiActionEntry } from '../shared/aiActionLog'
+import type { DiagnosticFixId } from '../shared/diagnostics'
 
 // Secrets the renderer may still read back: AI provider keys, which the
 // settings form shows so the user can edit them. Deliberately a prefix
@@ -305,6 +311,19 @@ export function registerIpcHandlers(): void {
   handle('git:setIdentity', (_e, cwd: string, scope: 'local' | 'global', values: { name?: string; email?: string }) =>
     setGitIdentity(cwd, scope, values)
   )
+
+  handle('identity:getOverview', (_e, cwd: string | null) => getIdentityOverview(cwd))
+  handle('identity:setGlobal', (_e, values: { name: string; email: string }) => setGlobalIdentity(values))
+  handle('identity:saveProfiles', (_e, profiles: IdentityProfile[]) => saveIdentityProfiles(profiles))
+  handle('identity:applyProfile', (_e, cwd: string, profileId: string) => applyProfileToRepo(cwd, profileId))
+  handle('identity:githubSuggestion', (_e, host: string) => githubApi.getIdentitySuggestion(host))
+
+  handle('aiLog:list', () => listAiActions())
+  handle('aiLog:record', (_e, entry: NewAiActionEntry) => recordAiAction(entry))
+  handle('aiLog:clear', () => clearAiActions())
+
+  handle('diagnostics:run', (_e, cwd: string | null) => runDiagnostics(cwd))
+  handle('diagnostics:fix', (_e, id: DiagnosticFixId, cwd: string | null) => applyDiagnosticFix(id, cwd))
 
   handle('git:listFiles', (_e, cwd: string, pattern?: string) => listRepoFiles(cwd, pattern))
   handle('git:readFileForAgent', async (_e, cwd: string, path: string) => {

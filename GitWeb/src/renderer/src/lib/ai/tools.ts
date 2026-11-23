@@ -8,7 +8,7 @@ import { formatPullRequestStatus } from './prStatus'
 import { directPushBlock } from '../branchProtection'
 import { describeFindings, SensitiveBlockedError, withheldForAi } from '../sensitive'
 import { useAppSettingsStore } from '../../store/appSettingsStore'
-import { DEFAULT_APP_SETTINGS } from '../../../../shared/settings'
+import { DEFAULT_APP_SETTINGS, isProtectedBranch } from '../../../../shared/settings'
 import { sanitizeRepositoryName } from '../../../../shared/github'
 import { basename, displayFolder, pathKey } from '../path'
 import {
@@ -81,6 +81,34 @@ const WRITE_TOOLS = new Set([
   'open_worktree',
   'prune_worktrees'
 ])
+
+// Tools that add commits to, move or publish the current branch. The
+// protected-branch rule (Settings › Ações da IA) refuses them before the
+// approval card exists — approval cannot override it.
+const CURRENT_BRANCH_WRITE_TOOLS = new Set(['commit', 'undo_last_commit', 'push', 'merge_branch', 'reorganize_local_commits'])
+
+/** A Settings rule stopped the action; the chat shows it like any failed proposal, and the log records it as blocked. */
+export class AiRuleBlockedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'AiRuleBlockedError'
+  }
+}
+
+function currentBranchName(): string | null {
+  const repo = useRepoStore.getState()
+  return repo.branches.find((b) => b.isCurrent)?.name ?? repo.status?.branch ?? null
+}
+
+/** Throws when the user's rules forbid this tool on the current branch. */
+export function assertAllowedByRules(name: string): void {
+  if (!CURRENT_BRANCH_WRITE_TOOLS.has(name)) return
+  const settings = useAppSettingsStore.getState().settings ?? DEFAULT_APP_SETTINGS
+  const branch = currentBranchName()
+  if (branch && isProtectedBranch(branch, settings.aiProtectedBranches)) {
+    throw new AiRuleBlockedError(getT().tools.protectedBranchBlocked(branch))
+  }
+}
 
 export function toolSeverity(name: string): ToolSeverity {
   if (DANGER_TOOLS.has(name)) return 'danger'
@@ -299,6 +327,7 @@ function requireGitHubRemote(): { host: string; owner: string; repo: string } {
 // ---------------------------------------------------------------------------
 
 export async function prepareToolCall(call: ToolCallRequest): Promise<ToolPrepareResult> {
+  assertAllowedByRules(call.name)
   const result = await prepareToolCallInner(call)
   return {
     preview: { ...result.preview, severity: result.preview.severity ?? toolSeverity(call.name) },
@@ -1451,6 +1480,9 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
 // ---------------------------------------------------------------------------
 
 export async function executeToolCall(call: ToolCallRequest): Promise<string | ToolOutput> {
+  // Again at run time: the branch may have changed (or the rule been added)
+  // while the card waited for approval.
+  assertAllowedByRules(call.name)
   const repo = useRepoStore.getState()
   const pr = usePullRequestStore.getState()
   const a = call.arguments

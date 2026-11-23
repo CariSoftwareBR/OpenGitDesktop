@@ -48,7 +48,9 @@ import {
   type ToolCallRequest
 } from '../../../shared/aiChat'
 import { listModels, sendToolAwareChatRequest, sendChatRequest, abortChatRequest, type ChatMessage } from '../lib/ai/providers'
-import { prepareToolCall, executeToolCall, toolSeverity, type ToolPreview } from '../lib/ai/tools'
+import { AiRuleBlockedError, prepareToolCall, executeToolCall, toolSeverity, type ToolPreview } from '../lib/ai/tools'
+import { useAppSettingsStore } from './appSettingsStore'
+import type { AiActionDecision, AiActionOutcome } from '../../../shared/aiActionLog'
 import { toToolOutput, type ToolVisual } from '../lib/ai/toolVisuals'
 import { useRepoStore } from './repoStore'
 import CREATE_PULL_REQUEST_SKILL_PT from '../lib/ai/skills/pt-BR/create-pull-request.md?raw'
@@ -258,8 +260,30 @@ function buildRepoContext(language: AiLanguage): string {
       : null,
     statusLines,
     lastCommits,
-    caseCollisions: repo.status?.caseCollisions
+    caseCollisions: repo.status?.caseCollisions,
+    protectedBranches: useAppSettingsStore.getState().settings?.aiProtectedBranches ?? []
   })
+}
+
+/**
+ * Records a decision on an action that changes something (Settings › Ações da
+ * IA › Registro). Read-only lookups are not logged. Best effort: a failed
+ * write must never get in the way of the action itself.
+ */
+function logAiAction(uiCall: UiToolCall, decision: AiActionDecision, outcome: AiActionOutcome | null, detail: string | null): void {
+  const severity = uiCall.preview.severity ?? toolSeverity(uiCall.call.name)
+  if (severity === 'read') return
+  void window.api.aiLog
+    .record({
+      repoPath: useRepoStore.getState().currentRepoPath,
+      tool: uiCall.call.name,
+      headline: uiCall.preview.headline,
+      severity,
+      decision,
+      outcome,
+      detail
+    })
+    .catch(() => undefined)
 }
 
 // Recomputed every turn from the whole conversation (the error may be many
@@ -769,11 +793,22 @@ export const useAiStore = create<AiState>((set, get) => ({
     }
 
     await runToolCall(set, messageId, callId, uiCall)
+    const finished = get()
+      .messages.find((m) => m.id === messageId)
+      ?.toolCalls?.find((c) => c.call.id === callId)
+    if (finished) {
+      const outcome = finished.status === 'completed' ? 'completed' : 'failed'
+      logAiAction(finished, 'approved', outcome, finished.result ?? null)
+    }
     await continueIfAllResolved(get, set, messageId)
     set({ isBusy: false, phase: 'idle' })
   },
 
   cancelToolCall: (messageId: string, callId: string) => {
+    const uiCall = get()
+      .messages.find((m) => m.id === messageId)
+      ?.toolCalls?.find((c) => c.call.id === callId)
+    if (uiCall?.status === 'pending') logAiAction(uiCall, 'rejected', null, null)
     updateToolCall(set, messageId, callId, 'cancelled', getT().stores.actionCancelled)
     void continueIfAllResolved(get, set, messageId)
   },
@@ -942,7 +977,7 @@ async function buildUiToolCalls(calls: ToolCallRequest[]): Promise<UiToolCall[]>
         const { preview, resolvedArgs } = await prepareToolCall(call)
         return { call, preview, resolvedArgs, status: 'pending' }
       } catch (err) {
-        return {
+        const failed: UiToolCall = {
           call,
           preview: { headline: getT().tools.label[call.name] ?? call.name, fields: [], severity: toolSeverity(call.name) },
           resolvedArgs: call.arguments,
@@ -950,6 +985,8 @@ async function buildUiToolCalls(calls: ToolCallRequest[]): Promise<UiToolCall[]>
           result: err instanceof Error ? err.message : String(err),
           sensitive: err instanceof SensitiveBlockedError ? err.findings : undefined
         }
+        if (err instanceof AiRuleBlockedError) logAiAction(failed, 'blocked', null, err.message)
+        return failed
       }
     })
   )

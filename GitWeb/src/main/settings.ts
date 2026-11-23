@@ -11,7 +11,8 @@ import {
   type AiProvider,
   type AiSettings
 } from '../shared/ai'
-import { DEFAULT_APP_SETTINGS, MAX_CLONE_BASE_FOLDERS, type AppSettings } from '../shared/settings'
+import { DEFAULT_APP_SETTINGS, MAX_CLONE_BASE_FOLDERS, sanitizeBranchList, type AppSettings } from '../shared/settings'
+import { sanitizeProfiles } from '../shared/identity'
 import { isLanguagePreference } from '../shared/i18n/locales'
 
 const FILE_NAME = 'settings.json'
@@ -58,7 +59,10 @@ function normalizeSettings(stored: Partial<AppSettings>): AppSettings {
     cloneBaseFolders: sanitizeCloneBaseFolders(stored.cloneBaseFolders),
     lastCloneBaseFolder,
     cloneOrganizeByOwner:
-      typeof stored.cloneOrganizeByOwner === 'boolean' ? stored.cloneOrganizeByOwner : DEFAULTS.cloneOrganizeByOwner
+      typeof stored.cloneOrganizeByOwner === 'boolean' ? stored.cloneOrganizeByOwner : DEFAULTS.cloneOrganizeByOwner,
+    identityProfiles: sanitizeProfiles(stored.identityProfiles),
+    aiProtectedBranches: sanitizeBranchList(stored.aiProtectedBranches),
+    aiConfirmDanger: typeof stored.aiConfirmDanger === 'boolean' ? stored.aiConfirmDanger : DEFAULTS.aiConfirmDanger
   }
 }
 

@@ -2,6 +2,7 @@ import { apiBaseForHost, credentialKey, graphqlUrlForHost, nextPageUrl } from '.
 import { getSecret, saveSecret, deleteSecret } from './credentials'
 import { httpFetch } from './httpFetch'
 import { tMain } from './i18n'
+import { githubNoreplyEmail, type GithubIdentitySuggestion } from '../shared/identity'
 import type {
   AddCollaboratorResult,
   BranchRules,
@@ -277,6 +278,25 @@ export async function getSession(host: string): Promise<GitHubUser | null> {
 
 export async function logout(host: string): Promise<void> {
   await deleteSecret(credentialKey(host))
+}
+
+/**
+ * Name and e-mails the signed-in account could commit with. /user/emails needs
+ * the user:email scope, which a token may lack: then only the public e-mail
+ * (if any) and the no-reply address are offered.
+ */
+export async function getIdentitySuggestion(host: string): Promise<GithubIdentitySuggestion> {
+  const token = await requireToken(host)
+  const user = await request<{ id: number; login: string; name: string | null; email: string | null }>(host, '/user', token)
+  let emails: string[] = []
+  try {
+    const listed = await request<{ email: string; verified: boolean }[]>(host, '/user/emails', token)
+    emails = listed.filter((e) => e.verified).map((e) => e.email)
+  } catch {
+    emails = user.email ? [user.email] : []
+  }
+  const noreply = githubNoreplyEmail(user.id, user.login)
+  return { login: user.login, name: user.name, noreply, emails: emails.filter((e) => e.toLowerCase() !== noreply.toLowerCase()) }
 }
 
 // --- repositories ---

@@ -37,6 +37,9 @@ import type {
 import type { AiSettings, ResolvedAiConfig } from '../shared/ai'
 import type { AiRequestOptions, ChatMessage, ChatRequestOutcome, ChatResponse, ToolDefinition } from '../shared/aiChat'
 import type { AppSettings } from '../shared/settings'
+import type { GithubIdentitySuggestion, IdentityOverview, IdentityProfile, RepoIdentity } from '../shared/identity'
+import type { AiActionEntry, NewAiActionEntry } from '../shared/aiActionLog'
+import type { DiagnosticCheck, DiagnosticFixId } from '../shared/diagnostics'
 import type { SensitiveFinding } from '../shared/sensitiveFiles'
 import type { Locale } from '../shared/i18n/locales'
 import type { DeviceFlowPollResult, DeviceFlowStart, OAuthAppInfo } from '../shared/githubAuth'
@@ -319,6 +322,22 @@ export interface Api {
     deleteGroup: (id: string) => Promise<RecentReposData>
     setRepoGroup: (path: string, groupId: string | null) => Promise<RecentReposData>
     setGroupCollapsed: (id: string, collapsed: boolean) => Promise<RecentReposData>
+  }
+  identity: {
+    getOverview: (cwd: string | null) => Promise<IdentityOverview>
+    setGlobal: (values: { name: string; email: string }) => Promise<IdentityOverview>
+    saveProfiles: (profiles: IdentityProfile[]) => Promise<IdentityOverview>
+    applyProfile: (cwd: string, profileId: string) => Promise<RepoIdentity>
+    githubSuggestion: (host: string) => Promise<GithubIdentitySuggestion>
+  }
+  aiLog: {
+    list: () => Promise<AiActionEntry[]>
+    record: (entry: NewAiActionEntry) => Promise<AiActionEntry | null>
+    clear: () => Promise<void>
+  }
+  diagnostics: {
+    run: (cwd: string | null) => Promise<DiagnosticCheck[]>
+    fix: (id: DiagnosticFixId, cwd: string | null) => Promise<DiagnosticCheck[]>
   }
   settings: {
     get: () => Promise<AppSettings>

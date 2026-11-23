@@ -3,7 +3,7 @@ import { useRepoStore } from '../store/repoStore'
 
 export const AI_SETTINGS_SECTION_ID = 'configuracoes-ia'
 
-export type SettingsTab = 'general' | 'ai' | 'appearance' | 'security'
+export type SettingsTab = 'general' | 'identity' | 'ai' | 'aiRules' | 'appearance' | 'security' | 'diagnostics'
 
 /** The Settings tab on screen; kept across visits so returning lands where the user left. */
 export const useSettingsTabStore = create<{ tab: SettingsTab; setTab: (tab: SettingsTab) => void }>((set) => ({

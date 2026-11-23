@@ -2504,6 +2504,9 @@
   .settings-icon.is-green {
     --icon-ink: var(--color-success-green);
   }
+  .settings-icon.is-red {
+    --icon-ink: var(--color-danger-red);
+  }
 
   .choice-tile {
     display: flex;

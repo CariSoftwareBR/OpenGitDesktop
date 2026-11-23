@@ -19,6 +19,7 @@ import {
   X
 } from 'lucide-react'
 import { useAiStore, isAiConfigured } from '../store/aiStore'
+import { useAppSettingsStore } from '../store/appSettingsStore'
 import { useGithubAuthStore } from '../store/githubAuthStore'
 import { useRepoStore } from '../store/repoStore'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -129,7 +130,25 @@ function ToolCallCard({ messageId, uiCall }: { messageId: string; uiCall: import
   const borderColor = severityStyles(severity, uiCall.status)
   const approveClass =
     severity === 'danger' ? 'btn-danger h-8 px-3' : severity === 'write' ? 'btn-primary h-8 px-3' : 'btn-secondary h-8 px-3'
-  const approveLabel = severity === 'danger' ? ui.toolApproveDanger : ui.toolApprove
+  // Settings › Ações da IA › "Confirmar ações irreversíveis": the first click
+  // only arms the button, the second one approves. Disarms itself after a few
+  // seconds so a stray click later starts over.
+  const confirmDanger = useAppSettingsStore((s) => s.settings?.aiConfirmDanger ?? false) && severity === 'danger'
+  const [armed, setArmed] = useState(false)
+  useEffect(() => {
+    if (!armed) return
+    const timer = setTimeout(() => setArmed(false), 5000)
+    return () => clearTimeout(timer)
+  }, [armed])
+  const approveLabel = armed ? ui.toolConfirmDanger : severity === 'danger' ? ui.toolApproveDanger : ui.toolApprove
+  function handleApprove(): void {
+    if (confirmDanger && !armed) {
+      setArmed(true)
+      return
+    }
+    setArmed(false)
+    void approveToolCall(messageId, uiCall.call.id)
+  }
   const isReadPullRequest = uiCall.call.name === 'read_pull_request'
 
   if (uiCall.status === 'failed' && uiCall.sensitive) return <SensitiveBlockedCard findings={uiCall.sensitive} />
@@ -199,8 +218,12 @@ function ToolCallCard({ messageId, uiCall }: { messageId: string; uiCall: import
         // share the row, and stack full-width once their labels no longer fit.
         <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-default-border pt-3">
           {/* Cancel always last, on the far right. */}
-          <button onClick={() => approveToolCall(messageId, uiCall.call.id)} className={`${approveClass} flex-auto @[22rem]:flex-none`}>
-            <Check size={13} /> {approveLabel}
+          <button
+            onClick={handleApprove}
+            aria-live={confirmDanger ? 'polite' : undefined}
+            className={`${approveClass} flex-auto @[22rem]:flex-none ${armed ? 'ring-2 ring-danger-red/60 ring-offset-2 ring-offset-coal-raised' : ''}`}
+          >
+            {armed ? <AlertTriangle size={13} aria-hidden /> : <Check size={13} />} {approveLabel}
           </button>
           <button
             onClick={() => cancelToolCall(messageId, uiCall.call.id)}
