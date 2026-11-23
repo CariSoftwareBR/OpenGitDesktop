@@ -39,6 +39,20 @@ export interface RepoContextInput {
   lastCommits: string
   /** Tracked paths that differ only in case (see RepoStatus.caseCollisions). */
   caseCollisions?: CaseCollision[]
+  /** Settings › Ações da IA: branches the assistant may not commit to, push or rewrite. */
+  protectedBranches?: string[]
+}
+
+function formatProtectedBranches(language: AiLanguage, branches: string[]): string[] {
+  if (branches.length === 0) return []
+  const list = branches.join(', ')
+  return [
+    pick(language, {
+      'pt-BR': `- Branches protegidas pelo usuário: ${list}. Nelas você não pode commitar, enviar (push), fazer merge nem reescrever commits, nem com aprovação: crie e troque para outra branch antes (create_branch).`,
+      en: `- Branches the user protected: ${list}. You cannot commit, push, merge into or rewrite commits on them, even with approval: create and switch to another branch first (create_branch).`,
+      es: `- Ramas protegidas por el usuario: ${list}. En ellas no puedes hacer commit, push, merge ni reescribir commits, ni siquiera con aprobación: crea y cambia a otra rama antes (create_branch).`
+    })
+  ]
 }
 
 function formatCaseCollisions(language: AiLanguage, collisions: CaseCollision[]): string[] {
@@ -140,6 +154,7 @@ export function formatRepoContext(language: AiLanguage, repo: RepoContextInput):
     `- ${labels.path}: ${repo.repoPath}`,
     `- ${labels.branch}: ${repo.branch}`,
     `- ${labels.upstream}: ${upstreamInfo}`,
+    ...formatProtectedBranches(language, repo.protectedBranches ?? []),
     '',
     labels.status,
     repo.statusLines || labels.clean,
@@ -1206,6 +1221,8 @@ export interface AiUiStrings {
   patchPreviewConfirm: string
   toolApprove: string
   toolApproveDanger: string
+  /** Second click on a danger action, when Settings asks for it. */
+  toolConfirmDanger: string
   toolCancel: string
   toolExecuting: string
   toolRetry: string
@@ -1287,6 +1304,7 @@ export function aiUiStrings(language: AiLanguage): AiUiStrings {
       patchPreviewConfirm: 'Apply to file',
       toolApprove: 'Approve',
       toolApproveDanger: 'Approve irreversible action',
+      toolConfirmDanger: 'Click again to confirm',
       toolCancel: 'Cancel',
       toolExecuting: 'Running…',
       toolRetry: 'Try again'
@@ -1368,6 +1386,7 @@ export function aiUiStrings(language: AiLanguage): AiUiStrings {
       patchPreviewConfirm: 'Aplicar al archivo',
       toolApprove: 'Aprobar',
       toolApproveDanger: 'Aprobar acción irreversible',
+      toolConfirmDanger: 'Haz clic de nuevo para confirmar',
       toolCancel: 'Cancelar',
       toolExecuting: 'Ejecutando…',
       toolRetry: 'Reintentar'
@@ -1448,6 +1467,7 @@ export function aiUiStrings(language: AiLanguage): AiUiStrings {
     patchPreviewConfirm: 'Aplicar no arquivo',
     toolApprove: 'Aprovar',
     toolApproveDanger: 'Aprovar ação irreversível',
+    toolConfirmDanger: 'Clique de novo para confirmar',
     toolCancel: 'Cancelar',
     toolExecuting: 'Executando…',
     toolRetry: 'Tentar de novo'

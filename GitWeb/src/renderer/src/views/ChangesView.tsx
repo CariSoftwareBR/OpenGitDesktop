@@ -47,6 +47,7 @@ import { ignoreSensitive, unstageSensitive } from '../lib/sensitive'
 import { isConflicted, type CaseCollision, type FileLineStat, type StatusEntry } from '../../../shared/git'
 import { relativeTime } from '../lib/relativeTime'
 import { useLocale, useT } from '../lib/i18n'
+import CommitIdentityNotice from '../components/CommitIdentityNotice'
 
 type FlatEntry =
   | { kind: 'conflict'; entry: StatusEntry }
@@ -1418,6 +1419,7 @@ function ChangesView(): JSX.Element {
               <span className="truncate">{currentBranch}</span>
             </span>
           </div>
+          {currentRepoPath && <CommitIdentityNotice repoPath={currentRepoPath} />}
           {aiError && (
             <div className="flex items-start gap-2 rounded-md border border-danger-red/30 bg-danger-red-soft px-2.5 py-2 text-caption text-danger-red" role="alert">
               <span className="flex-1">{aiError}</span>

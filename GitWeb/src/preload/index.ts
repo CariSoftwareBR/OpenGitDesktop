@@ -38,6 +38,9 @@ import type {
 import type { AiSettings, ResolvedAiConfig } from '../shared/ai'
 import type { AiRequestOptions, ChatMessage, ChatRequestOutcome, ChatResponse, ToolDefinition } from '../shared/aiChat'
 import type { AppSettings } from '../shared/settings'
+import type { GithubIdentitySuggestion, IdentityOverview, IdentityProfile, RepoIdentity } from '../shared/identity'
+import type { AiActionEntry, NewAiActionEntry } from '../shared/aiActionLog'
+import type { DiagnosticCheck, DiagnosticFixId } from '../shared/diagnostics'
 import type { SensitiveFinding } from '../shared/sensitiveFiles'
 import type { Locale } from '../shared/i18n/locales'
 import type { DeviceFlowPollResult, DeviceFlowStart, OAuthAppInfo } from '../shared/githubAuth'
@@ -413,6 +416,22 @@ const api = {
       invoke('recentRepos:setRepoGroup', path, groupId),
     setGroupCollapsed: (id: string, collapsed: boolean): Promise<RecentReposData> =>
       invoke('recentRepos:setGroupCollapsed', id, collapsed)
+  },
+  identity: {
+    getOverview: (cwd: string | null): Promise<IdentityOverview> => invoke('identity:getOverview', cwd),
+    setGlobal: (values: { name: string; email: string }): Promise<IdentityOverview> => invoke('identity:setGlobal', values),
+    saveProfiles: (profiles: IdentityProfile[]): Promise<IdentityOverview> => invoke('identity:saveProfiles', profiles),
+    applyProfile: (cwd: string, profileId: string): Promise<RepoIdentity> => invoke('identity:applyProfile', cwd, profileId),
+    githubSuggestion: (host: string): Promise<GithubIdentitySuggestion> => invoke('identity:githubSuggestion', host)
+  },
+  aiLog: {
+    list: (): Promise<AiActionEntry[]> => invoke('aiLog:list'),
+    record: (entry: NewAiActionEntry): Promise<AiActionEntry | null> => invoke('aiLog:record', entry),
+    clear: (): Promise<void> => invoke('aiLog:clear')
+  },
+  diagnostics: {
+    run: (cwd: string | null): Promise<DiagnosticCheck[]> => invoke('diagnostics:run', cwd),
+    fix: (id: DiagnosticFixId, cwd: string | null): Promise<DiagnosticCheck[]> => invoke('diagnostics:fix', id, cwd)
   },
   settings: {
     get: (): Promise<AppSettings> => invoke('settings:get'),

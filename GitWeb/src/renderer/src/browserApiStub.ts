@@ -14,6 +14,9 @@ import {
   type AiSettings
 } from '../../shared/ai'
 import { DEFAULT_APP_SETTINGS, type AppSettings } from '../../shared/settings'
+import type { GitIdentityValues, IdentityProfile, RepoIdentity } from '../../shared/identity'
+import type { AiActionEntry } from '../../shared/aiActionLog'
+import { sortChecks, type DiagnosticCheck } from '../../shared/diagnostics'
 import { resolveLocale } from '../../shared/i18n/locales'
 import type {
   BranchInfo,
@@ -363,6 +366,71 @@ function demoBlame(path: string): FileBlame {
 }
 
 const okGit = (): GitResult => ({ exitCode: 0, stdout: '', stderr: '' })
+
+// Demo data for Settings › Identidade, Ações da IA and Diagnóstico.
+let demoGlobalIdentity: GitIdentityValues = { name: 'Demo Dev', email: 'demo@example.com' }
+
+function demoRepoIdentity(profiles: IdentityProfile[]): RepoIdentity {
+  // localStorage.demoIdentityMismatch = '1' shows the commit-box warning.
+  const mismatch = localStorage.getItem('demoIdentityMismatch') === '1'
+  const profile = profiles.find((p) => p.account?.toLowerCase() === 'demo-dev')
+  if (profile && !mismatch) {
+    return { name: profile.name, email: profile.email, source: 'profile', profileId: profile.id, remoteOwner: 'demo-dev' }
+  }
+  return { ...demoGlobalIdentity, source: 'global', profileId: null, remoteOwner: 'demo-dev' }
+}
+
+const demoAiLog: AiActionEntry[] = [
+  {
+    id: 'demo-3',
+    at: new Date(Date.now() - 4 * 60_000).toISOString(),
+    repoPath: 'C:/Users/demo/projetos/gitweb-demo',
+    tool: 'push',
+    headline: 'Enviar main para origin',
+    severity: 'danger',
+    decision: 'blocked',
+    outcome: null,
+    detail: 'main está protegida nas regras da IA: crie uma branch antes de commitar ou enviar.'
+  },
+  {
+    id: 'demo-2',
+    at: new Date(Date.now() - 38 * 60_000).toISOString(),
+    repoPath: 'C:/Users/demo/projetos/gitweb-demo',
+    tool: 'commit',
+    headline: 'Commit: corrige validação do formulário',
+    severity: 'write',
+    decision: 'approved',
+    outcome: 'completed',
+    detail: 'Commit a1b2c3d criado em feature/form.'
+  },
+  {
+    id: 'demo-1',
+    at: new Date(Date.now() - 26 * 3600_000).toISOString(),
+    repoPath: 'C:/Users/demo/projetos/gitweb-demo',
+    tool: 'delete_merged_branches',
+    headline: 'Apagar 3 branches já integradas',
+    severity: 'danger',
+    decision: 'rejected',
+    outcome: null,
+    detail: null
+  }
+]
+
+let demoLongPaths = false
+function demoDiagnostics(cwd: string | null): DiagnosticCheck[] {
+  const checks: DiagnosticCheck[] = [
+    { id: 'git', status: 'ok', reason: 'ok', value: '2.56.1.windows.1', fix: null },
+    { id: 'identity', status: 'ok', reason: 'ok', value: `${demoGlobalIdentity.name} <${demoGlobalIdentity.email}>`, fix: null },
+    demoLongPaths
+      ? { id: 'longPaths', status: 'ok', reason: 'ok', value: null, fix: null }
+      : { id: 'longPaths', status: 'warn', reason: 'disabled', value: null, fix: { id: 'enableLongPaths', command: 'git config --global core.longpaths true' } },
+    { id: 'lfs', status: 'info', reason: 'notInstalled', value: null, fix: null },
+    { id: 'credentialHelper', status: 'ok', reason: 'ok', value: 'manager', fix: null },
+    { id: 'github', status: 'ok', reason: 'ok', value: 'demo-dev', fix: null }
+  ]
+  if (cwd) checks.splice(2, 0, { id: 'safeDirectory', status: 'ok', reason: 'ok', value: cwd, fix: null })
+  return sortChecks(checks)
+}
 
 function installBrowserApiStub(): void {
   if (typeof window === 'undefined' || window.api) return
@@ -777,6 +845,52 @@ function installBrowserApiStub(): void {
         const group = recentGroups.find((g) => g.id === id)
         if (group) group.collapsed = collapsed
         return recentData()
+      }
+    },
+    identity: {
+      getOverview: async (cwd) => ({
+        global: { ...demoGlobalIdentity },
+        profiles: appSettings.identityProfiles,
+        repo: cwd ? demoRepoIdentity(appSettings.identityProfiles) : null
+      }),
+      setGlobal: async (values) => {
+        demoGlobalIdentity = { name: values.name, email: values.email }
+        return { global: { ...demoGlobalIdentity }, profiles: appSettings.identityProfiles, repo: null }
+      },
+      saveProfiles: async (profiles) => {
+        appSettings = { ...appSettings, identityProfiles: profiles }
+        return { global: { ...demoGlobalIdentity }, profiles, repo: null }
+      },
+      applyProfile: async (_cwd, profileId) => {
+        localStorage.removeItem('demoIdentityMismatch')
+        const profile = appSettings.identityProfiles.find((p) => p.id === profileId)
+        return profile
+          ? { name: profile.name, email: profile.email, source: 'local', profileId: null, remoteOwner: 'demo-dev' }
+          : demoRepoIdentity(appSettings.identityProfiles)
+      },
+      githubSuggestion: async () => ({
+        login: DEMO_USER.login,
+        name: DEMO_USER.name,
+        noreply: '1234567+demo-dev@users.noreply.github.com',
+        emails: ['demo@example.com']
+      })
+    },
+    aiLog: {
+      list: async () => [...demoAiLog],
+      record: async (entry) => {
+        const full: AiActionEntry = { id: `demo-${Date.now()}`, at: new Date().toISOString(), ...entry }
+        demoAiLog.unshift(full)
+        return full
+      },
+      clear: async () => {
+        demoAiLog.length = 0
+      }
+    },
+    diagnostics: {
+      run: async (cwd) => demoDiagnostics(cwd),
+      fix: async (id, cwd) => {
+        if (id === 'enableLongPaths') demoLongPaths = true
+        return demoDiagnostics(cwd)
       }
     },
     settings: {

@@ -8,6 +8,9 @@ import {
   FolderSync,
   FolderTree,
   HeartHandshake,
+  IdCard,
+  ListChecks,
+  Stethoscope,
   Info,
   Languages,
   Monitor,
@@ -27,7 +30,10 @@ import { useRepoStore } from '../store/repoStore'
 import { usePullRequestStore } from '../store/pullRequestStore'
 import { DEFAULT_APP_SETTINGS, PROJECT_CO_AUTHOR_TRAILER, type ColorSchemePreference } from '../../../shared/settings'
 import type { SensitiveCheckMode, SensitiveKind } from '../../../shared/sensitiveFiles'
-import Switch from '../components/Switch'
+import SettingRow from '../components/settings/SettingRow'
+import IdentityPanel from '../components/settings/IdentityPanel'
+import AiRulesPanel from '../components/settings/AiRulesPanel'
+import DiagnosticsPanel from '../components/settings/DiagnosticsPanel'
 import GithubLoginModal from '../components/GithubLoginModal'
 import ReorganizeReposDialog from '../components/ReorganizeReposDialog'
 import AiSettingsForm from '../components/AiSettingsForm'
@@ -131,41 +137,6 @@ function GithubAccountSection(): JSX.Element {
   )
 }
 
-function SettingRow({
-  icon: Icon,
-  tone = 'neutral',
-  label,
-  description,
-  checked,
-  onChange,
-  children
-}: {
-  icon: typeof UploadCloud
-  tone?: 'blue' | 'orange' | 'green' | 'neutral'
-  label: string
-  description: string
-  checked: boolean
-  onChange: (checked: boolean) => void
-  /** Extra detail under the description. */
-  children?: React.ReactNode
-}): JSX.Element {
-  const labelId = useId()
-  return (
-    <div className="settings-row flex items-center gap-3.5">
-      <span className={`settings-icon is-${tone}`}>
-        <Icon size={16} aria-hidden />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div id={labelId} className="text-body font-semibold text-primary-text">
-          {label}
-        </div>
-        <p className="mt-0.5 text-caption text-secondary-text">{description}</p>
-        {children}
-      </div>
-      <Switch checked={checked} onChange={onChange} ariaLabelledBy={labelId} />
-    </div>
-  )
-}
 
 /** A miniature of the app in one theme: top bar, sidebar and the lane motif. */
 function ThemeMock({ variant }: { variant: 'dark' | 'light' }): JSX.Element {
@@ -494,9 +465,12 @@ function SecurityPanel(): JSX.Element {
 
 const TABS: { id: SettingsTab; icon: typeof UploadCloud }[] = [
   { id: 'general', icon: SlidersHorizontal },
+  { id: 'identity', icon: IdCard },
   { id: 'ai', icon: Bot },
+  { id: 'aiRules', icon: ListChecks },
   { id: 'appearance', icon: Palette },
-  { id: 'security', icon: ShieldCheck }
+  { id: 'security', icon: ShieldCheck },
+  { id: 'diagnostics', icon: Stethoscope }
 ]
 
 function SettingsView(): JSX.Element {
@@ -516,7 +490,10 @@ function SettingsView(): JSX.Element {
     general: { label: t.tabs.general, hint: t.tabs.generalHint, description: t.tabs.generalHint },
     ai: { label: t.tabs.ai, hint: t.tabs.aiHint, description: t.ai.hint },
     appearance: { label: t.tabs.appearance, hint: t.tabs.appearanceHint, description: t.tabs.appearanceHint },
-    security: { label: t.tabs.security, hint: t.tabs.securityHint, description: t.tabs.securityHint }
+    security: { label: t.tabs.security, hint: t.tabs.securityHint, description: t.tabs.securityHint },
+    identity: { label: t.tabs.identity, hint: t.tabs.identityHint, description: t.tabs.identityHint },
+    aiRules: { label: t.tabs.aiRules, hint: t.tabs.aiRulesHint, description: t.tabs.aiRulesHint },
+    diagnostics: { label: t.tabs.diagnostics, hint: t.tabs.diagnosticsHint, description: t.tabs.diagnosticsHint }
   }
 
   useEffect(() => {
@@ -636,6 +613,9 @@ function SettingsView(): JSX.Element {
             )}
             {tab === 'appearance' && <AppearancePanel />}
             {tab === 'security' && <SecurityPanel />}
+            {tab === 'identity' && <IdentityPanel />}
+            {tab === 'aiRules' && <AiRulesPanel />}
+            {tab === 'diagnostics' && <DiagnosticsPanel />}
           </div>
         </div>
       </div>

@@ -152,6 +152,15 @@ const ptBR = {
     pushFailed: (url: string, reason: string) =>
       `O repositório ${url} foi criado e ligado como origin, mas o envio falhou: ${reason} Tente de novo com "Publicar branch".`
   },
+  identity: {
+    invalidName: 'Nome inválido: escreva um nome sem os caracteres < e >.',
+    invalidEmail: (email: string) => `E-mail inválido: "${email}".`,
+    invalidProfile: 'Algum perfil está incompleto: cada um precisa de nome e e-mail válidos.',
+    profileNotFound: 'Esse perfil não existe mais. Abra Configurações › Identidade e confira os perfis.'
+  },
+  diagnostics: {
+    unknownFix: 'Essa correção não existe.'
+  },
   github: {
     notAuthenticated: (host: string) => `Você não está autenticado em ${host}. Entre com o GitHub e tente de novo.`,
     requestRejected: (status: number) => `GitHub recusou a solicitação (${status}).`,
@@ -332,6 +341,15 @@ const en: MainMessages = {
     pushFailed: (url, reason) =>
       `The repository ${url} was created and set as origin, but the push failed: ${reason} Try again with "Publish branch".`
   },
+  identity: {
+    invalidName: 'Invalid name: write a name without the < and > characters.',
+    invalidEmail: (email) => `Invalid e-mail: "${email}".`,
+    invalidProfile: 'A profile is incomplete: each one needs a valid name and e-mail.',
+    profileNotFound: 'That profile no longer exists. Open Settings › Identity and check the profiles.'
+  },
+  diagnostics: {
+    unknownFix: 'That fix does not exist.'
+  },
   github: {
     notAuthenticated: (host) => `You are not signed in to ${host}. Sign in with GitHub and try again.`,
     requestRejected: (status) => `GitHub rejected the request (${status}).`,
@@ -509,6 +527,15 @@ const es: MainMessages = {
       `Publicación bloqueada: el historial local tiene posibles archivos sensibles en ${paths}. Publicar envía todos los commits, incluidos los que traen esos archivos.`,
     pushFailed: (url, reason) =>
       `El repositorio ${url} se creó y quedó como origin, pero el envío falló: ${reason} Inténtalo de nuevo con "Publicar rama".`
+  },
+  identity: {
+    invalidName: 'Nombre no válido: escribe un nombre sin los caracteres < y >.',
+    invalidEmail: (email) => `Correo no válido: "${email}".`,
+    invalidProfile: 'Algún perfil está incompleto: cada uno necesita un nombre y un correo válidos.',
+    profileNotFound: 'Ese perfil ya no existe. Abre Configuración › Identidad y revisa los perfiles.'
+  },
+  diagnostics: {
+    unknownFix: 'Esa corrección no existe.'
   },
   github: {
     notAuthenticated: (host) => `No has iniciado sesión en ${host}. Inicia sesión con GitHub e inténtalo de nuevo.`,

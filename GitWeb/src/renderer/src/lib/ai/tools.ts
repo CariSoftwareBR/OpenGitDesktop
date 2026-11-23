@@ -8,7 +8,7 @@ import { formatPullRequestStatus } from './prStatus'
 import { directPushBlock } from '../branchProtection'
 import { describeFindings, SensitiveBlockedError, withheldForAi } from '../sensitive'
 import { useAppSettingsStore } from '../../store/appSettingsStore'
-import { DEFAULT_APP_SETTINGS } from '../../../../shared/settings'
+import { DEFAULT_APP_SETTINGS, isProtectedBranch } from '../../../../shared/settings'
 import { sanitizeRepositoryName } from '../../../../shared/github'
 import { basename, displayFolder, pathKey } from '../path'
 import {
@@ -81,6 +81,42 @@ const WRITE_TOOLS = new Set([
   'open_worktree',
   'prune_worktrees'
 ])
+
+// Tools that add commits to, move or publish the current branch. The
+// protected-branch rule (Settings › Ações da IA) refuses them before the
+// approval card exists — approval cannot override it.
+const CURRENT_BRANCH_WRITE_TOOLS = new Set(['commit', 'undo_last_commit', 'push', 'merge_branch', 'reorganize_local_commits'])
+
+/** A Settings rule stopped the action; the chat shows it like any failed proposal, and the log records it as blocked. */
+export class AiRuleBlockedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'AiRuleBlockedError'
+  }
+}
+
+// status.branch first: it is refreshed with HEAD, while the branch list's
+// isCurrent flag can lag behind a checkout made in a terminal.
+function currentBranchName(): string | null {
+  const repo = useRepoStore.getState()
+  return repo.status?.branch ?? repo.branches.find((b) => b.isCurrent)?.name ?? null
+}
+
+function protectedBranches(): string[] {
+  return (useAppSettingsStore.getState().settings ?? DEFAULT_APP_SETTINGS).aiProtectedBranches
+}
+
+/** Throws when the user protected this branch from the assistant. */
+function assertBranchAllowed(branch: string | null | undefined): void {
+  if (branch && isProtectedBranch(branch, protectedBranches())) {
+    throw new AiRuleBlockedError(getT().tools.protectedBranchBlocked(branch))
+  }
+}
+
+/** Throws when the user's rules forbid this tool on the current branch. */
+export function assertAllowedByRules(name: string): void {
+  if (CURRENT_BRANCH_WRITE_TOOLS.has(name)) assertBranchAllowed(currentBranchName())
+}
 
 export function toolSeverity(name: string): ToolSeverity {
   if (DANGER_TOOLS.has(name)) return 'danger'
@@ -299,6 +335,7 @@ function requireGitHubRemote(): { host: string; owner: string; repo: string } {
 // ---------------------------------------------------------------------------
 
 export async function prepareToolCall(call: ToolCallRequest): Promise<ToolPrepareResult> {
+  assertAllowedByRules(call.name)
   const result = await prepareToolCallInner(call)
   return {
     preview: { ...result.preview, severity: result.preview.severity ?? toolSeverity(call.name) },
@@ -463,6 +500,8 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
       // merge that comes back as an API error.
       if (pr.merged) throw new Error(t.prAlreadyMerged(number))
       if (pr.state === 'closed') throw new Error(t.prClosedCannotMerge(number))
+      // Merging the PR lands commits on its base branch.
+      assertBranchAllowed(pr.baseRef)
 
       const mergeability =
         pr.mergeable === true
@@ -1074,6 +1113,8 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
     case 'delete_merged_branches': {
       const requested = parseBranchList(a.branch_names ?? '')
       if (requested.length === 0) throw new Error(t.paramRequired('branch_names'))
+      const guarded = requested.filter((name) => isProtectedBranch(name, protectedBranches()))
+      if (guarded.length > 0) throw new AiRuleBlockedError(t.protectedBranchDeleteBlocked(guarded.join(', ')))
       const repoPath = await requireCurrentRepo()
       const [report, branches] = await Promise.all([
         window.api.git.branchIntegration(repoPath, a.base_branch || undefined),
@@ -1451,6 +1492,9 @@ async function prepareToolCallInner(call: ToolCallRequest): Promise<ToolPrepareR
 // ---------------------------------------------------------------------------
 
 export async function executeToolCall(call: ToolCallRequest): Promise<string | ToolOutput> {
+  // Again at run time: the branch may have changed (or the rule been added)
+  // while the card waited for approval.
+  assertAllowedByRules(call.name)
   const repo = useRepoStore.getState()
   const pr = usePullRequestStore.getState()
   const a = call.arguments
