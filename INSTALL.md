@@ -16,6 +16,20 @@ OpenGitDesktop ships as ready-made installers on [GitHub Releases](https://githu
 The app updates itself after that (on macOS, for now, install the new `.dmg` by hand — see *Good to know*).
 It needs **Git** installed (it uses the Git on your system). On macOS you can also build it from source instead.
 
+**Quick install** — one command, same steps as below (on macOS it installs the ready-made `.dmg`):
+
+```powershell
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/CariSoftwareBR/OpenGitDesktop/main/install.ps1 | iex
+```
+
+```bash
+# Linux / macOS
+curl -fsSL https://raw.githubusercontent.com/CariSoftwareBR/OpenGitDesktop/main/install.sh | bash
+```
+
+The scripts are [`install.ps1`](install.ps1) and [`install.sh`](install.sh) — read them first if you like.
+
 ---
 
 ## Install
