@@ -12,8 +12,11 @@
   },
   "private": true,
   "scripts": {
+    "ensure-electron": "node -e \"require('electron')\"",
+    "predev": "npm run ensure-electron",
     "dev": "electron-vite dev",
     "build": "electron-vite build",
+    "prestart": "npm run ensure-electron",
     "start": "electron-vite preview",
     "lint": "oxlint",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.test.json",

@@ -20,7 +20,7 @@ Cliente Git multiplataforma (Windows, macOS, Linux), inspirado no GitDesktop —
 
 ## Requisitos
 
-- Node.js 22.12+
+- Node.js 22.12+ (recomendado: 26, a versão do CI e do `.nvmrc`)
 - Git instalado e disponível no `PATH`
 
 ## Desenvolvimento
