@@ -103,6 +103,27 @@ function stagger(step: number): CSSProperties {
   return { animationDelay: `${step * 70}ms` }
 }
 
+/**
+ * The way out of the About page: a pill that holds its own weight against the
+ * graph without competing with it. The arrow sits in a disc that takes on
+ * Command Blue and nudges left on hover. Esc does the same from the keyboard.
+ */
+function BackPill({ label, onClick }: { label: string; onClick: () => void }): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-keyshortcuts="Escape"
+      className="group rise-in flex h-9 items-center gap-2 rounded-pill border border-default-border bg-obsidian-panel/80 py-1 pl-1 pr-3.5 text-body text-secondary-text shadow-[var(--shadow-raised)] backdrop-blur-md transition-[background-color,border-color,color,box-shadow,transform] duration-150 hover:border-command-blue/30 hover:bg-coal-raised hover:text-primary-text hover:shadow-[var(--shadow-command-glow),var(--shadow-raised)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-border/70 active:scale-[0.97]"
+    >
+      <span className="flex size-7 items-center justify-center rounded-full bg-hover-overlay text-primary-text transition-[background-color,color] duration-150 group-hover:bg-command-blue-soft group-hover:text-command-blue">
+        <ArrowLeft size={15} strokeWidth={2.25} aria-hidden className="transition-transform duration-200 ease-out group-hover:-translate-x-0.5" />
+      </span>
+      <span className="font-medium">{label}</span>
+    </button>
+  )
+}
+
 function AboutView(): JSX.Element {
   const currentRepoPath = useRepoStore((s) => s.currentRepoPath)
   const setView = useRepoStore((s) => s.setView)
@@ -138,6 +159,17 @@ function AboutView(): JSX.Element {
   function handleBack(): void {
     setView(currentRepoPath ? 'settings' : 'changes')
   }
+
+  // Esc leaves the page like the back button — unless something else on the
+  // page already claimed the key.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent): void {
+      if (e.key !== 'Escape' || e.defaultPrevented || e.repeat) return
+      setView(currentRepoPath ? 'settings' : 'changes')
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [currentRepoPath, setView])
 
   async function handleCheckForUpdates(): Promise<void> {
     setChecking(true)
@@ -179,18 +211,8 @@ function AboutView(): JSX.Element {
 
   return (
     <main className="relative flex h-screen flex-col overflow-hidden bg-midnight-base">
-      {/* Same quiet arrow as Settings and Messages: the page is the focus,
-          the way out only needs to be findable. */}
       <header className="absolute left-0 top-0 z-10 flex items-center px-3 py-3">
-        <button
-          type="button"
-          onClick={handleBack}
-          className="btn-ghost w-[34px] px-0 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:-translate-x-0.5"
-          title={t.back}
-          aria-label={t.back}
-        >
-          <ArrowLeft size={17} aria-hidden />
-        </button>
+        <BackPill label={t.back} onClick={handleBack} />
       </header>
 
       {/* Full-width scroller (thumb on the window's right edge), content
