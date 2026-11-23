@@ -179,15 +179,17 @@ function AboutView(): JSX.Element {
 
   return (
     <main className="relative flex h-screen flex-col overflow-hidden bg-midnight-base">
-      <header className="absolute left-0 top-0 z-10 flex items-center px-4 py-3">
+      {/* Same quiet arrow as Settings and Messages: the page is the focus,
+          the way out only needs to be findable. */}
+      <header className="absolute left-0 top-0 z-10 flex items-center px-3 py-3">
         <button
           type="button"
           onClick={handleBack}
-          className="flex h-[42px] items-center gap-2 rounded-md border border-default-border bg-coal-raised px-3 text-body text-secondary-text transition-[background-color,color,transform] duration-100 hover:bg-hover-overlay hover:text-primary-text active:scale-[0.98]"
+          className="btn-ghost w-[34px] px-0 [&>svg]:transition-transform [&>svg]:duration-200 hover:[&>svg]:-translate-x-0.5"
+          title={t.back}
           aria-label={t.back}
         >
-          <ArrowLeft size={16} />
-          {t.back}
+          <ArrowLeft size={17} aria-hidden />
         </button>
       </header>
 
